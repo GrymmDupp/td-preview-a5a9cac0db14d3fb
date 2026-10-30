@@ -1,6 +1,6 @@
 import { html, plural } from '../util.js';
 import { listingCard } from '../components.js';
-import { LAYERS, PRICE_BANDS, STATES, STATUSES, layerInfo, statusInfo, kindLabel } from '../taxonomy.js';
+import { LAYERS, PRICE_BANDS, STATES, STATUSES, layerInfo, statusInfo, kindLabel, ratingLabel } from '../taxonomy.js';
 import { sortListings } from '../feed.js';
 
 export function applyFilters(L, q) {
@@ -10,7 +10,7 @@ export function applyFilters(L, q) {
   return L.filter((l) => (!s || l.state === s) && (!layer || l.layer === layer) && (!tier || String(l.tier) === tier)
     && (!status || (status === 'open' ? ['Active', 'Pending'].includes(l.status) : l.status === status)) && (!kind || l.kind === kind)
     && (!band || (band.min == null ? (l.priceNum == null || l.auction) : (l.priceNum != null && l.priceNum >= band.min && l.priceNum < band.max)))
-    && (!text || [l.name, l.place, l.address, l.preview?.summary, l.preview?.teaser, l.facts, l.storyCategory].join(' ').toLowerCase().includes(text)));
+    && (!text || [l.name, l.place, l.address, l.preview?.summary, l.preview?.teaser, l.facts, ratingLabel(l)].join(' ').toLowerCase().includes(text)));
 }
 
 export async function browse(ctx, q) {
@@ -24,16 +24,16 @@ export async function browse(ctx, q) {
   const statuses = [...new Set([...Object.keys(STATUSES), ...L.map((l) => l.status)])];
   const active = [...q.entries()].filter(([k, v]) => v && k !== 'sort');
   const stateCounts = states.map((s) => [s, L.filter((l) => l.state === s).length]);
-  return html`<div class="page-head"><h1>Browse the archive</h1><p class="muted">Filter by state, category and price. Triple-D listings always rank first.</p></div>
+  return html`<div class="page-head"><h1>Browse the archive</h1><p class="muted">Filter by state, category and price. Twisted Deeds always rank first.</p></div>
   <form class="filters" data-filters>
     <label class="f grow"><span>Search</span><input name="q" type="search" value="${q.get('q') || ''}" placeholder="Name, town, story…"></label>
     ${sel('state', states.map((s) => [s, STATES[s] || s]), 'State')}
-    ${sel('tier', [['1', 'Triple-D'], ['2', 'Strong Story']], 'Tier')}
+    ${sel('tier', [['1', 'Twisted Deed'], ['2', 'Strong Story']], 'Tier')}
     ${sel('layer', layers.map((k) => [k, layerInfo(k).label]), 'Category')}
     ${sel('price', PRICE_BANDS.map((b) => [b.key, b.label]), 'Price')}
     ${sel('kind', kinds.map((k) => [k, kindLabel(k)]), 'Type')}
     ${sel('status', [['open', 'Active or pending'], ...statuses.map((s) => [s, statusInfo(s).label])], 'Status')}
-    <label class="f"><span>Sort</span><select name="sort">${[['featured', 'Strongest story'], ['newest', 'Newest'], ['priceAsc', 'Price: low to high'], ['priceDesc', 'Price: high to low'], ['name', 'Name']].map(([v, t]) => html`<option value="${v}" ${(q.get('sort') || 'featured') === v ? 'selected' : ''}>${t}</option>`)}</select></label>
+    <label class="f"><span>Sort</span><select name="sort">${[['featured', 'Most twisted first'], ['newest', 'Newest'], ['priceAsc', 'Price: low to high'], ['priceDesc', 'Price: high to low'], ['name', 'Name']].map(([v, t]) => html`<option value="${v}" ${(q.get('sort') || 'featured') === v ? 'selected' : ''}>${t}</option>`)}</select></label>
   </form>
   <div class="chips-row">${layers.map((k) => { const i = layerInfo(k); const on = q.get('layer') === k; const n = L.filter((l) => l.layer === k).length;
     return html`<a class="chip ${on ? 'on' : ''} ${n ? '' : 'dim'}" style="--c:${i.color}" href="#/browse?${new URLSearchParams({ ...Object.fromEntries(q), layer: on ? '' : k })}"><span class="dot"></span>${i.label}<small>${n}</small></a>`; })}</div>

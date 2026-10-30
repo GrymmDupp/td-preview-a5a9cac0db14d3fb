@@ -20,10 +20,12 @@ export const CONFIG = {
     mediaBucket: 'contributions',
   },
 
-  // Listing photos in the feed are "reference" rights (the broker's or press photos).
-  // The public site does NOT reproduce them; it links to the original page instead.
-  // Only images whose rights are in this list are shown inline.
-  displayableRights: ['permission', 'cleared'],
+  // Images shown inline, by rights. 'hotlink' = listing / alt-listing photos, loaded
+  // straight from the source site with a credit link back (never rehosted, owner
+  // decision 2026-10-30). 'public-domain' / 'cc' = free images copied into the feed repo
+  // with license and author. 'illustration' = drawn, labelled "Illustration, not a photo".
+  // 'reference' (press / broker photo pages) stays link-only.
+  displayableRights: ['permission', 'cleared', 'hotlink', 'public-domain', 'cc', 'illustration'],
 
   // Map: MapLibre + OpenFreeMap dark (no key). Falls back to Esri Dark Gray raster.
   map: {

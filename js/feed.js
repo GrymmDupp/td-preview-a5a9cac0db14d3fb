@@ -82,7 +82,7 @@ function deriveTier(l) {
   if (t === 1 || t === 2) return t;
   if (GRADES[l.grade]) return GRADES[l.grade].tier;
   if (l.grade == null && LAYERS[l.layer]) return LAYERS[l.layer].tier;
-  return 2; // unknown grade: neutral, never outranks Triple-D
+  return 2; // unknown grade: neutral, never outranks tier 1 (Twisted Deed)
 }
 
 export function normalize(raw) {
@@ -121,7 +121,7 @@ export function normalize(raw) {
   return l;
 }
 
-// Triple-D first, always. Then the chosen key.
+// Tier 1 (Twisted Deed) first, always. Then the chosen key.
 export function sortListings(list, key = 'featured') {
   const cmp = {
     featured: (a, b) => b.priority - a.priority,

@@ -1,19 +1,22 @@
 // Shared UI pieces: grade labels, listing cards, the archival "plate" image, price, lock.
 import { html, raw, esc, fmtDate, truncate, plural, safeUrl, host } from './util.js';
 import { CONFIG } from './config.js';
-import { statusInfo, kindLabel, tierInfo } from './taxonomy.js';
+import { statusInfo, kindLabel, tierInfo, storyLabel, PUBLIC_TIER1, PUBLIC_TIER2 } from './taxonomy.js';
+import { displayableImages } from './feed.js';
 import { isNew } from './feed.js';
 
+// Public rating badge. Tier 1 = prominent "Twisted Deed"; tier 2 = muted "Strong Story"
+// with its category. The internal grade (and its letters/emoji) is never shown.
 export const gradeBadge = (l, big = false) => l.tier === 1
-  ? html`<span class="badge ddd ${big ? 'big' : ''}" style="--c:${l.gradeI.color}" title="Triple-D: ${l.gradeI.label}"><b>Triple-D</b><i>${l.gradeI.icon} ${l.gradeI.label}</i></span>`
-  : html`<span class="badge story ${big ? 'big' : ''}" title="Strong Story${l.storyCategory ? ': ' + l.storyCategory : ''}">❧ Story${l.storyCategory ? html`<i>${l.storyCategory}</i>` : ''}</span>`;
+  ? html`<span class="badge ddd ${big ? 'big' : ''}" style="--c:#c41e32" title="${PUBLIC_TIER1}" aria-label="Rating: ${PUBLIC_TIER1}"><b>${PUBLIC_TIER1}</b></span>`
+  : html`<span class="badge story ${big ? 'big' : ''}" title="${PUBLIC_TIER2}${storyLabel(l) ? ': ' + storyLabel(l) : ''}" aria-label="Rating: ${PUBLIC_TIER2}${storyLabel(l) ? ', ' + storyLabel(l) : ''}">${PUBLIC_TIER2}${storyLabel(l) ? html`<i>${storyLabel(l)}</i>` : ''}</span>`;
 export const layerChip = (l) => html`<a class="layer" style="--c:${l.layerI.color}" href="#/browse?layer=${encodeURIComponent(l.layer || '')}"><span class="dot"></span>${l.layerI.label}</a>`;
 export const statusPill = (l) => { const s = statusInfo(l.status); return html`<span class="status ${s.cls}">${s.label}</span>`; };
-export const exampleTag = (row) => row?.is_example ? html`<span class="example" title="Example content for the preview. Not a real person or real recollection.">Example</span>` : '';
 export const pendingTag = (row) => row?.status === 'pending' ? html`<span class="pending" title="Only you can see this until a moderator approves it">Awaiting review</span>` : '';
 
-// The archival plate stands in for listing photos (which are the broker's and are
-// not reproduced here). Deterministic per listing, tinted by its layer color.
+// The archival plate is shown when a listing has no usable photo, and behind every
+// photo as its fallback (if the hotlinked image fails, app.js hides it and the plate
+// shows). Deterministic per listing, tinted by its layer color.
 export function plate(l, cls = '') {
   const c = l.layerI.color;
   let h = 0; for (const ch of l.id) h = (h * 33 + ch.charCodeAt(0)) >>> 0;
@@ -54,10 +57,31 @@ export const membersLine = (from = '') => {
   return raw(`Members unlock for less: <a href="#/membership?plan=monthly${q}">Monthly ${monthlyPrice()}/mo</a> (unlocks ${monthlyUnlockPrice()}) or <a href="#/membership?plan=lifetime${q}">Lifetime ${lifetimePrice()} one-time</a> (unlocks ${lifetimeUnlockPrice()})`);
 };
 
+// Photo label per image_type. Listing photos are hotlinked from the source page, never rehosted.
+export const IMAGE_TYPE_LABEL = { listing: 'Listing photo', 'alt-listing': 'Photo from another listing', 'public-domain': 'Public domain', cc: 'Creative Commons', illustration: 'Illustration, not a photo' };
+export const imageType = (i) => i.image_type || (i.rights === 'illustration' ? 'illustration' : '');
+// Credit line + link back to the source page.
+export function photoCredit(i) {
+  const t = imageType(i), src = safeUrl(i.source || i.page || '');
+  if (t === 'illustration') return html`<span class="ph-type illus">Illustration, not a photo</span>${i.credit ? html` · ${i.credit}` : ''}`;
+  const lic = (t === 'cc' || t === 'public-domain') ? html`${i.license ? html` · ${safeUrl(i.license_url) ? html`<a href="${safeUrl(i.license_url)}" target="_blank" rel="noopener nofollow license">${i.license}</a>` : i.license}` : ''}` : '';
+  const free = t === 'cc' || t === 'public-domain';
+  const via = t === 'listing' ? 'via listing' : t === 'alt-listing' ? 'via another listing' : free ? `via ${host(src) === 'commons.wikimedia.org' ? 'Wikimedia Commons' : host(src) || 'source'}` : 'via source';
+  const who = String((free && i.author) || i.credit || host(src) || 'unknown').replace(/[\s,;]+$/, '');
+  return html`<span class="ph-type">${IMAGE_TYPE_LABEL[t] || 'Photo'}</span> · ${src ? html`<a href="${src}" target="_blank" rel="noopener nofollow">Photo: ${who}, ${via}</a>` : html`Photo: ${who}`}${lic}`;
+}
+// First usable photo with the plate underneath as its fallback (see app.js img error handler).
+export function photoOrPlate(l, cls = '') {
+  const i = displayableImages(l)[0];
+  if (!i) return plate(l, cls);
+  const illus = imageType(i) === 'illustration';
+  return html`<div class="ph ${cls}" data-ph>${plate(l, cls)}<img src="${i.src || i.url}" alt="${i.caption || l.name}" loading="lazy" referrerpolicy="no-referrer" data-ph-img>${illus ? html`<span class="ph-flag">Illustration, not a photo</span>` : ''}</div>`;
+}
+
 export function listingCard(l, { comments = {}, unlocks = [], compact = false } = {}) {
   const n = comments[l.id] || 0, open = unlocks.includes(l.id);
   return html`<article class="card ${l.tier === 1 ? 't1' : 't2'} ${compact ? 'compact' : ''}" style="--c:${l.layerI.color}">
-  <a class="card-media" href="#/l/${encodeURIComponent(l.id)}" aria-label="${l.name}">${plate(l)}
+  <a class="card-media" href="#/l/${encodeURIComponent(l.id)}" aria-label="${l.name}">${photoOrPlate(l)}
     ${isNew(l) ? html`<span class="ribbon">New</span>` : ''}</a>
   <div class="card-body">
     <div class="card-badges">${gradeBadge(l)} ${layerChip(l)} ${statusPill(l)}</div>

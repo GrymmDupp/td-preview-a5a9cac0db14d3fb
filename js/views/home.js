@@ -18,7 +18,7 @@ export function sidebar(ctx) {
     <a class="small" href="#/map">or explore the map →</a></section>
   <section class="box how"><h4>How files work</h4><ul class="small"><li><b>Free preview</b> on every listing: facts, a short summary, a lore teaser, sample photos and the original listing link.</li><li><b>Full file</b>: ${standardPrice()} one time per listing, yours permanently on every device.</li><li><b>Members unlock for less</b> (optional): Monthly ${monthlyPrice()}/mo, unlocks ${monthlyUnlockPrice()}; Lifetime ${lifetimePrice()} one time, unlocks ${lifetimeUnlockPrice()}.</li></ul><a class="small" href="#/about">More about the archive →</a></section>
   <section class="box"><h4>Categories</h4><ul class="cats">
-    <li class="cat-tier"><a href="#/browse?tier=1">Triple-D <span>${count((l) => l.tier === 1)}</span></a></li>
+    <li class="cat-tier"><a href="#/browse?tier=1">Twisted Deeds <span>${count((l) => l.tier === 1)}</span></a></li>
     ${layers.map((k) => { const n = count((l) => l.layer === k); const i = layerInfo(k); return html`<li class="${n ? '' : 'empty'}"><a href="#/browse?layer=${k}" style="--c:${i.color}"><span class="dot"></span>${i.label} <span>${n || 'soon'}</span></a></li>`; })}
     <li class="cat-tier"><a href="#/browse?tier=2">Strong Story <span>${count((l) => l.tier === 2) || 'new tier'}</span></a></li></ul></section>
   <section class="box"><h4>By price</h4><ul class="cats">${PRICE_BANDS.map((b) => html`<li><a href="#/browse?price=${b.key}">${b.label}</a></li>`)}</ul></section>
@@ -38,10 +38,10 @@ export async function home(ctx, q) {
   ${page === 1 ? html`<section class="hero">
     <div><h1>Houses for sale <em>with a past</em></h1>
     <p>${plural(L.length, 'buyable property', 'buyable properties')} across ${new Set(L.map((l) => l.state)).size} states, each with a sourced dark history or a strong story. Read the free preview, unlock the full file, add what you know.</p>
-    <div class="hero-stats"><span><b>${t1}</b> Triple-D</span><span>${L.length - t1 ? html`<b>${L.length - t1}</b> Strong Story` : html`<b>Strong Story</b> tier opening soon`}</span><span>Full file <b>${unlockPrice(ctx)}</b> one time</span><span>Feed v${ctx.feed.meta.version} · ${fmtDate(ctx.feed.meta.generated_at)}</span></div></div>
+    <div class="hero-stats"><span><b>${t1}</b> Twisted Deeds</span><span>${L.length - t1 ? html`<b>${L.length - t1}</b> Strong Story` : html`<b>Strong Story</b> tier opening soon`}</span><span>Full file <b>${unlockPrice(ctx)}</b> one time</span><span>Feed v${ctx.feed.meta.version} · ${fmtDate(ctx.feed.meta.generated_at)}</span></div></div>
   </section>` : ''}
   <div class="with-side"><div class="feed">
-    <div class="feed-head"><h2>${page === 1 ? 'Latest listings' : `Listings · page ${page}`}</h2><span class="muted">Triple-D first, then strongest stories</span></div>
+    <div class="feed-head"><h2>${page === 1 ? 'Latest listings' : `Listings · page ${page}`}</h2><span class="muted">Most twisted first, then strong stories</span></div>
     ${slice.map((l) => listingCard(l, ctx))}
     <nav class="pager">${page > 1 ? html`<a class="btn ghost" href="#/?page=${page - 1}">← Newer</a>` : html`<span></span>`}
       <span class="muted">Page ${page} of ${pages}</span>

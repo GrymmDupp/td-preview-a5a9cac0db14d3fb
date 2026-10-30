@@ -1,18 +1,31 @@
 // Every label and color in one place. Unknown values never throw: they fall back
 // to a neutral label made from the raw value, so new feed values render on day one.
 
+// Internal grade keys (from the feed). Never rendered: the public site shows only the
+// rating badge (Twisted Deed / Strong Story), see PUBLIC_TIER1 / storyLabel below.
 export const GRADES = {
-  death:     { label: 'Death',     icon: '💀', color: '#c41e32', tier: 1 },
-  diseased:  { label: 'Diseased',  icon: '☣',  color: '#8fb33a', tier: 1 },
-  split:     { label: 'Divorced',  icon: '💔', color: '#d2457a', tier: 1, hint: 'Split / stigma' },
-  sovereign: { label: 'Sovereign', icon: '👑', color: '#ff4a4a', tier: 1 },
-  story:     { label: 'Story',     icon: '❧',  color: '#cbbd9f', tier: 2 },
+  death:     { label: 'Twisted Deed', icon: '', color: '#c41e32', tier: 1 },
+  diseased:  { label: 'Twisted Deed', icon: '', color: '#8fb33a', tier: 1 },
+  split:     { label: 'Twisted Deed', icon: '', color: '#d2457a', tier: 1 },
+  sovereign: { label: 'Twisted Deed', icon: '', color: '#ff4a4a', tier: 1 },
+  story:     { label: 'Strong Story', icon: '', color: '#cbbd9f', tier: 2 },
 };
 
 export const TIERS = {
-  1: { key: 'triple-d', label: 'Triple-D', long: 'Death · Diseased · Divorced, plus murder, crime, mayhem and sovereign' },
+  1: { key: 'triple-d', label: 'Twisted Deed', long: 'Murder, crime, mayhem and the darkest records' },
   2: { key: 'story', label: 'Strong Story', long: 'Architectural oddities, lore-heavy vacancies, folklore, failed attractions, closed institutions, heritage' },
 };
+
+// Public display names. The internal keys (grade, tier, storyCategory) are unchanged;
+// the site never shows the internal grade letters or their emoji string.
+export const PUBLIC_TIER1 = 'Twisted Deed';
+export const PUBLIC_TIER2 = 'Strong Story';
+const STORY_CATS = { oddity: 'Architecture & Oddity', folklore: 'Folklore', attraction: 'Failed Attraction', heritage: 'Heritage', 'long-vacant': 'Long-Vacant', research: 'Heritage' };
+// Sub-label for a Strong Story badge (storyCategory, else the layer). Empty for tier 1.
+export const storyLabel = (l) => l.tier === 1 ? '' : (STORY_CATS[l.storyCategory] || (LAYERS[l.layer]?.tier === 2 ? { oddity: 'Architecture & Oddity', folklore: 'Folklore', attraction: 'Failed Attraction', heritage: 'Heritage' }[l.layer] : '') || '');
+export const ratingLabel = (l) => l.tier === 1 ? PUBLIC_TIER1 : PUBLIC_TIER2 + (storyLabel(l) ? ' · ' + storyLabel(l) : '');
+// Labels for the contribute form's "what kind of story" choice (values stay internal keys).
+export const CONTRIB_GRADE_LABELS = { death: 'Twisted Deed: a death, murder or violent crime', diseased: 'Twisted Deed: asylum, sanatorium or epidemic history', split: 'Twisted Deed: scandal or stigma', story: 'Strong Story: architecture, folklore, failed attraction, heritage or long-vacant' };
 
 // Map/category layers. Colors follow Grymm's brief; media and record keep Field Desk's own.
 export const LAYERS = {

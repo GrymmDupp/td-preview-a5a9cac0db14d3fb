@@ -1,6 +1,6 @@
 import { html, fmtDate, ago, plural, safeUrl, host } from '../util.js';
-import { gradeBadge, layerChip, statusPill, plate, authorName, exampleTag, pendingTag, reportBtn, sourceLinks, listingCard, kindLabel, unlockPrice, membersLine, priceTier, TIER_LABEL } from '../components.js';
-import { STATES, tierInfo } from '../taxonomy.js';
+import { gradeBadge, layerChip, statusPill, plate, photoCredit, imageType, authorName, pendingTag, reportBtn, sourceLinks, listingCard, kindLabel, unlockPrice, membersLine, priceTier, TIER_LABEL } from '../components.js';
+import { STATES, ratingLabel } from '../taxonomy.js';
 import { displayableImages } from '../feed.js';
 
 const SIG = { landmark: 'National Historic Landmark', register: 'National Register of Historic Places', district: 'Historic district', local: 'Local record' };
@@ -13,12 +13,12 @@ export const para = (t) => String(t || '').split(/\n{2,}|\n/).filter(Boolean).ma
 // (type 'comment') and for the general board (type 'board_post').
 export function threadItem(row, replies, { type, replyAttr, signedIn }) {
   return html`<article class="post" id="${type}-${row.id}"><div class="post-main">
-    <div class="post-meta">${authorName(row.author)} <time datetime="${row.created_at}">${ago(row.created_at)}</time> ${exampleTag(row)} ${pendingTag(row)}</div>
+    <div class="post-meta">${authorName(row.author)} <time datetime="${row.created_at}">${ago(row.created_at)}</time> ${pendingTag(row)}</div>
     ${row.title ? html`<h4>${row.title}</h4>` : ''}
     <div class="post-body">${para(row.body)}</div>
     <div class="post-actions">${signedIn ? html`<button class="link" data-toggle-reply="${row.id}">Reply</button>` : ''}${reportBtn(type, row.id)}</div>
     <div class="replies">${replies.map((r) => html`<div class="reply" id="${type}-${r.id}"><div>
-      <div class="post-meta">${authorName(r.author)} <time>${ago(r.created_at)}</time> ${exampleTag(r)} ${pendingTag(r)} ${reportBtn(type, r.id)}</div>
+      <div class="post-meta">${authorName(r.author)} <time>${ago(r.created_at)}</time> ${pendingTag(r)} ${reportBtn(type, r.id)}</div>
       <div class="post-body">${para(r.body)}</div></div></div>`)}
       ${signedIn ? html`<form class="reply-form" ${replyAttr}="${row.id}" hidden><textarea name="body" rows="2" placeholder="Reply. Public records and first-hand only." required maxlength="3000"></textarea>
       <div class="row"><span class="muted small">Replies are reviewed before they appear.</span><button class="btn sm">Send reply</button></div></form>` : ''}
@@ -27,7 +27,7 @@ export function threadItem(row, replies, { type, replyAttr, signedIn }) {
 
 function previewFacts(l) {
   return [
-    ['Tier', tierInfo(l.tier).label], ['Grade', l.gradeI.label], ['Category', l.layerI.label], l.storyCategory && ['Story category', l.storyCategory],
+    ['Rating', ratingLabel(l)], ['Category', l.layerI.label],
     ['Type', kindLabel(l.kind)], l.facts && ['Facts', l.facts], ['Address', l.address], ['Asking', l.price], ['Status', l.status],
     l.significance && ['Significance', SIG[l.significance] || l.significance], l.lane && ['Lane', LANE[l.lane] || l.lane],
     l.extra.verification && ['Verification', l.extra.verification],
@@ -37,11 +37,11 @@ function previewFacts(l) {
 }
 
 const communityItem = (s) => html`<div class="file-item ${s.kind}">
-  ${s.kind === 'photo' ? html`<figure class="media-card">${s.payload?.data_url ? html`<img src="${s.payload.data_url}" alt="${s.payload.title}">` : html`<div class="doc-ph">${s.payload?.doc_type || 'photo'}<small>placeholder</small></div>`}
-    <figcaption><strong>${s.payload?.title}</strong><span>${s.payload?.caption}</span><span class="muted small">Credit ${s.payload?.credit || s.author?.handle} ${exampleTag(s)}</span></figcaption></figure>` : ''}
-  ${s.kind === 'lore' ? html`<div><span class="kind">Lore${s.payload?.relation ? ' · ' + (REL[s.payload.relation] || s.payload.relation) : ''}${s.payload?.era ? ' · ' + s.payload.era : ''}</span> ${exampleTag(s)}<h4>${s.payload?.title}</h4>${para(s.payload?.text)}</div>` : ''}
-  ${s.kind === 'info' ? html`<div><span class="kind">Added info · ${s.payload?.field}</span> ${exampleTag(s)}${para(s.payload?.text)}${s.payload?.sources ? html`<p class="small"><b>Sources:</b> ${s.payload.sources}</p>` : ''}</div>` : ''}
-  ${s.kind === 'link' ? html`<div><span class="kind">Link</span> ${exampleTag(s)} <a href="${safeUrl(s.payload?.url) || '#'}" target="_blank" rel="noopener nofollow">${s.payload?.label || host(s.payload?.url)}</a>${s.payload?.why ? html`<p class="small muted">${s.payload.why}</p>` : ''}</div>` : ''}
+  ${s.kind === 'photo' ? html`<figure class="media-card">${s.payload?.data_url ? html`<img src="${s.payload.data_url}" alt="${s.payload.title}">` : html`<div class="doc-ph">${s.payload?.doc_type || 'photo'}<small>no image preview</small></div>`}
+    <figcaption><strong>${s.payload?.title}</strong><span>${s.payload?.caption}</span><span class="muted small">Credit ${s.payload?.credit || s.author?.handle}</span></figcaption></figure>` : ''}
+  ${s.kind === 'lore' ? html`<div><span class="kind">Lore${s.payload?.relation ? ' · ' + (REL[s.payload.relation] || s.payload.relation) : ''}${s.payload?.era ? ' · ' + s.payload.era : ''}</span><h4>${s.payload?.title}</h4>${para(s.payload?.text)}</div>` : ''}
+  ${s.kind === 'info' ? html`<div><span class="kind">Added info · ${s.payload?.field}</span>${para(s.payload?.text)}${s.payload?.sources ? html`<p class="small"><b>Sources:</b> ${s.payload.sources}</p>` : ''}</div>` : ''}
+  ${s.kind === 'link' ? html`<div><span class="kind">Link</span> <a href="${safeUrl(s.payload?.url) || '#'}" target="_blank" rel="noopener nofollow">${s.payload?.label || host(s.payload?.url)}</a>${s.payload?.why ? html`<p class="small muted">${s.payload.why}</p>` : ''}</div>` : ''}
   <div class="small muted">Submitted by ${authorName(s.author)} · approved ${fmtDate(s.moderated_at || s.created_at)} ${reportBtn('submission', s.id)}</div></div>`;
 
 function fullFile(l, f) {
@@ -99,11 +99,12 @@ export async function listing(ctx, q, id) {
   </header>
 
   <section class="gallery">
-    <div class="g-main">${imgs[0] ? html`<img src="${imgs[0].src || imgs[0].url}" alt="${imgs[0].caption}">` : plate(l, 'big')}</div>
+    <figure class="g-main">${imgs[0] ? html`<div class="ph big" data-ph>${plate(l, 'big')}<img src="${imgs[0].src || imgs[0].url}" alt="${imgs[0].caption || l.name}" referrerpolicy="no-referrer" data-ph-img>${imageType(imgs[0]) === 'illustration' ? html`<span class="ph-flag">Illustration, not a photo</span>` : ''}</div>
+      <figcaption class="ph-credit">${photoCredit(imgs[0])}</figcaption>` : plate(l, 'big')}</figure>
     <div class="g-strip">
-      ${imgs.slice(1).map((i) => html`<figure class="g-item"><img src="${i.src || i.url}" alt="${i.caption}" loading="lazy"><figcaption>${i.caption}</figcaption></figure>`)}
-      ${samples.map((m) => html`<figure class="g-item community">${m.payload?.data_url ? html`<img src="${m.payload.data_url}" alt="${m.payload.title}" loading="lazy">` : html`<div class="doc-ph">photo<small>placeholder</small></div>`}<figcaption>${m.payload?.title} · ${m.payload?.credit || '@' + m.author?.handle} ${exampleTag(m)}</figcaption></figure>`)}
-      <div class="g-ref"><span class="era">Sample photos</span><strong>${samples.length ? 'Community sample photo' : 'Archival placeholder'}</strong><span class="src">Listing and broker photos stay on the <a href="${safeUrl(l.url) || '#'}" target="_blank" rel="noopener nofollow">original listing</a>.</span></div>
+      ${imgs.slice(1).map((i) => html`<figure class="g-item" data-ph-item><div class="ph" data-ph><img src="${i.src || i.url}" alt="${i.caption || l.name}" loading="lazy" referrerpolicy="no-referrer" data-ph-img>${imageType(i) === 'illustration' ? html`<span class="ph-flag">Illustration, not a photo</span>` : ''}</div><figcaption>${i.caption ? html`<span class="cap">${i.caption}</span>` : ''}<span class="ph-credit">${photoCredit(i)}</span></figcaption></figure>`)}
+      ${samples.map((m) => html`<figure class="g-item community">${m.payload?.data_url ? html`<img src="${m.payload.data_url}" alt="${m.payload.title}" loading="lazy">` : html`<div class="doc-ph">photo<small>no image preview</small></div>`}<figcaption>${m.payload?.title} · ${m.payload?.credit || '@' + m.author?.handle}</figcaption></figure>`)}
+      <div class="g-ref"><span class="era">Photos</span><strong>${imgs.length ? plural(imgs.length, 'photo') : samples.length ? 'Community sample photo' : 'No photo yet'}</strong><span class="src">${imgs.some((i) => ['listing', 'alt-listing'].includes(imageType(i))) ? 'Listing photos load from the source page and stay its owner’s; each links back.' : 'No usable listing photo; the plate stands in.'} See the <a href="${safeUrl(l.url) || '#'}" target="_blank" rel="noopener nofollow">original listing</a>.</span></div>
     </div>
   </section>
 

@@ -1,5 +1,5 @@
 import { html } from '../util.js';
-import { GRADES, LAYERS, layerInfo } from '../taxonomy.js';
+import { GRADES, LAYERS, layerInfo, CONTRIB_GRADE_LABELS } from '../taxonomy.js';
 
 // DATA submissions: info, photo, lore, link. Moderated; approved ones become part
 // of the listing's full file. (Comments and the board are separate: social.)
@@ -51,7 +51,7 @@ export async function contribute(ctx, q) {
     <label>Link<input name="url" type="url" required placeholder="https://"></label>
     <label>Label<input name="label" maxlength="140" required placeholder="e.g. 1931 newspaper story about the fire"></label>
     <label>Town, county, state (new property only)<input name="place" maxlength="120" placeholder="Horton, Jackson County, MI"></label>
-    <label>What kind of story? (new property only)<select name="grade"><option value="">Not sure</option>${Object.entries(GRADES).map(([k, g]) => html`<option value="${k}">${g.label}${g.tier === 1 ? ' (Triple-D)' : ' (Strong Story)'}</option>`)}</select></label>
+    <label>What kind of story? (new property only)<select name="grade"><option value="">Not sure</option>${Object.entries(CONTRIB_GRADE_LABELS).map(([k, t]) => html`<option value="${k}">${t}</option>`)}</select></label>
     <label>Why it matters<textarea name="why" rows="4" required minlength="15" maxlength="3000"></textarea></label>
     ${rulesCheck}${queueNote}${send(ctx)}</form>` : ''}
   </div><aside class="sidebar">

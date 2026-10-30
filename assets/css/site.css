@@ -385,3 +385,21 @@ body.is-map .site-foot{display:none}
 .plan-badge{display:inline-block;border:1px solid var(--line2);border-radius:4px;padding:2px 8px;font:600 .8rem/1.4 var(--sans);color:var(--bone);background:transparent}
 .row-btns{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .post,.reply,#file,#comments{scroll-margin-top:84px}
+
+/* Photos: listing / alt-listing photos are hotlinked; the plate sits underneath as the fallback. */
+.ph{position:relative;display:block;overflow:hidden}
+.ph>.plate{width:100%}
+.ph>img[data-ph-img]{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;background:var(--bg2)}
+.g-item .ph>img[data-ph-img]{position:static;height:120px}
+.ph.ph-failed>img{display:none}
+.ph-flag{position:absolute;right:8px;top:8px;background:rgba(11,9,9,.82);color:var(--parch);font-size:.72rem;padding:2px 7px;border-radius:4px;border:1px solid var(--line)}
+.g-main{margin:0}
+.g-main .ph.big{height:100%}
+.ph-credit{display:block;font-size:.74rem;color:var(--muted);padding:6px 10px;background:var(--panel)}
+.ph-credit a{color:inherit;text-decoration:underline}
+.ph-type{font-weight:600;color:var(--parch)}
+.ph-type.illus{color:#e0b84a}
+.g-item figcaption .cap{display:block;color:var(--parch)}
+.mc-photo{position:relative;margin:8px 0 4px;border-radius:6px;overflow:hidden}
+.mc-photo img{width:100%;height:140px;object-fit:cover;display:block}
+.badge.story{opacity:.85}

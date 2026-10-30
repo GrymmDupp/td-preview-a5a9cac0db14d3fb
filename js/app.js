@@ -108,6 +108,18 @@ function reportModal(type, id) {
 const needMe = () => { if (!ctx.me) { signInModal(); return false; } return true; };
 
 // ---------- delegated events
+// A photo that fails to load (hotlink removed, blocked, offline) is hidden and the
+// archival plate under it shows; a failed strip photo is removed. Capture phase,
+// because image error events do not bubble.
+document.addEventListener('error', (e) => {
+  const img = e.target;
+  if (!(img instanceof HTMLImageElement) || !img.hasAttribute('data-ph-img')) return;
+  img.hidden = true;
+  const box = img.closest('[data-ph]'); if (box) box.classList.add('ph-failed');
+  const item = img.closest('[data-ph-item]'); if (item) item.remove();
+  const mc = img.closest('.mc-photo'); if (mc) mc.remove();
+}, true);
+
 document.addEventListener('click', async (e) => {
   const t = e.target.closest('button, a'); if (!t) return;
   const ds = t.dataset;
@@ -127,7 +139,7 @@ document.addEventListener('click', async (e) => {
     else if (ds.toggleReply) { if (!needMe()) return; const f = $(`form[data-comment-reply="${ds.toggleReply}"], form[data-board-reply="${ds.toggleReply}"]`); f.hidden = !f.hidden; if (!f.hidden) f.querySelector('textarea').focus(); }
     else if (ds.previewMod) { await ctx.be.setPreviewModerator(ds.previewMod === '1'); await refreshCtx(); route(); }
     else if (ds.resolve) { const [id, action] = ds.resolve.split(':'); await ctx.be.resolveReport(id, action); toast(action === 'removed' ? 'Content removed' : 'Report dismissed'); route(); }
-    else if ('resetPreview' in ds) { if (confirm('Clear all preview data in this browser and reseed the examples?')) { ctx.be.reset(); location.reload(); } }
+    else if ('resetPreview' in ds) { if (confirm('Clear all preview data (test accounts, comments, posts, submissions, unlocks) in this browser?')) { ctx.be.reset(); location.reload(); } }
   } catch (err) { toast(err.message); }
 });
 

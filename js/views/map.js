@@ -1,6 +1,7 @@
 import { html, esc, truncate } from '../util.js';
 import { CONFIG } from '../config.js';
-import { LAYERS, layerInfo } from '../taxonomy.js';
+import { LAYERS, layerInfo, storyLabel } from '../taxonomy.js';
+import { displayableImages } from '../feed.js';
 import { applyFilters } from './browse.js';
 
 let maplibreP;
@@ -17,7 +18,7 @@ export async function mapView(ctx, q) {
     <div class="map-bar">
       <div class="chips-row tight" data-map-chips>${layers.map((k) => { const i = layerInfo(k); const n = L.filter((l) => l.layer === k && l.lat != null).length;
         return html`<button class="chip on ${n ? '' : 'dim'}" data-layer="${k}" aria-pressed="true" style="--c:${i.color}"><span class="dot"></span>${i.label}<small>${n}</small></button>`; })}</div>
-      <div class="map-tools"><button class="chip" data-tier="1" aria-pressed="false">Triple-D only</button><button class="chip" data-fly="mi">Michigan</button><button class="chip" data-fly="all">All US</button></div>
+      <div class="map-tools"><button class="chip" data-tier="1" aria-pressed="false">Twisted Deeds only</button><button class="chip" data-fly="mi">Michigan</button><button class="chip" data-fly="all">All US</button></div>
     </div>
     <div id="map" aria-label="Map of listings"></div>
     <div class="map-card" data-map-card hidden></div>
@@ -68,7 +69,8 @@ export async function mountMap(ctx, q, root) {
   map.on('click', 'pt', (e) => {
     const l = ctx.feed.byId.get(e.features[0].properties.id); if (!l) return;
     card.hidden = false;
-    card.innerHTML = `<button class="x" aria-label="Close">×</button><div class="mc-badges">${l.tier === 1 ? `<span class="badge ddd" style="--c:${l.gradeI.color}"><b>Triple-D</b><i>${esc(l.gradeI.icon + ' ' + l.gradeI.label)}</i></span>` : '<span class="badge story">❧ Story</span>'} <span class="layer" style="--c:${l.layerI.color}"><span class="dot"></span>${esc(l.layerI.label)}</span></div>
+    card.innerHTML = `<button class="x" aria-label="Close">×</button><div class="mc-badges">${l.tier === 1 ? '<span class="badge ddd" style="--c:#c41e32"><b>Twisted Deed</b></span>' : `<span class="badge story">Strong Story${storyLabel(l) ? `<i>${esc(storyLabel(l))}</i>` : ''}</span>`} <span class="layer" style="--c:${l.layerI.color}"><span class="dot"></span>${esc(l.layerI.label)}</span></div>
+      ${(() => { const i = displayableImages(l)[0]; return i ? `<div class="mc-photo" data-ph><img src="${esc(i.src || i.url)}" alt="${esc(i.caption || l.name)}" referrerpolicy="no-referrer" data-ph-img>${i.image_type === 'illustration' ? '<span class="ph-flag">Illustration, not a photo</span>' : ''}</div>` : ''; })()}
       <h3>${esc(l.name)}</h3><div class="muted">${esc(l.place)}</div><div class="card-price">${esc(l.price)} · ${esc(l.status)}</div><p class="clamp2">${esc(truncate(l.preview?.summary || "", 180))}</p><a class="btn sm" href="#/l/${encodeURIComponent(l.id)}">Open</a>`;
     card.querySelector('.x').onclick = () => { card.hidden = true; };
   });

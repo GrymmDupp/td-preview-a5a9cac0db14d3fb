@@ -1,17 +1,19 @@
 // LOCAL PREVIEW backend. Stores everything in this browser's localStorage so the
 // prototype is fully clickable with no server. Nothing leaves the device and
-// nobody else sees it. Example content is seeded once and labeled as such.
+// nobody else sees it. It starts empty: there is no seeded or example content.
 //
 // Unlocks here are MOCK: "Example checkout, no real payment". The full-file gate in
 // this mode is client-side only: full files come from the private, localhost-only
 // data/listings_full.local.json (README §8). Real gating is server-side: Supabase listing_full + RLS.
 import { uid, nowIso } from '../util.js';
-import { seedData } from '../seed.js';
 import { feed } from '../feed.js';
 import { CONFIG } from '../config.js';
 import { priceTier, tierAmount } from '../components.js';
 
-const KEY = 'td-community-preview-v2';
+const KEY = 'td-community-preview-v3';
+// Older keys: v1 = first prototype (votes, badges); v2 = seeded EXAMPLE accounts/submissions/comments/board.
+// Dropped once on load so returning browsers lose the old example records.
+const OLD_KEYS = ['td-community-preview-v1', 'td-community-preview-v2'];
 const EMPTY = { accounts: [], unlocks: [], memberships: [], submissions: [], comments: [], board: [], reports: [], session: null };
 const TABLE = { submissions: 'submissions', comments: 'comments', board_posts: 'board' };
 const TARGET = { comment: 'comments', board_post: 'board', submission: 'submissions' };
@@ -19,12 +21,12 @@ const TARGET = { comment: 'comments', board_post: 'board', submission: 'submissi
 export class LocalBackend {
   mode = 'local'; isPreview = true;
   async init() {
-    try { localStorage.removeItem('td-community-preview-v1'); } catch {}   // old prototype data (votes, badges)
+    for (const k of OLD_KEYS) { try { localStorage.removeItem(k); } catch {} }
     try { this.db = { ...EMPTY, ...JSON.parse(localStorage.getItem(KEY) || 'null') }; } catch { this.db = null; }
-    if (!this.db || !this.db.seeded) {
-      this.db = { ...EMPTY, ...seedData(feed.listings.map((l) => l.id)), seeded: true };
-      this.save();
-    }
+    if (!this.db) { this.db = { ...EMPTY }; this.save(); }
+    // Belt and braces: never keep a row flagged as example content.
+    for (const t of Object.keys(EMPTY)) if (Array.isArray(this.db[t])) this.db[t] = this.db[t].filter((r) => !r?.is_example);
+    if (this.db.session && !this.db.accounts.some((a) => a.id === this.db.session)) this.db.session = null;
   }
   save() {
     try { localStorage.setItem(KEY, JSON.stringify(this.db)); }
