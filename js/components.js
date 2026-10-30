@@ -64,7 +64,7 @@ export const imageType = (i) => i.image_type || (i.rights === 'illustration' ? '
 export function photoCredit(i) {
   const t = imageType(i), src = safeUrl(i.source || i.page || '');
   if (t === 'illustration') return html`<span class="ph-type illus">Illustration, not a photo</span>${i.credit ? html` · ${i.credit}` : ''}`;
-  const lic = (t === 'cc' || t === 'public-domain') ? html`${i.license ? html` · ${safeUrl(i.license_url) ? html`<a href="${safeUrl(i.license_url)}" target="_blank" rel="noopener nofollow license">${i.license}</a>` : i.license}` : ''}` : '';
+  const lic = (t === 'cc' || (t === 'public-domain' && !/^public[\s-]*domain$/i.test(String(i.license || '').trim()))) ? html`${i.license ? html` · ${safeUrl(i.license_url) ? html`<a href="${safeUrl(i.license_url)}" target="_blank" rel="noopener nofollow license">${i.license}</a>` : i.license}` : ''}` : '';
   const free = t === 'cc' || t === 'public-domain';
   const via = t === 'listing' ? 'via listing' : t === 'alt-listing' ? 'via another listing' : free ? `via ${host(src) === 'commons.wikimedia.org' ? 'Wikimedia Commons' : host(src) || 'source'}` : 'via source';
   const who = String((free && i.author) || i.credit || host(src) || 'unknown').replace(/[\s,;]+$/, '');
