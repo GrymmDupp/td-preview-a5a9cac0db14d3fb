@@ -1,0 +1,9 @@
+# Private full files: local preview copy of _build/listings_full.json. Never commit or deploy.
+data/listings_full.local.json
+listings_full*.json
+_build/
+# Local tooling
+tools/node_modules
+node_modules/
+.env
+.env.*
