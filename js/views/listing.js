@@ -65,11 +65,12 @@ function fullFile(l, f) {
 }
 
 // Payment Link mode: honest state after the account opened the payment page. Nothing is unlocked
-// until a moderator confirms the payment in Stripe.
+// until Stripe shows the payment as paid; verify-unlock then unlocks it instantly.
 function pendingReq(ctx, l) {
   const r = ctx.unlockRequests?.get(l.id);
   if (!r || !ctx.be.paymentLinkCheckout) return null;
-  if (r.status === 'pending') return html`<div class="pay-pending" role="status"><p><b>Payment pending confirmation.</b> Your file unlocks once we confirm payment (usually within a few hours).</p>
+  if (r.status === 'pending') return html`<div class="pay-pending" role="status"><p><b>Waiting for your payment to clear.</b> The moment Stripe shows it, this file breaks its seal and opens right here. No waiting on us.</p>
+    <p><button class="btn sm" data-check-payment="${r.id}">Check payment</button></p>
     <p class="small muted">Reference <code>${r.reference}</code> · started ${fmtDate(r.created_at)}. Didn’t finish paying? <a href="#/unlock/${encodeURIComponent(l.id)}">Open the payment page</a>.</p></div>`;
   if (r.status === 'rejected') return html`<div class="pay-pending" role="status"><p>We couldn’t match a payment for reference <code>${r.reference}</code>.</p>
     <div class="unlock-cta"><a class="btn big" href="#/unlock/${encodeURIComponent(l.id)}" data-unlock-link>Unlock this file · ${unlockPrice(ctx)}</a>${trialNote()}</div></div>`;

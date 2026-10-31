@@ -60,7 +60,8 @@ export const CONFIG = {
   pricing: {
     // unlockPaymentLink: public Stripe Payment Link for the $5 trial unlock (not a secret). Live, it is
     // read from app_settings unlock_payment_link and used while checkout_mode = 'payment_link':
-    // the page records a PENDING request and a moderator confirms the payment by hand.
+    // the page records a PENDING request and the verify-unlock Edge Function unlocks it the instant
+    // Stripe shows the payment as paid (moderators can still confirm by hand in #/moderate as a backup).
     trial: { active: true, unlockPrice: 5, unlockPaymentLink: 'https://buy.stripe.com/4gM8wO5M56i76Wj5WK1Jm06' },   // live: app_settings pricing_mode / trial_unlock_price / unlock_payment_link
     membershipsEnabled: false,                 // live: app_settings memberships_enabled
     // planned (post-trial) values, coming soon:

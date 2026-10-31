@@ -60,10 +60,11 @@ export async function account(ctx) {
   </aside></div>`;
 }
 
-// Payment Link mode: the account's own unlock requests still waiting for confirmation.
+// Payment Link mode: the account's own unlock requests whose payment hasn't landed yet (verify-unlock checks them instantly).
 function pendingBox(ctx) {
   const rows = [...(ctx.unlockRequests?.values() || [])].filter((r) => r.status === 'pending' && !ctx.unlocks.includes(r.listing_id));
   if (!rows.length) return '';
-  return html`<section class="box"><h4>Payments pending confirmation</h4><p class="small">Each file unlocks once we confirm the payment (usually within a few hours).</p>
-    <ul class="small">${rows.map((r) => html`<li><a href="#/l/${encodeURIComponent(r.listing_id)}">${ctx.feed.byId.get(r.listing_id)?.name || r.listing_id}</a> · reference <code>${r.reference}</code> · ${fmtDate(r.created_at)}</li>`)}</ul></section>`;
+  return html`<section class="box"><h4>Files waiting to be unsealed</h4><p class="small">The moment Stripe shows your payment, the file breaks its seal and is yours for good. We’re watching for it now. Paid already? Check below.</p>
+    <ul class="small">${rows.map((r) => html`<li><a href="#/l/${encodeURIComponent(r.listing_id)}">${ctx.feed.byId.get(r.listing_id)?.name || r.listing_id}</a> · reference <code>${r.reference}</code> · ${fmtDate(r.created_at)}</li>`)}</ul>
+    <button class="btn sm" data-check-payment>Check payment</button></section>`;
 }

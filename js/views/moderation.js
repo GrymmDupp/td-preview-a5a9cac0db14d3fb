@@ -22,7 +22,7 @@ export async function moderation(ctx) {
     ${ctx.be.isPreview ? html`<button class="btn sm ghost" data-preview-mod="0">Stop acting as moderator</button>` : ''}</div>
   <div class="mod-grid">
   ${pays ? html`<section class="pay-queue"><h2>Pending payments <small>${pays.length}</small></h2>
-    <p class="small muted">Unlock requests from the Stripe Payment Link. Find the payment in the Stripe dashboard (Payments → search, or the payment’s <b>client_reference_id</b>, which starts with the reference below). Confirm only a payment you can see in Stripe; rejecting leaves the file locked.</p>
+    <p class="small muted">Backup only: paid requests normally unlock themselves instantly (the buyer’s page asks the verify-unlock function, which reads Stripe). Anything still here hasn’t shown up as paid in Stripe for this exact reference and $ amount. To confirm by hand, find the payment in the Stripe dashboard (Payments → search, or the payment’s <b>client_reference_id</b>, which starts with the reference below). Confirm only a payment you can see in Stripe; rejecting leaves the file locked.</p>
     ${pays.length ? pays.map((p) => html`<div class="mod-item"><div class="post-meta"><span class="kind">$${Number(p.amount).toFixed(2)}</span> <code>${p.reference}</code> · @${p.handle || '?'} · ${lk(p.listing_id)} · ${ago(p.created_at)}</div>
       <p class="small muted">client_reference_id: <code>${p.client_reference_id}</code></p>
       <div class="mod-actions"><button class="btn sm ok" data-confirm-paid="${p.id}">Confirm paid</button><button class="btn sm ghost" data-reject-paid="${p.id}">Reject</button></div></div>`)

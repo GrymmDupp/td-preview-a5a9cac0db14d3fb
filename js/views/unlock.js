@@ -3,8 +3,8 @@ import { isArchived } from '../feed.js';
 import { gradeBadge, plate, unlockPrice, membersLine, viewerTier, TIER_LABEL, trialNote, isTrial } from '../components.js';
 
 // Checkout. Local preview: a MOCK that records a test unlock, no card, no payment.
-// Supabase mode: hands off to Stripe Checkout (Edge Function create-checkout); the
-// unlock row is written only by the stripe-webhook function after payment.
+// Supabase mode (Payment Link trial): opens the Stripe Payment Link; the unlock row is written
+// only server-side, by verify-unlock once Stripe shows the payment as paid.
 export async function unlock(ctx, q, id) {
   const l = ctx.feed.byId.get(id);
   if (!l) return html`<div class="empty-state"><h1>Not in the archive</h1><p><a href="#/browse">Browse the archive</a>.</p></div>`;
@@ -27,9 +27,9 @@ export async function unlock(ctx, q, id) {
       ${ctx.membership && !isTrial() ? '' : html`<p class="small muted">${membersLine(l.id)}</p>`}
       ${!ctx.me ? html`<p>Sign in first so the unlock is saved to your account.</p><button class="btn big" data-signin>Sign in to continue</button>`
         : html`<p class="small">Account: <b>@${ctx.me.handle}</b></p>
-        ${plink ? html`${pend ? html`<p class="pay-pending small"><b>Payment pending confirmation</b> (reference <code>${req.reference}</code>). Your file unlocks once we confirm payment (usually within a few hours). If you didn’t finish paying, continue below; it reuses the same reference.</p>` : ''}
+        ${plink ? html`${pend ? html`<p class="pay-pending small"><b>Waiting for your payment to clear</b> (reference <code>${req.reference}</code>). The file unseals the instant Stripe shows it paid. <button class="link small" data-check-payment="${req.id}">Check payment</button> If you didn’t finish paying, continue below; it reuses the same reference.</p>` : ''}
           <button class="btn big" data-checkout="${l.id}">${pend ? 'Open the payment page again' : 'Continue to payment'} · ${unlockPrice(ctx)}</button>
-          <p class="small muted">Opens Stripe’s secure payment page in a new tab. We never see or store your card. Payments are confirmed by hand: the file unlocks on your account once we confirm yours, usually within a few hours.</p>`
+          <p class="small muted">Opens Stripe’s secure payment page in a new tab. We never see or store your card. The file unseals on your account the instant your payment clears. Keep this tab open, or come back to it.</p>`
         : mock ? html`<div class="mock-card" aria-hidden="true"><span>Card details would be entered on Stripe’s secure page.</span><span class="muted">Not collected in this example.</span></div>
           <button class="btn big" data-checkout="${l.id}">Complete example checkout · ${unlockPrice(ctx)}</button>
           <p class="small muted">Example checkout, no real payment. Creates a test unlock with a mock payment reference.</p>`

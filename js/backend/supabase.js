@@ -32,7 +32,7 @@ export class SupabaseBackend {
     if (mode.error) throw new Error(mode.error.message);
     this.checkoutMode = mode.data;
     this.mockCheckout = mode.data === 'mock';
-    this.paymentLinkCheckout = mode.data === 'payment_link';   // Stripe Payment Link + manual confirmation
+    this.paymentLinkCheckout = mode.data === 'payment_link';   // Stripe Payment Link + instant unlock (verify-unlock)
     // Trial switches from app_settings (pricing_mode / trial_unlock_price / memberships_enabled).
     // Display only: the server decides the recorded price and refuses memberships while off.
     const ps = await this.sb.rpc('pricing_settings');
@@ -121,7 +121,8 @@ export class SupabaseBackend {
     if (this.paymentLinkCheckout) {
       // Payment Link mode: no fake unlock. Record a PENDING request server-side (amount and
       // reference decided by the server), then hand back the Stripe Payment Link carrying the
-      // reference. A moderator grants the unlock after matching the payment in Stripe.
+      // reference. The Edge Function verify-unlock grants the unlock the moment Stripe shows the
+      // payment as paid (moderators can still confirm by hand as a backup).
       this.need();
       const req = this.ok(await this.sb.rpc('request_unlock', { lid: listingId }));
       return { pending: true, request: req, paymentUrl: await this.paymentUrl(req) };
@@ -143,6 +144,14 @@ export class SupabaseBackend {
   async myUnlockRequests() {
     if (!this.uid || !this.paymentLinkCheckout) return [];
     return this.ok(await this.sb.from('unlock_requests').select('*').eq('user_id', this.uid).order('created_at', { ascending: false }));
+  }
+  // Instant unlock: ask the server (Edge Function verify-unlock, read-only Stripe check) whether the
+  // caller's pending request(s) are paid; it grants the unlock itself. Returns [{ id, listing_id, status }].
+  async verifyUnlocks(requestId) {
+    if (!this.uid || !this.paymentLinkCheckout) return [];
+    const { data, error } = await this.sb.functions.invoke('verify-unlock', { body: requestId ? { request_id: requestId } : {} });
+    if (error) throw new Error('Couldn’t reach the payment check. Try again in a moment.');
+    return data?.results || [];
   }
   async listUnlockRequests(status = 'pending') { return this.ok(await this.sb.rpc('list_unlock_requests', { p_status: status })) || []; }
   async confirmUnlockRequest(id) { return this.ok(await this.sb.rpc('confirm_unlock_request', { rid: id })); }

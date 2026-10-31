@@ -41,6 +41,39 @@ async function refreshCtx() {
   ctx.updates = updatesMap(ctx.be.recentUpdates ? await ctx.be.recentUpdates(CONFIG.newDays).catch(() => []) : []);
 }
 
+// Instant unlock (Payment Link mode): ask the server whether pending payments have landed. It runs on
+// load, on #/account, when the tab regains focus, on a 5 s poll for ~2 min after the payment page
+// opens, and from the "Check payment" button. Unlocks are granted server-side; this only refreshes.
+const hasPending = () => [...(ctx.unlockRequests?.values() || [])].some((r) => r.status === 'pending' && !ctx.unlocks.includes(r.listing_id));
+let checking = null, pollTimer = null, pollUntil = 0;
+async function checkPayments({ manual = false, requestId = null } = {}) {
+  if (!ctx.be?.verifyUnlocks || !ctx.me || (!manual && !hasPending())) return false;
+  if (checking) return checking;
+  checking = (async () => {
+    let res = [];
+    try { res = await ctx.be.verifyUnlocks(requestId); } catch (e) { if (manual) toast(e.message); return false; }
+    const got = res.filter((r) => r.status === 'unlocked' && !ctx.unlocks.includes(r.listing_id));
+    if (got.length) {
+      stopPoll(); await refreshCtx();
+      const name = ctx.feed.byId.get(got[0].listing_id)?.name || 'the file';
+      toast(got.length > 1 ? `Payment received. ${got.length} files are unsealed and yours for good.` : `Payment received. The full file for ${name} is unsealed and yours for good.`);
+      if (got.length === 1 && !/^#\/account/.test(location.hash)) location.hash = `#/l/${encodeURIComponent(got[0].listing_id)}?at=file`; else route();
+      return true;
+    }
+    if (manual) toast(res.some((r) => r.status === 'mismatch') ? 'Stripe shows a payment that doesn’t match this file’s price. We’ll check it by hand.' : 'No payment yet. If you just paid, give Stripe a few seconds and check again.');
+    if (!hasPending()) stopPoll();
+    return false;
+  })();
+  try { return await checking; } finally { checking = null; }
+}
+function stopPoll() { clearInterval(pollTimer); pollTimer = null; }
+function startPoll(ms = 120000) {
+  pollUntil = Date.now() + ms;
+  if (pollTimer) return;
+  pollTimer = setInterval(() => { if (Date.now() > pollUntil || !hasPending()) return stopPoll(); checkPayments(); }, 5000);
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && hasPending()) { checkPayments(); startPoll(60000); } });
+
 function renderChrome(path) {
   const nav = [['#/', 'Listings', /^\/?$/], ['#/browse', 'Browse', /^\/browse/], ['#/map', 'Map', /^\/map/], ['#/packs', 'Dossier Packs', /^\/packs/], ['#/board', 'Board', /^\/board/]];
   $('#nav').innerHTML = nav.map(([h, t, re]) => `<a href="${h}" class="${re.test(path) ? 'on' : ''}">${t}</a>`).join('') + `<a href="#/contribute" class="nav-cta ${/contribute|suggest/.test(path) ? 'on' : ''}">Submit</a>`;
@@ -68,6 +101,7 @@ async function route() {
       const l = path.startsWith('/l/') ? feed.byId.get(decodeURIComponent(m[1])) : null;
       document.title = (l ? l.name : title || 'Twisted Deeds') + ' · Twisted Deeds';
       if (view === mapView) await mountMap(ctx, q, main);
+      if (view === account && hasPending()) checkPayments();
       const at = q.get('at') || (q.get('tab') === 'talk' ? 'comments' : '') || (q.get('unlocked') ? 'file' : '');
       if (at && document.getElementById(at)) document.getElementById(at).scrollIntoView({ block: 'start' }); else window.scrollTo(0, 0);
       if (q.get('unlocked') && l && ctx.unlocks.includes(l.id)) toast('Full file unlocked on your account.');
@@ -143,7 +177,7 @@ document.addEventListener('click', async (e) => {
       const w = ctx.be.paymentLinkCheckout ? window.open('', '_blank') : null;
       let r; try { r = await ctx.be.startCheckout(ds.checkout); } catch (err) { w?.close(); t.disabled = false; throw err; }
       if (r?.pending) { if (w && r.paymentUrl) { w.opener = null; w.location.href = r.paymentUrl; } else if (!w && r.paymentUrl) toast('Your browser blocked the new tab. Use “Open the payment page” on the listing.');
-        await refreshCtx(); location.hash = `#/l/${encodeURIComponent(ds.checkout)}?at=file`; return; }
+        await refreshCtx(); location.hash = `#/l/${encodeURIComponent(ds.checkout)}?at=file`; startPoll(); return; }
       if (r?.redirect) { location.href = r.redirect; return; } await refreshCtx(); location.hash = `#/l/${encodeURIComponent(ds.checkout)}?unlocked=1`; }
     else if (ds.membershipCheckout) { e.preventDefault(); if (!CONFIG.pricing.membershipsEnabled) { toast('Memberships are coming soon.'); return; } if (!needMe()) return; t.disabled = true; const plan = ds.membershipCheckout, from = ds.from || '';
       const r = await ctx.be.startMembershipCheckout(plan, from); if (r?.redirect) { location.href = r.redirect; return; }
@@ -155,6 +189,7 @@ document.addEventListener('click', async (e) => {
     else if (ds.report) { if (!needMe()) return; const [type, ...id] = ds.report.split(':'); reportModal(type, id.join(':')); }
     else if (ds.toggleReply) { if (!needMe()) return; const f = $(`form[data-comment-reply="${ds.toggleReply}"], form[data-board-reply="${ds.toggleReply}"]`); f.hidden = !f.hidden; if (!f.hidden) f.querySelector('textarea').focus(); }
     else if (ds.previewMod) { await ctx.be.setPreviewModerator(ds.previewMod === '1'); await refreshCtx(); route(); }
+    else if ('checkPayment' in ds) { e.preventDefault(); t.disabled = true; try { await checkPayments({ manual: true, requestId: ds.checkPayment || null }); } finally { t.disabled = false; } }
     else if (ds.confirmPaid) { if (!confirm('Confirm this payment? Only do this after you found the matching payment in Stripe. It grants the permanent unlock.')) return;
       t.disabled = true; await ctx.be.confirmUnlockRequest(ds.confirmPaid); toast('Payment confirmed. The file is unlocked for that account.'); route(); }
     else if (ds.rejectPaid) { const note = prompt('Reject this unlock request? Optional note (not shown publicly):', ''); if (note === null) return;
@@ -219,10 +254,12 @@ document.addEventListener('input', (e) => {
   const banner = $('#preview-banner');
   if (ctx.be.fallback) { banner.querySelector('.short').innerHTML = 'Community server unreachable: <b>using this browser only</b>.'; banner.querySelector('.long').innerHTML = 'The community server couldn’t be reached, so comments, posts, submissions, accounts and unlocks here are <b>test data stored only in this browser</b> and won’t reach the live site. Checkouts are examples: <b>no real payment</b>. Reload to try again.'; banner.hidden = false; }
   else if (ctx.be.isPreview) banner.hidden = false;
-  else if (ctx.be.paymentLinkCheckout) { banner.querySelector('.short').innerHTML = 'Private preview. Unlock payments are confirmed by hand.'; banner.querySelector('.long').innerHTML = 'Private preview. Accounts, comments and submissions are real and moderated. File unlocks are paid on Stripe’s secure page and are <b>confirmed by hand</b>: your file unlocks once we confirm the payment.'; banner.querySelector('[data-reset-preview]')?.remove(); banner.hidden = false; }
+  else if (ctx.be.paymentLinkCheckout) { banner.querySelector('.short').innerHTML = 'Private preview. Files unseal the moment your payment clears.'; banner.querySelector('.long').innerHTML = 'Private preview. Accounts, comments and submissions are real and moderated. File unlocks are paid on Stripe’s secure page and <b>unseal instantly</b>: the moment Stripe shows your payment, the file is yours.'; banner.querySelector('[data-reset-preview]')?.remove(); banner.hidden = false; }
   else if (ctx.be.mockCheckout) { banner.querySelector('.short').innerHTML = 'Checkouts are examples: <b>no real payment</b>.'; banner.querySelector('.long').innerHTML = 'Private preview. Accounts, comments and submissions are real and moderated. Checkouts are examples: <b>no real payment</b> yet; example unlocks are saved to your account.'; banner.querySelector('[data-reset-preview]')?.remove(); banner.hidden = false; }
   $('#feed-meta').textContent = `Feed v${feed.meta.version} · ${feed.meta.count} listings · ${feed.source === 'live' ? 'live' : 'offline snapshot'}`;
   await refreshCtx();
   window.addEventListener('hashchange', route);
-  route();
+  await route();
+  // Back from Stripe (or any load with a pending payment): check now, then keep watching briefly.
+  if (hasPending()) { checkPayments(); startPoll(60000); }
 })();
