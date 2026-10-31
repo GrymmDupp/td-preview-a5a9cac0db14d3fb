@@ -480,3 +480,8 @@ body.is-map .site-foot{display:none}
 .arch-row h3{margin:4px 0 2px;font-size:1.05rem}
 .arch-price{display:flex;flex-direction:column;align-items:flex-end;text-align:right;gap:2px}
 @media (max-width:640px){.packs-teaser{flex-direction:column;align-items:flex-start}.arch-price{align-items:flex-start;text-align:left}}
+/* hero intro (2026-10-31 rewrite) */
+.hero .hero-intro{max-width:60ch;margin:6px 0 14px}
+.hero .hero-intro p{margin:0 0 .45em;line-height:1.5}
+.hero .hero-intro p{font-size:1.15rem}
+.hero .hero-intro p:first-child{font-style:italic;color:var(--bone);font-size:1.25rem}

@@ -1,5 +1,5 @@
 import { html, plural, ago, fmtDate, safeUrl } from '../util.js';
-import { listingCard, gradeBadge, unlockPrice, standardPrice, monthlyUnlockPrice, lifetimeUnlockPrice, monthlyPrice, lifetimePrice, membershipsOn, trialNote, soonChip } from '../components.js';
+import { listingCard, gradeBadge, unlockPrice, standardPrice, monthlyUnlockPrice, lifetimeUnlockPrice, monthlyPrice, lifetimePrice, membershipsOn, trialNote, soonChip, isTrial } from '../components.js';
 import { LAYERS, PRICE_BANDS, STATES, layerInfo } from '../taxonomy.js';
 import { newThisWeek } from '../feed.js';
 import { CONFIG } from '../config.js';
@@ -58,11 +58,15 @@ export async function home(ctx, q) {
   const slice = L.slice((page - 1) * PER, page * PER);
   const pages = Math.ceil(L.length / PER);
   const t1 = L.filter((l) => l.tier === 1).length;
+  const act = L.filter((l) => l.status === 'Active');           // hero counts: Active only
+  const actT1 = act.filter((l) => l.tier === 1).length, actT2 = act.length - actT1;
   return html`
   ${page === 1 ? html`<section class="hero">
-    <div><h1>Houses for sale <em>with a past</em></h1>
-    <p>${plural(L.length, 'buyable property', 'buyable properties')} across ${new Set(L.map((l) => l.state)).size} states, each with a sourced dark history or a strong story. Read the free preview, unlock the full file, add what you know.</p>
-    <div class="hero-stats"><span><b>${t1}</b> Twisted Deeds</span><span>${L.length - t1 ? html`<b>${L.length - t1}</b> Strong Story` : html`<b>Strong Story</b> tier opening soon`}</span><span>Full file <b>${unlockPrice(ctx)}</b> one time</span><span>Feed v${ctx.feed.meta.version} · ${fmtDate(ctx.feed.meta.generated_at)}</span></div></div>
+    <div><h1>Some houses <em>remember</em></h1>
+    <div class="hero-intro"><p>Come in, and mind the threshold.</p>
+    <p>Every door here opens on a real house or building for sale today, its dark history researched and sourced from the public record.</p>
+    <p>Read any file's preview free, then unlock the full file when one keeps hold of you.</p></div>
+    <div class="hero-stats"><span><b>${actT1}</b> ${actT1 === 1 ? 'Twisted Deed' : 'Twisted Deeds'}</span><span><b>${actT2}</b> ${actT2 === 1 ? 'Strong Story' : 'Strong Stories'} on the market now</span><span>Full files <b>${standardPrice()}</b>${isTrial() ? ' during the trial' : ''}</span></div></div>
   </section>${newThisWeekBlock(ctx)}${packsTeaser()}` : ''}
   <div class="with-side"><div class="feed">
     <div class="feed-head"><h2>${page === 1 ? 'Latest listings' : `Listings · page ${page}`}</h2><span class="muted">Most twisted first, then strong stories</span></div>
