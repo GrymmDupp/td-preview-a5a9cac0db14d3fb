@@ -30,7 +30,7 @@ export async function mountMap(ctx, q, root) {
   const el = root.querySelector('#map');
   let maplibregl;
   try { maplibregl = await loadLib(); } catch { el.innerHTML = '<div class="empty-state"><p>Map unavailable offline. <a href="#/browse">Use the list instead.</a></p></div>'; return; }
-  const base = applyFilters(ctx.feed.listings, q).filter((l) => l.lat != null && l.lon != null);
+  const base = applyFilters(ctx.feed.listings, q, ctx.updates).filter((l) => l.lat != null && l.lon != null);
   // Spread pins that share coordinates so each stays tappable.
   const seen = {};
   const feats = base.map((l) => {

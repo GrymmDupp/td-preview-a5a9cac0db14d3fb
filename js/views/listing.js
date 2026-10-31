@@ -1,7 +1,7 @@
 import { html, fmtDate, ago, plural, safeUrl, host } from '../util.js';
-import { gradeBadge, layerChip, statusPill, plate, photoCredit, imageType, authorName, pendingTag, reportBtn, sourceLinks, listingCard, kindLabel, unlockPrice, membersLine, priceTier, TIER_LABEL } from '../components.js';
+import { newTag, updatedTag, gradeBadge, layerChip, statusPill, plate, photoCredit, imageType, authorName, pendingTag, reportBtn, sourceLinks, listingCard, kindLabel, unlockPrice, membersLine, priceTier, TIER_LABEL } from '../components.js';
 import { STATES, ratingLabel } from '../taxonomy.js';
-import { displayableImages } from '../feed.js';
+import { displayableImages, updateLine } from '../feed.js';
 
 const SIG = { landmark: 'National Historic Landmark', register: 'National Register of Historic Places', district: 'Historic district', local: 'Local record' };
 const LANE = { institution: 'Closed institution', inn: 'Inn or theater', death: 'Ordinary death', attraction: 'Failed attraction', disaster: 'Disaster', bundle: 'Business included' };
@@ -31,7 +31,7 @@ function previewFacts(l) {
     ['Type', kindLabel(l.kind)], l.facts && ['Facts', l.facts], ['Address', l.address], ['Asking', l.price], ['Status', l.status],
     l.significance && ['Significance', SIG[l.significance] || l.significance], l.lane && ['Lane', LANE[l.lane] || l.lane],
     l.extra.verification && ['Verification', l.extra.verification],
-    ['Logged', fmtDate(l.logged)], ['Last checked', fmtDate(l.lastChecked)], l.soldOn && ['Sold on', fmtDate(l.soldOn)],
+    ['Added to archive', fmtDate(l.addedAt || l.logged)], ['Last checked', fmtDate(l.lastChecked)], l.soldOn && ['Sold on', fmtDate(l.soldOn)],
     l.geo_precision && ['Map point', l.geo_precision === 'town' ? 'Town centre only (approximate)' : 'Street address'],
   ].filter(Boolean);
 }
@@ -88,10 +88,11 @@ export async function listing(ctx, q, id) {
   const nearby = ctx.feed.listings.filter((x) => x.state === l.state && x.id !== l.id).slice(0, 3);
   const signedIn = !!ctx.me;
   const unlocked = !!full && ctx.unlocks.includes(l.id);
+  const upd = ctx.updates?.get(l.id);   // fact + kinds only; the content stays in the full file
 
   return html`<nav class="crumbs"><a href="#/">Listings</a> › ${l.state ? html`<a href="#/browse?state=${l.state}">${STATES[l.state] || l.state}</a> › ` : ''}<span>${l.name}</span></nav>
   <header class="detail-head" style="--c:${l.layerI.color}">
-    <div class="detail-badges">${gradeBadge(l, true)} ${layerChip(l)} ${statusPill(l)} ${unlocked ? html`<span class="file-state open">🔓 Full file unlocked</span>` : full ? html`<span class="file-state open">Moderator view</span>` : html`<span class="file-state">🔒 Free preview</span>`}</div>
+    <div class="detail-badges">${gradeBadge(l, true)} ${newTag(l)} ${updatedTag(upd)} ${layerChip(l)} ${statusPill(l)} ${unlocked ? html`<span class="file-state open">🔓 Full file unlocked</span>` : full ? html`<span class="file-state open">Moderator view</span>` : html`<span class="file-state">🔒 Free preview</span>`}</div>
     <h1>${l.name}</h1>
     <div class="detail-place">${l.place}</div>
     <div class="detail-price"><span>${l.price || 'Price not listed'}</span> <span class="muted">· ${l.status}</span>
@@ -112,7 +113,8 @@ export async function listing(ctx, q, id) {
   <div class="detail-main">
     <section class="block preview"><h2>Preview</h2>
       <p class="summary">${l.preview.summary || 'Summary not written yet.'}</p>
-      ${l.preview.teaser ? html`<p class="teaser"><span class="kicker">Lore teaser</span> ${l.preview.teaser}</p>` : ''}</section>
+      ${l.preview.teaser ? html`<p class="teaser"><span class="kicker">Lore teaser</span> ${l.preview.teaser}</p>` : ''}
+      ${upd ? html`<p class="upd-note small">${updateLine(upd)} · ${fmtDate(upd.at)}. ${full ? html`<a href="#file">See the community archive</a>.` : 'Approved additions are part of the full file.'}</p>` : ''}</section>
     <section class="block"><h2>Basic facts</h2><dl class="facts">${previewFacts(l).map(([k, v]) => html`<dt>${k}</dt><dd>${v}</dd>`)}</dl></section>
     ${full ? fullFile(l, full) : lockedPanel(ctx, l, counts, signedIn)}
 

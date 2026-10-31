@@ -50,6 +50,9 @@
 //   moderate(table: 'submissions'|'comments'|'board_posts', id, decision: 'approved'|'rejected'|'removed', note?, opts?: {is_sample?}): Promise<void>
 //   resolveReport(id, action: 'dismissed'|'removed'): Promise<void>
 //   commentCounts(): Promise<{[listingId]: number}>     approved comments per listing (cards)
+//   recentUpdates(days?): Promise<[{listing_id, kinds: string[], last_approved_at}]>
+//        listings with submissions APPROVED in the last N days (approved_at). Facts only, no
+//        content, so preview viewers can see "New community photos added". Supabase: rpc recent_listing_updates.
 // }
 
 import { CONFIG } from '../config.js';

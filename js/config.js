@@ -54,6 +54,22 @@ export const CONFIG = {
     currency: 'USD',
   },
 
-  // Days a listing counts as "new" in the listing feed.
-  newDays: 14,
+  // "New this week": a listing counts as New for this many days after it first appeared
+  // in the feed (its addedAt). Also the window for the quieter "Updated" marker
+  // (community submissions approved in the last N days).
+  newDays: 7,
+
+  // Notifications about new Twisted Deed (Tier 1) listings. STRUCTURE ONLY: nothing sends.
+  // js/notify.js computes the payload; see NOTIFICATIONS.md for wiring it up later
+  // (Supabase scheduled function + an email provider; max one digest a day; Tier 1 only;
+  // one-click unsubscribe). No push permission prompts, no nav badges or counters.
+  notifications: {
+    enabled: false,
+    tier1Only: true,
+    maxPerDay: 1,
+    channels: {
+      email: { provider: '', from: '' },       // e.g. 'resend' / 'postmark'; left empty on purpose
+      webPush: { vapidPublicKey: '' },          // left empty on purpose; never prompt for permission
+    },
+  },
 };

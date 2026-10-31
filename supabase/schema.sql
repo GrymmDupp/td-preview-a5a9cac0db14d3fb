@@ -221,6 +221,11 @@ create table if not exists public.submissions (
 );
 create index if not exists submissions_status_idx on public.submissions (status, created_at);
 create index if not exists submissions_listing_idx on public.submissions (listing_id, status);
+-- approved_at: when a moderator approved it (set by log_moderation). Drives the per-listing
+-- "Updated" marker / "Recently updated" line (approved submissions in the last 7 days).
+alter table public.submissions add column if not exists approved_at timestamptz;
+create index if not exists submissions_recent_approved_idx on public.submissions (approved_at desc, listing_id)
+  where status = 'approved' and listing_id is not null;
 
 -- ---------------------------------------------------------------- reports
 create table if not exists public.reports (
@@ -262,6 +267,9 @@ begin
   end if;
   if new.status is distinct from old.status then
     new.moderated_by := auth.uid(); new.moderated_at := now();
+    if tg_table_name = 'submissions' and new.status = 'approved' then
+      new := jsonb_populate_record(new, jsonb_build_object('approved_at', now()));
+    end if;
     insert into public.moderation_events (table_name, row_id, from_status, to_status, note)
     values (tg_table_name, new.id, old.status, new.status, new.mod_note);
   end if;
@@ -282,6 +290,41 @@ language sql stable security definer set search_path = public as $$
     'info',  count(*) filter (where kind = 'info'),  'link', count(*) filter (where kind = 'link'))
   from public.submissions where listing_id = lid and status = 'approved';
 $$;
+
+-- Recent approvals per listing (the "Updated" signal). Facts only: listing id, which kinds were
+-- added, and when. No payload, author or file, so it is safe for anonymous preview viewers; the
+-- content itself stays behind submissions RLS (unlock holders only).
+create or replace function public.recent_listing_updates(days int default 7)
+returns table (listing_id text, kinds text[], n bigint, last_approved_at timestamptz)
+language sql stable security definer set search_path = public as $$
+  select listing_id, array_agg(distinct kind order by kind), count(*), max(approved_at)
+  from public.submissions
+  where status = 'approved' and listing_id is not null
+    and approved_at >= now() - make_interval(days => least(greatest(coalesce(days, 7), 1), 31))
+  group by listing_id;
+$$;
+grant execute on function public.recent_listing_updates(int) to anon, authenticated;
+
+-- ---------------------------------------------------------------- notification preferences (opt-in, not live yet)
+-- One row per user. Only "tell me about new Twisted Deeds (Tier 1)". No marketing flags. Nothing
+-- reads this until the digest function in NOTIFICATIONS.md is deployed; default is opted out.
+create table if not exists public.notification_prefs (
+  user_id    uuid primary key default auth.uid() references public.profiles(id) on delete cascade,
+  opted_in   boolean not null default false,
+  tier1_only boolean not null default true check (tier1_only),
+  last_sent_at timestamptz,                 -- written by the digest function (max one per day)
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.notification_prefs enable row level security;
+drop policy if exists notify_own_read on public.notification_prefs;
+create policy notify_own_read on public.notification_prefs for select to authenticated using (user_id = auth.uid());
+drop policy if exists notify_own_insert on public.notification_prefs;
+create policy notify_own_insert on public.notification_prefs for insert to authenticated with check (user_id = auth.uid() and last_sent_at is null);
+drop policy if exists notify_own_update on public.notification_prefs;
+create policy notify_own_update on public.notification_prefs for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+drop policy if exists notify_own_delete on public.notification_prefs;
+create policy notify_own_delete on public.notification_prefs for delete to authenticated using (user_id = auth.uid());
 
 -- ---------------------------------------------------------------- row-level security
 alter table public.profiles          enable row level security;
@@ -339,7 +382,7 @@ do $$ declare t text; begin
   end loop;
 end $$;
 drop policy if exists submissions_insert on public.submissions;
-create policy submissions_insert on public.submissions for insert to authenticated with check (author_id = auth.uid() and status = 'pending' and not is_sample);
+create policy submissions_insert on public.submissions for insert to authenticated with check (author_id = auth.uid() and status = 'pending' and not is_sample and approved_at is null);
 drop policy if exists submissions_moderate on public.submissions;
 create policy submissions_moderate on public.submissions for update to authenticated using (public.is_moderator()) with check (public.is_moderator());
 drop policy if exists submissions_delete_own_pending on public.submissions;

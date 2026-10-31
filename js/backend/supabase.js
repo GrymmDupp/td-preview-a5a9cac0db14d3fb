@@ -132,6 +132,12 @@ export class SupabaseBackend {
       this.sb.from('reports').select('*').eq('status', 'open').order('created_at')]);
     return { submissions: await this._withUrls(this.ok(s)), comments: this.ok(c), board: this.ok(b), reports: this.ok(r) };
   }
+  // Per-listing "Updated" signal: rpc returns listing_id, kinds, last_approved_at only (no content).
+  async recentUpdates(days = 7) {
+    const { data, error } = await this.sb.rpc('recent_listing_updates', { days });
+    if (error) { console.warn('recent_listing_updates unavailable', error.message); return []; }
+    return data || [];
+  }
   async moderate(table, id, decision, note = '', opts = {}) {
     const patch = { status: decision, mod_note: note || null };
     if (table === 'submissions') patch.is_sample = decision === 'approved' && !!opts.is_sample;

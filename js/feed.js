@@ -107,6 +107,9 @@ export function normalize(raw) {
   const yr = String(l.facts || '').match(/built\s*(?:c\.\s*)?(\d{4})/i) || String(l.name).match(/\b(1[6-9]\d\d)\b/);
   l.year = yr ? +yr[1] : null;
   l.storyCategory = l.storyCategory || l.extra.storyCategory || '';
+  // addedAt = first date this id appeared in the published feed (feed-repo/baseline/added_at.json).
+  // Older feeds/snapshots without it fall back to 'logged' (Master Sheet date logged).
+  l.addedAt = /^\d{4}-\d{2}-\d{2}$/.test(String(raw.addedAt || '')) ? raw.addedAt : (/^\d{4}-\d{2}-\d{2}$/.test(String(l.logged || '')) ? l.logged : '');
   l.hasStoryFields = !!(l.extra.architecturalNotes || l.extra.ownershipChainSummary || l.extra.folkloreType);
   if ('summary' in raw || 'loreTeaser' in raw) {            // schema v3: preview only
     l.preview = { summary: String(l.summary || ''), teaser: String(l.loreTeaser || '') };
@@ -125,7 +128,7 @@ export function normalize(raw) {
 export function sortListings(list, key = 'featured') {
   const cmp = {
     featured: (a, b) => b.priority - a.priority,
-    newest: (a, b) => String(b.logged).localeCompare(String(a.logged)) || b.priority - a.priority,
+    newest: (a, b) => String(b.addedAt).localeCompare(String(a.addedAt)) || b.priority - a.priority,
     priceAsc: (a, b) => (a.priceNum ?? 9e12) - (b.priceNum ?? 9e12),
     priceDesc: (a, b) => (b.priceNum ?? -1) - (a.priceNum ?? -1),
     name: (a, b) => a.name.localeCompare(b.name),
@@ -149,7 +152,7 @@ export async function loadFeed() {
   }
   const listings = (Array.isArray(data?.listings) ? data.listings : [])
     .map(normalize).filter((l) => l.id);
-  feed.meta = { version: data.version, schema_version: data.schema_version, generated_at: data.generated_at, count: listings.length, geo_attribution: data.geo_attribution };
+  feed.meta = { version: data.version, schema_version: data.schema_version, generated_at: data.generated_at, count: listings.length, geo_attribution: data.geo_attribution, scouting: cleanScouting(data.scouting) };
   feed.listings = sortListings(listings);
   feed.byId = new Map(listings.map((l) => [l.id, l]));
   feed.source = source;
@@ -213,5 +216,45 @@ export function simulateFeedChange(listingId) {
   return ev;
 }
 
-export const isNew = (l) => l.logged && (Date.now() - new Date(l.logged + 'T12:00:00')) / 864e5 <= CONFIG.newDays;
+// ---- "New this week": listings first added to the feed in the last CONFIG.newDays days
+// (today counts as day 0, so 7 = today and the six days before it). Content, not users.
+const localDay = (d = new Date()) => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+export function daysSince(ymd, now = new Date()) {
+  const m = String(ymd || '').match(/^(\d{4})-(\d{2})-(\d{2})$/); if (!m) return Infinity;
+  return Math.round((localDay(now) - Date.UTC(+m[1], +m[2] - 1, +m[3])) / 864e5);
+}
+export const isNew = (l, now = new Date()) => { const d = daysSince(l.addedAt, now); return d >= 0 && d < CONFIG.newDays; };
+export const newThisWeek = (list, now = new Date()) => sortListings(list.filter((l) => isNew(l, now)), 'newest');
+
+// Scouting focus from the feed envelope: { focus: ['MI','OH'], label, since }. Optional.
+function cleanScouting(s) {
+  if (!s || typeof s !== 'object') return null;
+  const focus = (Array.isArray(s.focus) ? s.focus : []).map((x) => String(x).trim().toUpperCase()).filter((x) => /^[A-Z]{2}$/.test(x));
+  if (!focus.length) return null;
+  return { focus, label: String(s.label || focus.join(' & ')).slice(0, 80), since: /^\d{4}-\d{2}-\d{2}$/.test(String(s.since || '')) ? s.since : '' };
+}
+
+// ---- "Recently updated": listings with community submissions APPROVED in the last
+// CONFIG.newDays days. Only the fact and the kinds are used (never submission content), so
+// preview viewers see "New community photos added", not what's in the locked file.
+// updates: [{ listing_id, kinds: ['photo', ...], last_approved_at }] from backend.recentUpdates().
+export function updatesMap(updates = [], now = new Date()) {
+  const m = new Map();
+  for (const u of updates || []) {
+    if (!u?.listing_id || !feed.byId.has(u.listing_id)) continue;
+    const t = new Date(u.last_approved_at); if (isNaN(t)) continue;
+    const d = Math.round((localDay(now) - localDay(t)) / 864e5);
+    if (!(d >= 0 && d < CONFIG.newDays)) continue;
+    m.set(u.listing_id, { at: u.last_approved_at, kinds: [...new Set(u.kinds || [])] });
+  }
+  return m;
+}
+const KIND_PHRASE = { photo: 'community photos', lore: 'community lore', info: 'community research', link: 'community links' };
+export const updateLine = (u) => {
+  if (!u) return '';
+  const k = u.kinds.filter((x) => KIND_PHRASE[x]);
+  if (!k.length) return 'New community additions';
+  const parts = k.map((x) => KIND_PHRASE[x].replace('community ', ''));
+  return 'New community ' + (parts.length === 1 ? parts[0] : parts.slice(0, -1).join(', ') + ' and ' + parts.at(-1)) + ' added';
+};
 export const displayableImages = (l) => l.images.filter((i) => CONFIG.displayableRights.includes(i.rights) && /^https?:/.test(i.src || i.url || ''));

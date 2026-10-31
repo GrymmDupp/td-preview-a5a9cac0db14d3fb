@@ -1,4 +1,5 @@
 import { html, fmtDate, safeUrl, host } from '../util.js';
+import { getNotifyPref } from '../notify.js';
 import { unlockPrice, standardPrice, monthlyUnlockPrice, lifetimeUnlockPrice, monthlyPrice, lifetimePrice, money, TIER_LABEL } from '../components.js';
 
 // Plan shown as a plain fact. The "Lifetime" badge appears HERE ONLY (the member's own
@@ -46,6 +47,9 @@ export async function account(ctx) {
       : html`<p class="muted">You haven’t submitted anything yet. <a href="#/contribute">Submit info, a photo, lore or a link</a>.</p>`}</section>
   </div><aside class="sidebar">
     <section class="box"><h4>Your account</h4><p class="small">Handle: <b>@${ctx.me.handle}</b></p><button class="btn sm ghost" data-signout>Sign out</button></section>
+    <section class="box notify-box"><h4>Notifications <span class="soon">Coming soon</span></h4>
+      <label class="check"><input type="checkbox" data-notify-pref ${getNotifyPref(ctx.me.id || ctx.me.handle)?.opted_in ? 'checked' : ''}> <span>Get notified about new Twisted Deeds</span></label>
+      <p class="small muted">At most one short email a day, only when a new Twisted Deed is added, with a one-click unsubscribe. Nothing is sent yet; this choice is saved in this browser only.</p></section>
     <section class="box"><h4>How unlocks work</h4><p class="small">Each listing’s full file is a one-time unlock: ${standardPrice()}, ${monthlyUnlockPrice()} while a Monthly membership is active, or ${lifetimeUnlockPrice()} with Lifetime. Unlocked files never expire.</p></section>
     ${ctx.be.isPreview ? html`<section class="box"><h4>Preview tools</h4><p class="small">Try the moderation queue with this test account.</p>
       ${['moderator', 'admin'].includes(ctx.me.role) ? html`<button class="btn sm ghost" data-preview-mod="0">Stop acting as moderator</button>` : html`<button class="btn sm ghost" data-preview-mod="1">Act as moderator (preview)</button>`}</section>` : ''}

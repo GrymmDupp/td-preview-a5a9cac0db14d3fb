@@ -3,7 +3,7 @@ import { html, raw, esc, fmtDate, truncate, plural, safeUrl, host } from './util
 import { CONFIG } from './config.js';
 import { statusInfo, kindLabel, tierInfo, storyLabel, PUBLIC_TIER1, PUBLIC_TIER2 } from './taxonomy.js';
 import { displayableImages } from './feed.js';
-import { isNew } from './feed.js';
+import { isNew, updateLine } from './feed.js';
 
 // Public rating badge. Tier 1 = prominent "Twisted Deed"; tier 2 = muted "Strong Story"
 // with its category. The internal grade (and its letters/emoji) is never shown.
@@ -78,20 +78,25 @@ export function photoOrPlate(l, cls = '') {
   return html`<div class="ph ${cls}" data-ph>${plate(l, cls)}<img src="${i.src || i.url}" alt="${i.caption || l.name}" loading="lazy" referrerpolicy="no-referrer" data-ph-img>${illus ? html`<span class="ph-flag">Illustration, not a photo</span>` : ''}</div>`;
 }
 
-export function listingCard(l, { comments = {}, unlocks = [], compact = false } = {}) {
-  const n = comments[l.id] || 0, open = unlocks.includes(l.id);
+// "New" = first added to the archive in the last 7 days (addedAt). "Updated" = community
+// submissions approved in the last 7 days; quieter, and says only that something was added.
+export const newTag = (l) => isNew(l) ? html`<span class="tag-new" title="Added to the archive ${fmtDate(l.addedAt)}">New</span>` : '';
+export const updatedTag = (u) => u ? html`<span class="tag-upd" title="${updateLine(u)}">Updated</span>` : '';
+
+export function listingCard(l, { comments = {}, unlocks = [], compact = false, updates } = {}) {
+  const n = comments[l.id] || 0, open = unlocks.includes(l.id), upd = updates?.get?.(l.id);
   return html`<article class="card ${l.tier === 1 ? 't1' : 't2'} ${compact ? 'compact' : ''}" style="--c:${l.layerI.color}">
   <a class="card-media" href="#/l/${encodeURIComponent(l.id)}" aria-label="${l.name}">${photoOrPlate(l)}
     ${isNew(l) ? html`<span class="ribbon">New</span>` : ''}</a>
   <div class="card-body">
-    <div class="card-badges">${gradeBadge(l)} ${layerChip(l)} ${statusPill(l)}</div>
+    <div class="card-badges">${gradeBadge(l)} ${compact ? newTag(l) : ''} ${updatedTag(upd)} ${layerChip(l)} ${statusPill(l)}</div>
     <h3><a href="#/l/${encodeURIComponent(l.id)}">${l.name}</a></h3>
     <div class="card-place">${l.place.replace(/,\s*[A-Z]{2}$/, '')}${l.state ? html`, <a href="#/browse?state=${l.state}">${l.state}</a>` : ''}</div>
     <div class="card-price">${l.price || 'Price not listed'}</div>
     ${compact ? '' : html`<p class="card-story">${truncate(l.blurb, 220)}</p>`}
     ${l.facts && !compact ? html`<div class="card-facts">${l.facts}</div>` : ''}
     <div class="card-foot">
-      <span class="posted">Posted ${fmtDate(l.logged)}</span>
+      <span class="posted">Added ${fmtDate(l.addedAt || l.logged)}</span>
       <a class="cc" href="#/l/${encodeURIComponent(l.id)}?at=comments">💬 ${plural(n, 'comment')}</a>
       ${open ? html`<span class="file-state open">🔓 Full file</span>` : html`<a class="file-state" href="#/l/${encodeURIComponent(l.id)}">🔒 Preview</a>`}
     </div>

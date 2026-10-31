@@ -168,9 +168,27 @@ export class LocalBackend {
   async moderate(table, id, decision, note = '', opts = {}) {
     if (!this.isMod()) throw new Error('Moderators only');
     const row = this.db[TABLE[table]]?.find((x) => x.id === id); if (!row) return;
-    Object.assign(row, { status: decision, moderated_at: nowIso(), moderated_by: this.db.session, mod_note: note });
-    if (table === 'submissions') row.is_sample = decision === 'approved' && row.kind === 'photo' && !!opts.is_sample;
+    const at = nowIso();
+    Object.assign(row, { status: decision, moderated_at: at, moderated_by: this.db.session, mod_note: note });
+    if (table === 'submissions') {
+      row.is_sample = decision === 'approved' && row.kind === 'photo' && !!opts.is_sample;
+      if (decision === 'approved') row.approved_at = at;   // drives the per-listing "Updated" signal
+    }
     this.save();
+  }
+  // "Recently updated" signal: per listing, the kinds and latest approved_at of submissions
+  // APPROVED in the last `days` days. Facts only, never content (safe for preview viewers).
+  // Same shape as the Supabase rpc recent_listing_updates(days).
+  async recentUpdates(days = CONFIG.newDays) {
+    const cut = Date.now() - days * 864e5, m = new Map();
+    for (const s of this.db.submissions) {
+      if (s.status !== 'approved' || !s.listing_id || !s.approved_at || Date.parse(s.approved_at) < cut) continue;
+      const u = m.get(s.listing_id) || { listing_id: s.listing_id, kinds: [], last_approved_at: '' };
+      if (!u.kinds.includes(s.kind)) u.kinds.push(s.kind);
+      if (s.approved_at > u.last_approved_at) u.last_approved_at = s.approved_at;
+      m.set(s.listing_id, u);
+    }
+    return [...m.values()];
   }
   async resolveReport(id, action) {
     if (!this.isMod()) throw new Error('Moderators only');

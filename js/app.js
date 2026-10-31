@@ -1,6 +1,7 @@
 // Twisted Deeds public site: shell, router and global event handling.
 import { CONFIG } from './config.js';
-import { loadFeed, feed } from './feed.js';
+import { loadFeed, feed, updatesMap } from './feed.js';
+import { setNotifyPref } from './notify.js';
 import { getBackend } from './backend/adapter.js';
 import { $, toast, esc } from './util.js';
 import { home } from './views/home.js';
@@ -30,6 +31,8 @@ async function refreshCtx() {
   ctx.membership = await ctx.be.getMembership();
   ctx.unlocks = (await ctx.be.listUnlocks()).map((u) => u.listing_id);
   ctx.comments = await ctx.be.commentCounts();
+  // listing_id -> { at, kinds } for approved submissions in the last CONFIG.newDays days (facts only)
+  ctx.updates = updatesMap(ctx.be.recentUpdates ? await ctx.be.recentUpdates(CONFIG.newDays).catch(() => []) : []);
 }
 
 function renderChrome(path) {
@@ -80,7 +83,7 @@ function signInModal() {
   const local = ctx.be.mode === 'local';
   const d = modal(`<form method="dialog" class="form" data-signin-form><h2>${local ? 'Sign in (preview)' : 'Sign in'}</h2>
     ${local ? `<p class="notice">Preview mode: this creates a <b>test account in this browser only</b>. No email, nothing is sent anywhere.</p>
-      <label>Handle<input name="handle" required maxlength="24" pattern="[A-Za-z0-9 _-]+" placeholder="e.g. grymm"></label>`
+      <label>Handle<input name="handle" required maxlength="24" pattern="[A-Za-z0-9 _\\-]+" placeholder="e.g. grymm"></label>`
     : `<p>We’ll email you a one-time sign-in link. No password. Your email is never shown or shared. Sign in with the same email on any device to see your unlocked files.</p><label>Email<input name="email" type="email" required></label>`}
     <label class="check"><input type="checkbox" required> <span>I’ve read the <a href="#/rules" target="_blank">community rules</a></span></label>
     <div class="row"><button class="btn ghost" value="cancel" formnovalidate>Cancel</button><button class="btn" value="ok">${local ? 'Sign in' : 'Email me a link'}</button></div></form>`);
@@ -175,6 +178,8 @@ document.addEventListener('change', (e) => {
   const f = e.target.closest('form[data-filters]');
   if (f) { const p = new URLSearchParams([...new FormData(f)].filter(([, v]) => v)); location.hash = '#/browse?' + p; }
   if (e.target.matches('[data-goto-state]') && e.target.value) location.hash = '#/browse?state=' + e.target.value;
+  // "Get notified about new Twisted Deeds": coming soon, saved in this browser only, sends nothing.
+  if (e.target.matches('[data-notify-pref]') && ctx.me) { setNotifyPref(ctx.me.id || ctx.me.handle, e.target.checked); toast(e.target.checked ? 'Saved. Nothing is sent yet: notifications are coming soon.' : 'Saved. You won’t be notified.'); }
 });
 let qTimer;
 document.addEventListener('input', (e) => {
