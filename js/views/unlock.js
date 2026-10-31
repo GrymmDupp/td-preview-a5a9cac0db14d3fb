@@ -9,7 +9,8 @@ export async function unlock(ctx, q, id) {
   if (!l) return html`<div class="empty-state"><h1>Not in the archive</h1><p><a href="#/browse">Browse the archive</a>.</p></div>`;
   const back = html`<a href="#/l/${l.id}">← Back to the preview</a>`;
   if (ctx.unlocks.includes(l.id)) return html`<div class="empty-state"><h1>Already unlocked</h1><p>The full file for <b>${l.name}</b> is on your account.</p><a class="btn" href="#/l/${l.id}">Open the full file</a></div>`;
-  const mock = ctx.be.isPreview || ctx.be.mockCheckout, where = ctx.be.mode === 'local' ? 'in this browser only' : 'to your account';
+  const plink = !!ctx.be.paymentLinkCheckout, req = ctx.unlockRequests?.get(l.id), pend = plink && req?.status === 'pending';
+  const mock = !plink && (ctx.be.isPreview || ctx.be.mockCheckout), where = ctx.be.mode === 'local' ? 'in this browser only' : 'to your account';
   return html`<nav class="crumbs">${back}</nav>
   ${mock ? html`<div class="mock-banner" role="note"><b>Example checkout, no real payment.</b> This prototype records a test unlock ${where}. No card details are asked for or stored.</div>` : ''}
   <div class="checkout">
@@ -24,7 +25,10 @@ export async function unlock(ctx, q, id) {
       ${ctx.membership && !isTrial() ? '' : html`<p class="small muted">${membersLine(l.id)}</p>`}
       ${!ctx.me ? html`<p>Sign in first so the unlock is saved to your account.</p><button class="btn big" data-signin>Sign in to continue</button>`
         : html`<p class="small">Account: <b>@${ctx.me.handle}</b></p>
-        ${mock ? html`<div class="mock-card" aria-hidden="true"><span>Card details would be entered on Stripe’s secure page.</span><span class="muted">Not collected in this example.</span></div>
+        ${plink ? html`${pend ? html`<p class="pay-pending small"><b>Payment pending confirmation</b> (reference <code>${req.reference}</code>). Your file unlocks once we confirm payment (usually within a few hours). If you didn’t finish paying, continue below; it reuses the same reference.</p>` : ''}
+          <button class="btn big" data-checkout="${l.id}">${pend ? 'Open the payment page again' : 'Continue to payment'} · ${unlockPrice(ctx)}</button>
+          <p class="small muted">Opens Stripe’s secure payment page in a new tab. We never see or store your card. Payments are confirmed by hand: the file unlocks on your account once we confirm yours, usually within a few hours.</p>`
+        : mock ? html`<div class="mock-card" aria-hidden="true"><span>Card details would be entered on Stripe’s secure page.</span><span class="muted">Not collected in this example.</span></div>
           <button class="btn big" data-checkout="${l.id}">Complete example checkout · ${unlockPrice(ctx)}</button>
           <p class="small muted">Example checkout, no real payment. Creates a test unlock with a mock payment reference.</p>`
         : html`<button class="btn big" data-checkout="${l.id}">Continue to secure checkout · ${unlockPrice(ctx)}</button><p class="small muted">Payment is handled by Stripe. We never see or store your card.</p>`}`}

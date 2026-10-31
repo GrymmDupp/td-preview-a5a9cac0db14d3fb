@@ -18,7 +18,7 @@ const A = {
 };
 
 export class SupabaseBackend {
-  mode = 'supabase'; isPreview = false; mockCheckout = false;
+  mode = 'supabase'; isPreview = false; mockCheckout = false; paymentLinkCheckout = false; checkoutMode = null;
   constructor(cfg) { this.cfg = cfg; }
   async init() {
     const { createClient } = await import(SDK);
@@ -30,13 +30,16 @@ export class SupabaseBackend {
       new Promise((_, rej) => setTimeout(() => rej(new Error('Supabase timed out')), 8000)),
     ]);
     if (mode.error) throw new Error(mode.error.message);
+    this.checkoutMode = mode.data;
     this.mockCheckout = mode.data === 'mock';
+    this.paymentLinkCheckout = mode.data === 'payment_link';   // Stripe Payment Link + manual confirmation
     // Trial switches from app_settings (pricing_mode / trial_unlock_price / memberships_enabled).
     // Display only: the server decides the recorded price and refuses memberships while off.
     const ps = await this.sb.rpc('pricing_settings');
     if (!ps.error && ps.data) {
       const P = CONFIG.pricing;
-      P.trial = { active: !!ps.data.trial, unlockPrice: Number(ps.data.trial_unlock_price) || P.trial.unlockPrice };
+      P.trial = { active: !!ps.data.trial, unlockPrice: Number(ps.data.trial_unlock_price) || P.trial.unlockPrice,
+        unlockPaymentLink: ps.data.unlock_payment_link || P.trial.unlockPaymentLink };
       P.membershipsEnabled = ps.data.memberships_enabled !== false;
     } else console.warn('pricing_settings unavailable; using js/config.js defaults', ps.error?.message);
     const { data } = await this.sb.auth.getSession();
@@ -115,9 +118,35 @@ export class SupabaseBackend {
   }
   // The price is resolved server-side (trial: app_settings trial_unlock_price; planned: by membership).
   async startCheckout(listingId) {
+    if (this.paymentLinkCheckout) {
+      // Payment Link mode: no fake unlock. Record a PENDING request server-side (amount and
+      // reference decided by the server), then hand back the Stripe Payment Link carrying the
+      // reference. A moderator grants the unlock after matching the payment in Stripe.
+      this.need();
+      const req = this.ok(await this.sb.rpc('request_unlock', { lid: listingId }));
+      return { pending: true, request: req, paymentUrl: await this.paymentUrl(req) };
+    }
     if (this.mockCheckout) { this.need(); this.ok(await this.sb.rpc('preview_mock_unlock', { lid: listingId })); return { unlocked: true }; }
     return this._checkout({ product: 'unlock', listing_id: listingId });
   }
+  async paymentUrl(req) {
+    const base = CONFIG.pricing.trial?.unlockPaymentLink;
+    if (!base || !req) return null;
+    const u = new URL(base);
+    u.searchParams.set('client_reference_id', req.client_reference_id);   // letters, digits, - and _ only (server-built)
+    const { data } = await this.sb.auth.getSession();
+    const email = data.session?.user?.email;
+    if (email) u.searchParams.set('prefilled_email', email);
+    return u.toString();
+  }
+  // The caller's own unlock requests (RLS: own rows only; moderators use listUnlockRequests).
+  async myUnlockRequests() {
+    if (!this.uid || !this.paymentLinkCheckout) return [];
+    return this.ok(await this.sb.from('unlock_requests').select('*').eq('user_id', this.uid).order('created_at', { ascending: false }));
+  }
+  async listUnlockRequests(status = 'pending') { return this.ok(await this.sb.rpc('list_unlock_requests', { p_status: status })) || []; }
+  async confirmUnlockRequest(id) { return this.ok(await this.sb.rpc('confirm_unlock_request', { rid: id })); }
+  async rejectUnlockRequest(id, note) { this.ok(await this.sb.rpc('reject_unlock_request', { rid: id, p_note: note || null })); }
   async _checkout(body) {
     this.need();
     const { data, error } = await this.sb.functions.invoke('create-checkout', { body });

@@ -52,10 +52,18 @@ export async function account(ctx) {
     <section class="box notify-box"><h4>Notifications <span class="soon">Coming soon</span></h4>
       <label class="check"><input type="checkbox" data-notify-pref ${ctx.notifyPref?.opted_in ? 'checked' : ''}> <span>Get notified about new Twisted Deeds</span></label>
       <p class="small muted">At most one short email a day, only when a new Twisted Deed is added, with a one-click unsubscribe. Nothing is sent yet; ${ctx.be.mode === 'local' ? 'this choice is saved in this browser only' : 'this choice is saved to your account'}.</p></section>
-    <section class="box"><h4>How unlocks work</h4>${isTrial() || !membershipsOn()
+    ${pendingBox(ctx)}<section class="box"><h4>How unlocks work</h4>${isTrial() || !membershipsOn()
       ? html`<p class="small">Each listing’s full file is a one-time unlock: ${standardPrice()}${trialNote()} for everyone. Unlocked files never expire. Memberships (Monthly and Lifetime) are ${soonChip()}.</p>`
       : html`<p class="small">Each listing’s full file is a one-time unlock: ${standardPrice()}, ${monthlyUnlockPrice()} while a Monthly membership is active, or ${lifetimeUnlockPrice()} with Lifetime. Unlocked files never expire.</p>`}</section>
     ${ctx.be.isPreview ? html`<section class="box"><h4>Preview tools</h4><p class="small">Try the moderation queue with this test account.</p>
       ${['moderator', 'admin'].includes(ctx.me.role) ? html`<button class="btn sm ghost" data-preview-mod="0">Stop acting as moderator</button>` : html`<button class="btn sm ghost" data-preview-mod="1">Act as moderator (preview)</button>`}</section>` : ''}
   </aside></div>`;
+}
+
+// Payment Link mode: the account's own unlock requests still waiting for confirmation.
+function pendingBox(ctx) {
+  const rows = [...(ctx.unlockRequests?.values() || [])].filter((r) => r.status === 'pending' && !ctx.unlocks.includes(r.listing_id));
+  if (!rows.length) return '';
+  return html`<section class="box"><h4>Payments pending confirmation</h4><p class="small">Each file unlocks once we confirm the payment (usually within a few hours).</p>
+    <ul class="small">${rows.map((r) => html`<li><a href="#/l/${encodeURIComponent(r.listing_id)}">${ctx.feed.byId.get(r.listing_id)?.name || r.listing_id}</a> · reference <code>${r.reference}</code> · ${fmtDate(r.created_at)}</li>`)}</ul></section>`;
 }

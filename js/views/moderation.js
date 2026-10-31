@@ -9,16 +9,24 @@ export async function moderation(ctx) {
   if (!isMod) return html`<div class="empty-state"><h1>Moderation queue</h1><p>This page is for moderators.</p>
     ${ctx.be.isPreview ? html`<p class="muted">Preview: you can act as a moderator to try the workflow.</p><button class="btn" data-preview-mod="1">Act as moderator (preview)</button>` : ''}</div>`;
   const qd = await ctx.be.listQueue();
+  // Payment Link mode: unlock requests waiting for a moderator to match the payment in Stripe.
+  const pays = ctx.be.paymentLinkCheckout && ctx.be.listUnlockRequests ? await ctx.be.listUnlockRequests('pending').catch((e) => { console.warn(e.message); return []; }) : null;
   const L = (id) => ctx.feed.byId.get(id);
   const lk = (id) => L(id) ? html`<a href="#/l/${id}">${L(id).name}</a>` : html`<span class="muted">No listing</span>`;
   const actions = (table, row) => html`<form class="mod-actions" data-moderate="${table}:${row.id}"><input name="note" placeholder="Note to author (optional)" maxlength="300">
     ${table === 'submissions' && row.kind === 'photo' ? html`<label class="check small"><input type="checkbox" name="is_sample"> <span>Also show as a free-preview sample photo</span></label>` : ''}
     <button class="btn sm ok" name="d" value="approved">Approve</button><button class="btn sm ghost" name="d" value="rejected">Reject</button></form>`;
-  const total = qd.submissions.length + qd.comments.length + qd.board.length + qd.reports.length;
+  const total = qd.submissions.length + qd.comments.length + qd.board.length + qd.reports.length + (pays?.length || 0);
   return html`<div class="page-head"><h1>Moderation queue <small class="muted">${total} waiting</small></h1>
     <p class="muted">Nothing is public until it’s approved here. Check each item against the <a href="#/rules">community rules</a>: public record or first-hand, no living private people, no trespass, rights confirmed for photos.</p>
     ${ctx.be.isPreview ? html`<button class="btn sm ghost" data-preview-mod="0">Stop acting as moderator</button>` : ''}</div>
   <div class="mod-grid">
+  ${pays ? html`<section class="pay-queue"><h2>Pending payments <small>${pays.length}</small></h2>
+    <p class="small muted">Unlock requests from the Stripe Payment Link. Find the payment in the Stripe dashboard (Payments → search, or the payment’s <b>client_reference_id</b>, which starts with the reference below). Confirm only a payment you can see in Stripe; rejecting leaves the file locked.</p>
+    ${pays.length ? pays.map((p) => html`<div class="mod-item"><div class="post-meta"><span class="kind">$${Number(p.amount).toFixed(2)}</span> <code>${p.reference}</code> · @${p.handle || '?'} · ${lk(p.listing_id)} · ${ago(p.created_at)}</div>
+      <p class="small muted">client_reference_id: <code>${p.client_reference_id}</code></p>
+      <div class="mod-actions"><button class="btn sm ok" data-confirm-paid="${p.id}">Confirm paid</button><button class="btn sm ghost" data-reject-paid="${p.id}">Reject</button></div></div>`)
+    : html`<p class="muted">No payments waiting.</p>`}</section>` : ''}
   <section><h2>Reports <small>${qd.reports.length}</small></h2>${qd.reports.length ? qd.reports.map((r) => html`<div class="mod-item report"><div class="post-meta"><span class="kind warn">${r.reason}</span> on ${r.target_type.replace('_', ' ')} · ${ago(r.created_at)}</div>
     <p>${r.details || html`<span class="muted">No details</span>`}</p>${r.target ? html`<blockquote>${r.target.title || r.target.body || r.target.payload?.title || ''}</blockquote>` : html`<p class="muted small">Target: ${r.target_type} ${r.target_id}</p>`}
     <div class="mod-actions"><button class="btn sm ghost" data-resolve="${r.id}:dismissed">Dismiss</button><button class="btn sm danger" data-resolve="${r.id}:removed">Remove content</button></div></div>`) : html`<p class="muted">No open reports.</p>`}</section>

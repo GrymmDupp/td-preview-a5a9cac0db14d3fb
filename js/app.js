@@ -29,6 +29,9 @@ async function refreshCtx() {
   ctx.me = await ctx.be.getSession();
   ctx.membership = await ctx.be.getMembership();
   ctx.unlocks = (await ctx.be.listUnlocks()).map((u) => u.listing_id);
+  // Own unlock requests (Payment Link mode): listing_id -> latest request
+  ctx.unlockRequests = new Map();
+  if (ctx.be.myUnlockRequests) for (const r of await ctx.be.myUnlockRequests().catch(() => [])) if (!ctx.unlockRequests.has(r.listing_id)) ctx.unlockRequests.set(r.listing_id, r);
   ctx.comments = await ctx.be.commentCounts();
   ctx.notifyPref = ctx.me && ctx.be.getNotifyPref ? await ctx.be.getNotifyPref().catch(() => null) : null;
   // listing_id -> { at, kinds } for approved submissions in the last CONFIG.newDays days (facts only)
@@ -132,7 +135,12 @@ document.addEventListener('click', async (e) => {
   try {
     if ('signin' in ds) { e.preventDefault(); signInModal(); }
     else if ('signout' in ds) { await ctx.be.signOut(); await refreshCtx(); route(); }
-    else if (ds.checkout) { e.preventDefault(); if (!needMe()) return; t.disabled = true; const r = await ctx.be.startCheckout(ds.checkout);
+    else if (ds.checkout) { e.preventDefault(); if (!needMe()) return; t.disabled = true;
+      // Payment Link: open the tab synchronously (popup blockers), then point it at Stripe.
+      const w = ctx.be.paymentLinkCheckout ? window.open('', '_blank') : null;
+      let r; try { r = await ctx.be.startCheckout(ds.checkout); } catch (err) { w?.close(); t.disabled = false; throw err; }
+      if (r?.pending) { if (w && r.paymentUrl) { w.opener = null; w.location.href = r.paymentUrl; } else if (!w && r.paymentUrl) toast('Your browser blocked the new tab. Use “Open the payment page” on the listing.');
+        await refreshCtx(); location.hash = `#/l/${encodeURIComponent(ds.checkout)}?at=file`; return; }
       if (r?.redirect) { location.href = r.redirect; return; } await refreshCtx(); location.hash = `#/l/${encodeURIComponent(ds.checkout)}?unlocked=1`; }
     else if (ds.membershipCheckout) { e.preventDefault(); if (!CONFIG.pricing.membershipsEnabled) { toast('Memberships are coming soon.'); return; } if (!needMe()) return; t.disabled = true; const plan = ds.membershipCheckout, from = ds.from || '';
       const r = await ctx.be.startMembershipCheckout(plan, from); if (r?.redirect) { location.href = r.redirect; return; }
@@ -144,6 +152,10 @@ document.addEventListener('click', async (e) => {
     else if (ds.report) { if (!needMe()) return; const [type, ...id] = ds.report.split(':'); reportModal(type, id.join(':')); }
     else if (ds.toggleReply) { if (!needMe()) return; const f = $(`form[data-comment-reply="${ds.toggleReply}"], form[data-board-reply="${ds.toggleReply}"]`); f.hidden = !f.hidden; if (!f.hidden) f.querySelector('textarea').focus(); }
     else if (ds.previewMod) { await ctx.be.setPreviewModerator(ds.previewMod === '1'); await refreshCtx(); route(); }
+    else if (ds.confirmPaid) { if (!confirm('Confirm this payment? Only do this after you found the matching payment in Stripe. It grants the permanent unlock.')) return;
+      t.disabled = true; await ctx.be.confirmUnlockRequest(ds.confirmPaid); toast('Payment confirmed. The file is unlocked for that account.'); route(); }
+    else if (ds.rejectPaid) { const note = prompt('Reject this unlock request? Optional note (not shown publicly):', ''); if (note === null) return;
+      t.disabled = true; await ctx.be.rejectUnlockRequest(ds.rejectPaid, note); toast('Request rejected.'); route(); }
     else if (ds.resolve) { const [id, action] = ds.resolve.split(':'); await ctx.be.resolveReport(id, action); toast(action === 'removed' ? 'Content removed' : 'Report dismissed'); route(); }
     else if ('resetPreview' in ds) { if (confirm('Clear all preview data (test accounts, comments, posts, submissions, unlocks) in this browser?')) { ctx.be.reset(); location.reload(); } }
   } catch (err) { toast(err.message); }
@@ -204,6 +216,7 @@ document.addEventListener('input', (e) => {
   const banner = $('#preview-banner');
   if (ctx.be.fallback) { banner.querySelector('.short').innerHTML = 'Community server unreachable: <b>using this browser only</b>.'; banner.querySelector('.long').innerHTML = 'The community server couldn’t be reached, so comments, posts, submissions, accounts and unlocks here are <b>test data stored only in this browser</b> and won’t reach the live site. Checkouts are examples: <b>no real payment</b>. Reload to try again.'; banner.hidden = false; }
   else if (ctx.be.isPreview) banner.hidden = false;
+  else if (ctx.be.paymentLinkCheckout) { banner.querySelector('.short').innerHTML = 'Private preview. Unlock payments are confirmed by hand.'; banner.querySelector('.long').innerHTML = 'Private preview. Accounts, comments and submissions are real and moderated. File unlocks are paid on Stripe’s secure page and are <b>confirmed by hand</b>: your file unlocks once we confirm the payment.'; banner.querySelector('[data-reset-preview]')?.remove(); banner.hidden = false; }
   else if (ctx.be.mockCheckout) { banner.querySelector('.short').innerHTML = 'Checkouts are examples: <b>no real payment</b>.'; banner.querySelector('.long').innerHTML = 'Private preview. Accounts, comments and submissions are real and moderated. Checkouts are examples: <b>no real payment</b> yet; example unlocks are saved to your account.'; banner.querySelector('[data-reset-preview]')?.remove(); banner.hidden = false; }
   $('#feed-meta').textContent = `Feed v${feed.meta.version} · ${feed.meta.count} listings · ${feed.source === 'live' ? 'live' : 'offline snapshot'}`;
   await refreshCtx();

@@ -50,8 +50,18 @@ export const CONFIG = {
   //  - Lifetime membership: lifetimePrice one time, never expires; unlocks cost
   //    lifetimeUnlockPrice forever. The one badge ("Lifetime") is shown ONLY on the
   //    member's own account page, never next to comments, posts or listings.
+  // Sidebar ad slots on the home page, below House rules. Temporary samples Grymm asked for:
+  // replace with real sponsors later. Only add a url/text you actually have (no invented details).
+  // { name, place?, line?, url? } — url (optional) makes the name a link; `sample: true` shows a "Sample ad" tag.
+  sponsors: [
+    { name: 'The Old Church With the Purple Door', place: 'Horton, Michigan', line: 'A spiritual sanctuary · Events · Weddings · Community hub', sample: true },
+    { name: 'Luminarium Obscura', line: 'Ad space reserved', sample: true },
+  ],
   pricing: {
-    trial: { active: true, unlockPrice: 5 },   // live: app_settings pricing_mode / trial_unlock_price
+    // unlockPaymentLink: public Stripe Payment Link for the $5 trial unlock (not a secret). Live, it is
+    // read from app_settings unlock_payment_link and used while checkout_mode = 'payment_link':
+    // the page records a PENDING request and a moderator confirms the payment by hand.
+    trial: { active: true, unlockPrice: 5, unlockPaymentLink: 'https://buy.stripe.com/4gM8wO5M56i76Wj5WK1Jm06' },   // live: app_settings pricing_mode / trial_unlock_price / unlock_payment_link
     membershipsEnabled: false,                 // live: app_settings memberships_enabled
     // planned (post-trial) values, coming soon:
     unlockPrice: 9,

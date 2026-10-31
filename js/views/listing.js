@@ -64,6 +64,18 @@ function fullFile(l, f) {
   </section>`;
 }
 
+// Payment Link mode: honest state after the account opened the payment page. Nothing is unlocked
+// until a moderator confirms the payment in Stripe.
+function pendingReq(ctx, l) {
+  const r = ctx.unlockRequests?.get(l.id);
+  if (!r || !ctx.be.paymentLinkCheckout) return null;
+  if (r.status === 'pending') return html`<div class="pay-pending" role="status"><p><b>Payment pending confirmation.</b> Your file unlocks once we confirm payment (usually within a few hours).</p>
+    <p class="small muted">Reference <code>${r.reference}</code> · started ${fmtDate(r.created_at)}. Didn’t finish paying? <a href="#/unlock/${encodeURIComponent(l.id)}">Open the payment page</a>.</p></div>`;
+  if (r.status === 'rejected') return html`<div class="pay-pending" role="status"><p>We couldn’t match a payment for reference <code>${r.reference}</code>.</p>
+    <div class="unlock-cta"><a class="btn big" href="#/unlock/${encodeURIComponent(l.id)}" data-unlock-link>Unlock this file · ${unlockPrice(ctx)}</a>${trialNote()}</div></div>`;
+  return null;
+}
+
 function lockedPanel(ctx, l, counts, signedIn) {
   const n = Object.values(counts).reduce((a, b) => a + b, 0);
   const inc = [['Full story, history and timeline'], ['Citations and sources'], ['Full lore'], l.hasStoryFields && ['Ownership chain and Strong Story notes'],
@@ -73,7 +85,7 @@ function lockedPanel(ctx, l, counts, signedIn) {
   <div class="lock-card"><div class="lock-ic" aria-hidden="true">🔒</div><h2>Unlock the full file</h2>
     <p class="price-line">One time · yours permanently on this account, on every device</p>
     <ul class="incl">${inc.map(([t]) => html`<li>${t}</li>`)}</ul>
-    <div class="unlock-cta"><a class="btn big" href="#/unlock/${encodeURIComponent(l.id)}" data-unlock-link>Unlock this file · ${unlockPrice(ctx)}</a>${trialNote()}</div>
+    ${pendingReq(ctx, l) || html`<div class="unlock-cta"><a class="btn big" href="#/unlock/${encodeURIComponent(l.id)}" data-unlock-link>Unlock this file · ${unlockPrice(ctx)}</a>${trialNote()}</div>`}
     ${ctx.membership && !isTrial() ? html`<p class="small muted member-line">${TIER_LABEL[viewerTier(ctx.membership)]}.</p>`
       : html`<p class="small muted member-line">${membersLine(l.id)}</p>`}
     ${signedIn ? '' : html`<p class="small muted">You’ll be asked to sign in first, so the unlock is saved to your account.</p>`}</div></section>`;

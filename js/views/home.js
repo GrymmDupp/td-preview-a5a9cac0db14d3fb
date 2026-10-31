@@ -1,4 +1,4 @@
-import { html, plural, ago, fmtDate } from '../util.js';
+import { html, plural, ago, fmtDate, safeUrl } from '../util.js';
 import { listingCard, gradeBadge, unlockPrice, standardPrice, monthlyUnlockPrice, lifetimeUnlockPrice, monthlyPrice, lifetimePrice, membershipsOn, trialNote, soonChip } from '../components.js';
 import { LAYERS, PRICE_BANDS, STATES, layerInfo } from '../taxonomy.js';
 import { newThisWeek } from '../feed.js';
@@ -28,6 +28,7 @@ export function sidebar(ctx) {
   <section class="box"><h4>Community</h4><p class="small">Comment on any listing, or talk research on the one general board.</p><a class="small" href="#/board">Community board →</a></section>
   <section class="box cta"><h4>Know a listing with a past?</h4><p>Found a house for sale with a documented dark history or a strong story? Send the link.</p><a class="btn sm" href="#/suggest">Suggest a property</a></section>
   <section class="box rules-mini"><h4>House rules</h4><ul><li>Public records and first-hand stories only</li><li>No doxxing of living private people</li><li>Never trespass or bother occupants</li></ul><a class="small" href="#/rules">Community rules →</a></section>
+  ${sponsorSlots()}
 </aside>`;
 }
 
@@ -63,4 +64,17 @@ export async function home(ctx, q) {
       <span class="muted">Page ${page} of ${pages}</span>
       ${page < pages ? html`<a class="btn ghost" href="#/?page=${page + 1}">Older listings →</a>` : html`<span></span>`}</nav>
   </div>${sidebar(ctx)}</div>`;
+}
+
+// Ad slots from CONFIG.sponsors (text only, no images). They grow to fill the sidebar's remaining
+// height on desktop, so the column ends level with the listings; on mobile they simply stack.
+function sponsorSlots() {
+  const list = (CONFIG.sponsors || []).filter((x) => x && x.name);
+  if (!list.length) return '';
+  return html`<div class="sponsors" aria-label="Sponsors">${list.map((x) => { const u = x.url ? safeUrl(x.url) : '';
+    return html`<section class="box sponsor">${x.sample ? html`<span class="ad-tag">Sample ad</span>` : html`<span class="ad-tag">Sponsor</span>`}
+      <div class="sponsor-in"><span class="orn" aria-hidden="true">✦</span>
+      <h4>${u ? html`<a href="${u}" rel="sponsored noopener" target="_blank">${x.name}</a>` : x.name}</h4>
+      ${x.place ? html`<p class="sp-place">${x.place}</p>` : ''}${x.line ? html`<p class="sp-line">${x.line}</p>` : ''}
+      <span class="orn" aria-hidden="true">✦</span></div></section>`; })}</div>`;
 }

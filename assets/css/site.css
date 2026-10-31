@@ -439,3 +439,23 @@ body.is-map .site-foot{display:none}
 .soon-plan h4{margin-top:0}
 .file-state.unlock-link{text-decoration:none}
 .unlock-cta{display:block;width:100%;text-align:center;margin:12px 0 4px}
+/* Payment Link mode: pending confirmation state + moderators' Pending payments queue. */
+.pay-pending{border:1px solid var(--line2);border-radius:8px;padding:10px 14px;margin:12px auto 6px;max-width:560px;text-align:left}
+.pay-pending p{margin:.3em 0}
+.pay-queue{grid-column:1/-1}
+/* Sidebar ad slots (CONFIG.sponsors) under House rules on the home page. On desktop the stack grows to
+   fill the sidebar's leftover height so it ends level with the listings; on mobile it stacks normally. */
+.sponsors{display:flex;flex-direction:column;gap:14px;flex:1 1 auto}
+.sponsor{position:relative;flex:1 1 auto;min-height:150px;display:flex;align-items:center;justify-content:center;text-align:center;
+  border:1px solid #8a6a3e;background:linear-gradient(180deg,var(--panel),var(--bg2));box-shadow:inset 0 0 0 3px var(--panel),inset 0 0 0 4px rgba(138,106,62,.35);padding:30px 18px 24px}
+.sponsor-in{display:flex;flex-direction:column;align-items:center;gap:8px;max-width:240px}
+.sponsor h4{font-family:var(--display);color:var(--gold);font-size:1.12rem;line-height:1.3;margin:0;letter-spacing:.04em}
+.sponsor h4 a{color:inherit}
+.sponsor .sp-place{font-family:var(--serif);font-style:italic;color:var(--parch);font-size:1.05rem;margin:0}
+.sponsor .sp-line{color:var(--muted);font-size:.86rem;line-height:1.5;margin:0}
+.sponsor .orn{color:#8a6a3e;font-size:.8rem;letter-spacing:.4em}
+.sponsor .ad-tag{position:absolute;top:8px;right:10px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line2);border-radius:3px;padding:1px 6px}
+@media (min-width:960px){
+  .sponsor{align-items:flex-start}
+  .sponsor-in{position:sticky;top:120px;padding:18px 0}
+}
