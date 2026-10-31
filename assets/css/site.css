@@ -392,7 +392,12 @@ body.is-map .site-foot{display:none}
 .ph>img[data-ph-img]{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;background:var(--bg2)}
 .g-item .ph>img[data-ph-img]{position:static;height:120px}
 .ph.ph-failed>img{display:none}
-.ph-flag{position:absolute;right:8px;top:8px;background:rgba(11,9,9,.82);color:var(--parch);font-size:.72rem;padding:2px 7px;border-radius:4px;border:1px solid var(--line)}
+/* Image-type label: a caption line under the picture, never an overlay on it. */
+.ph-note{display:block;font-size:11px;line-height:1.35;color:var(--muted);padding:3px 10px;background:var(--panel);border-top:1px solid var(--line);white-space:normal}
+.ph-note .ph-type.illus{font-weight:600}
+.card-media{display:flex;flex-direction:column}
+.card-media>.ph,.card-media>.plate{flex:1 1 auto}
+.mc-note{padding:3px 6px;border-top:0;border-radius:0 0 6px 6px}
 .g-main{margin:0}
 .g-main .ph.big{height:100%}
 .ph-credit{display:block;font-size:.74rem;color:var(--muted);padding:6px 10px;background:var(--panel)}
@@ -417,3 +422,12 @@ body.is-map .site-foot{display:none}
 .scouting-mini{margin:8px 0 0}
 .upd-note{color:var(--muted);border-left:2px solid var(--line2);padding-left:10px;margin-top:10px}
 .notify-box .soon{font:600 .62rem/1 var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--dim);border:1px solid var(--line2);border-radius:3px;padding:3px 5px;margin-left:6px;vertical-align:middle}
+.ph.ph-failed+.ph-note{display:none}
+/* Gallery main: the image fills the frame and the credit/label line always shows underneath. */
+.g-main{display:flex;flex-direction:column}
+.g-main .ph.big{height:auto;flex:1 1 auto}
+.g-main .ph-credit,.g-item .ph-credit{font-size:11px;line-height:1.35}
+.card-media .ph-note{text-decoration:none}
+.card.compact .ph-note,.sidebar .card .ph-note{padding:2px 6px;font-size:10.5px}
+.card-media{text-decoration:none}
+.mc-photo.ph-failed{display:none}

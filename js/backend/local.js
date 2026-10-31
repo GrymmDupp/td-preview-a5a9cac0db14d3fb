@@ -5,6 +5,7 @@
 // Unlocks here are MOCK: "Example checkout, no real payment". The full-file gate in
 // this mode is client-side only: full files come from the private, localhost-only
 // data/listings_full.local.json (README §8). Real gating is server-side: Supabase listing_full + RLS.
+import { getNotifyPref, setNotifyPref } from '../notify.js';
 import { uid, nowIso } from '../util.js';
 import { feed } from '../feed.js';
 import { CONFIG } from '../config.js';
@@ -196,6 +197,9 @@ export class LocalBackend {
     if (action === 'removed') { const t = { comment: 'comments', board_post: 'board_posts', submission: 'submissions' }[r.target_type]; if (t) await this.moderate(t, r.target_id, 'removed', 'Removed after report'); }
     r.status = action; r.resolved_at = nowIso(); this.save();
   }
+  // Notification opt-in, saved in this browser only (same shape as notification_prefs).
+  async getNotifyPref() { const m = await this.getSession(); return m ? getNotifyPref(m.id || m.handle) : null; }
+  async setNotifyPref(optedIn) { const m = this.requireMe(); return setNotifyPref(m.id || m.handle, optedIn); }
   async commentCounts() {
     const c = {}; for (const x of this.db.comments) if (x.status === 'approved') c[x.listing_id] = (c[x.listing_id] || 0) + 1; return c;
   }

@@ -12,11 +12,11 @@ export async function membership(ctx, q) {
   const cur = ctx.membership;
   if (cur?.plan === 'lifetime' || (cur?.plan === plan && cur.status === 'active'))
     return html`<nav class="crumbs">${back}</nav><div class="empty-state"><h1>Membership</h1><p>You already have this plan. Unlocks are ${unlockPrice(ctx)}.</p><a class="btn" href="#/account">Account</a></div>`;
-  const mock = ctx.be.isPreview, monthly = plan === 'monthly';
+  const mock = ctx.be.isPreview || ctx.be.mockCheckout, where = ctx.be.mode === 'local' ? 'in this browser only' : 'to your account', monthly = plan === 'monthly';
   const price = monthly ? `${monthlyPrice()} / month` : `${lifetimePrice()} one time`;
   const other = monthly ? html`<a href="#/membership?plan=lifetime${from ? '&from=' + from : ''}">Lifetime instead (${lifetimePrice()} one-time, unlocks ${lifetimeUnlockPrice()})</a>` : html`<a href="#/membership?plan=monthly${from ? '&from=' + from : ''}">Monthly instead (${monthlyPrice()}/mo, unlocks ${monthlyUnlockPrice()})</a>`;
   return html`<nav class="crumbs">${back}</nav>
-  ${mock ? html`<div class="mock-banner" role="note"><b>Example checkout, no real payment.</b> This prototype records a test ${monthly ? 'Monthly' : 'Lifetime'} membership in this browser only. No card details are asked for or stored.</div>` : ''}
+  ${mock ? html`<div class="mock-banner" role="note"><b>Example checkout, no real payment.</b> This prototype records a test ${monthly ? 'Monthly' : 'Lifetime'} membership ${where}. No card details are asked for or stored.</div>` : ''}
   <div class="checkout">
     <section class="co-summary"><h1>${monthly ? 'Monthly membership' : 'Lifetime membership'}</h1>
       ${monthly ? html`<ul class="incl"><li>${monthlyPrice()} a month, cancel any time</li><li>While it’s active, every file unlock is <b>${monthlyUnlockPrice()}</b> instead of ${standardPrice()}</li><li>Files you unlock stay unlocked <b>forever</b>, even after the membership ends. Ending it only changes the price of future unlocks.</li></ul>`

@@ -75,7 +75,14 @@ export function photoOrPlate(l, cls = '') {
   const i = displayableImages(l)[0];
   if (!i) return plate(l, cls);
   const illus = imageType(i) === 'illustration';
-  return html`<div class="ph ${cls}" data-ph>${plate(l, cls)}<img src="${i.src || i.url}" alt="${i.caption || l.name}" loading="lazy" referrerpolicy="no-referrer" data-ph-img>${illus ? html`<span class="ph-flag">Illustration, not a photo</span>` : ''}</div>`;
+  // The "Illustration, not a photo" label sits on a caption line BELOW the image, never on it.
+  return html`<div class="ph ${cls}" data-ph>${plate(l, cls)}<img src="${i.src || i.url}" alt="${imgAlt(i, l.name)}" loading="lazy" referrerpolicy="no-referrer" data-ph-img></div>${illus ? illusNote() : ''}`;
+}
+// Alt text says when a picture is drawn, so screen readers get the label too.
+export const imgAlt = (i, fallback = '') => (imageType(i) === 'illustration' ? 'Illustration, not a photo: ' : '') + (i.caption || fallback);
+// Small muted caption line under an image (cards, map popups).
+export function illusNote() {
+  return html`<span class="ph-note"><span class="ph-type illus">Illustration, not a photo</span></span>`;
 }
 
 // "New" = first added to the archive in the last 7 days (addedAt). "Updated" = community

@@ -1,50 +1,89 @@
-// SUPABASE backend (stub, written against supabase/schema.sql; not yet run against a
-// live project). Turn it on in js/config.js: backend: 'supabase' + url + anonKey.
-// Row-level security in the schema is what actually protects data; this file only
-// implements the adapter contract (see adapter.js). Payments go through the Stripe
-// Edge Functions; the browser never writes unlocks or memberships.
+// SUPABASE backend: the live community store. Turn it on in js/config.js with
+// backend: 'supabase' + url + anonKey (the PUBLISHABLE key only; it is safe in the browser).
+// Row-level security in supabase/schema.sql is what protects data; this file only
+// implements the adapter contract (see adapter.js). The browser never writes unlocks or
+// memberships directly: real payments go through the Stripe Edge Functions, and until
+// Stripe is set up (app_settings.checkout_mode = 'mock') the server-side functions
+// preview_mock_unlock / preview_mock_membership record EXAMPLE purchases (no payment).
 import { fullFromRow, feed } from '../feed.js';
-const SDK = 'https://esm.sh/@supabase/supabase-js@2';
+const SDK = 'https://esm.sh/@supabase/supabase-js@2.118.0';
 const BUCKET = 'contributions';
+// Comment, board and submission rows reference profiles twice (author + moderator), so the
+// author embed names its foreign key.
+const A = {
+  comments: 'author:profiles!comments_user_id_fkey(handle)',
+  board_posts: 'author:profiles!board_posts_user_id_fkey(handle)',
+  submissions: 'author:profiles!submissions_author_id_fkey(handle)',
+};
 
 export class SupabaseBackend {
-  mode = 'supabase'; isPreview = false;
+  mode = 'supabase'; isPreview = false; mockCheckout = false;
   constructor(cfg) { this.cfg = cfg; }
   async init() {
     const { createClient } = await import(SDK);
-    this.sb = createClient(this.cfg.url, this.cfg.anonKey, { auth: { persistSession: true, detectSessionInUrl: true } });
+    this.sb = createClient(this.cfg.url, this.cfg.anonKey, { auth: { persistSession: true, detectSessionInUrl: true, storageKey: 'td-auth' } });
+    // Health check: one tiny public read. Throws if the project is unreachable, so the
+    // adapter can fall back to the in-browser preview store and say so.
+    const mode = await Promise.race([
+      this.sb.rpc('checkout_mode'),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('Supabase timed out')), 8000)),
+    ]);
+    if (mode.error) throw new Error(mode.error.message);
+    this.mockCheckout = mode.data === 'mock';
     const { data } = await this.sb.auth.getSession();
     this.uid = data.session?.user?.id || null;
-    this.sb.auth.onAuthStateChange((_e, s) => { this.uid = s?.user?.id || null; this._me = undefined; });
+    this.sb.auth.onAuthStateChange((_e, s) => { const id = s?.user?.id || null; if (id !== this.uid) { this.uid = id; this._me = undefined; } });
   }
   ok({ data, error }) { if (error) throw new Error(error.message); return data; }
   need() { if (!this.uid) throw new Error('Sign in first'); }
 
-  // ---- account
+  // ---- account (email + password; role is a permission, read via my_profile(), never shown)
   async getSession() {
     if (!this.uid) return null;
-    if (this._me === undefined) this._me = this.ok(await this.sb.from('profiles').select('id, handle, role').eq('id', this.uid).maybeSingle());
+    if (this._me === undefined) this._me = (this.ok(await this.sb.rpc('my_profile')) || [])[0] || null;
     return this._me;
   }
-  // Passwordless magic link. Same email on any device = same account = same unlocks.
-  async signIn({ email }) {
-    this.ok(await this.sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } }));
-    return { sent: true };
+  async signIn({ email, password, create = false }) {
+    email = String(email || '').trim(); password = String(password || '');
+    if (!email || !password) throw new Error('Enter your email and a password');
+    if (create) {
+      if (password.length < 8) throw new Error('Use at least 8 characters for your password');
+      const { data, error } = await this.sb.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname } });
+      if (error) throw new Error(error.message);
+      if (!data.session) return { sent: true };   // email confirmation required first
+      this.uid = data.session.user.id;
+    } else {
+      const { data, error } = await this.sb.auth.signInWithPassword({ email, password });
+      if (error) throw new Error(/confirm/i.test(error.message) ? 'Confirm your email first (check your inbox), then sign in.' : error.message);
+      this.uid = data.session.user.id;
+    }
+    this._me = undefined;
+    return this.getSession();
   }
   async signOut() { await this.sb.auth.signOut(); this.uid = null; this._me = null; }
   async setPreviewModerator() { throw new Error('Not available in live mode'); }
 
-  // ---- unlocks + Lifetime (RLS: caller reads only their own rows; only the webhook writes)
+  // ---- notifications opt-in (structure only; nothing is sent yet)
+  async getNotifyPref() {
+    if (!this.uid) return null;
+    return this.ok(await this.sb.from('notification_prefs').select('opted_in, tier1_only, created_at').eq('user_id', this.uid).maybeSingle());
+  }
+  async setNotifyPref(optedIn) {
+    this.need();
+    this.ok(await this.sb.from('notification_prefs').upsert({ user_id: this.uid, opted_in: !!optedIn, tier1_only: true }, { onConflict: 'user_id' }));
+    return { opted_in: !!optedIn, tier1_only: true };
+  }
+
+  // ---- unlocks + memberships (RLS: caller reads only their own rows)
   async listUnlocks() {
     if (!this.uid) return [];
-    return this.ok(await this.sb.from('unlocks').select('*').order('unlocked_at', { ascending: false }));
+    return this.ok(await this.sb.from('unlocks').select('*').eq('user_id', this.uid).order('unlocked_at', { ascending: false }));
   }
   async hasUnlock(listingId) {
     if (!this.uid) return false;
-    return !!this.ok(await this.sb.from('unlocks').select('id').eq('listing_id', listingId).maybeSingle());
+    return !!this.ok(await this.sb.from('unlocks').select('id').eq('user_id', this.uid).eq('listing_id', listingId).maybeSingle());
   }
-  // Effective membership: lifetime, or monthly whose current period hasn't ended
-  // (status active, or canceled = not renewing). Webhook keeps rows in sync with Stripe.
+  // Effective membership: lifetime, or monthly whose current period hasn't ended.
   async getMembership() {
     if (!this.uid) return null;
     const rows = this.ok(await this.sb.from('memberships').select('*').eq('user_id', this.uid));
@@ -52,10 +91,23 @@ export class SupabaseBackend {
     return rows.find((x) => x.plan === 'lifetime' && x.status === 'active')
       || rows.find((x) => x.plan === 'monthly' && ['active', 'canceled', 'past_due'].includes(x.status) && x.current_period_end > now) || null;
   }
-  startMembershipCheckout(plan, returnListingId) { return this._checkout({ product: plan, return_listing_id: returnListingId || null }); }
-  // Cancel/resume a monthly plan in Stripe's hosted billing portal (create-checkout {product:'portal'}).
-  cancelMembership() { return this._checkout({ product: 'portal' }); }
-  async previewLapse() { throw new Error('Not available in live mode'); }
+  async startMembershipCheckout(plan, returnListingId) {
+    if (this.mockCheckout) { this.need(); this.ok(await this.sb.rpc('preview_mock_membership', { p_plan: plan, p_action: 'start' })); return { active: true }; }
+    return this._checkout({ product: plan, return_listing_id: returnListingId || null });
+  }
+  async cancelMembership() {
+    if (this.mockCheckout) { this.need(); this.ok(await this.sb.rpc('preview_mock_membership', { p_plan: 'monthly', p_action: 'cancel' })); return; }
+    return this._checkout({ product: 'portal' });   // Stripe billing portal
+  }
+  async previewLapse() {
+    if (!this.mockCheckout) throw new Error('Not available in live mode');
+    this.need(); this.ok(await this.sb.rpc('preview_mock_membership', { p_plan: 'monthly', p_action: 'lapse' }));
+  }
+  // The price ($9 / $7 / $5) is resolved server-side from the caller's membership.
+  async startCheckout(listingId) {
+    if (this.mockCheckout) { this.need(); this.ok(await this.sb.rpc('preview_mock_unlock', { lid: listingId })); return { unlocked: true }; }
+    return this._checkout({ product: 'unlock', listing_id: listingId });
+  }
   async _checkout(body) {
     this.need();
     const { data, error } = await this.sb.functions.invoke('create-checkout', { body });
@@ -63,20 +115,18 @@ export class SupabaseBackend {
     if (data?.already) return { unlocked: true, active: true };
     return { redirect: data.url };
   }
-  // The function resolves $9 / $7 / $5 from public.memberships; the page sends only the listing.
-  startCheckout(listingId) { return this._checkout({ product: 'unlock', listing_id: listingId }); }
 
   async getFullFile(listingId) {
     if (!this.uid) return null;
     const f = this.ok(await this.sb.from('listing_full').select('*').eq('listing_id', listingId).maybeSingle());
     if (!f) return null;   // RLS returns nothing without an unlock (or moderator role)
-    const community = await this._withUrls(this.ok(await this.sb.from('submissions').select('*, author:profiles(handle)')
+    const community = await this._withUrls(this.ok(await this.sb.from('submissions').select(`*, ${A.submissions}`)
       .eq('listing_id', listingId).eq('status', 'approved').order('created_at', { ascending: false })));
     return { ...fullFromRow(f, feed.byId.get(listingId)), community };
   }
   async fileCounts(listingId) { return this.ok(await this.sb.rpc('file_counts', { lid: listingId })); }
   async samplePhotos(listingId) {
-    return this._withUrls(this.ok(await this.sb.from('submissions').select('*, author:profiles(handle)')
+    return this._withUrls(this.ok(await this.sb.from('submissions').select(`*, ${A.submissions}`)
       .eq('listing_id', listingId).eq('status', 'approved').eq('is_sample', true)));
   }
   async _withUrls(rows) {
@@ -92,10 +142,11 @@ export class SupabaseBackend {
     this.need();
     let storage_path = null;
     if (file) {
-      storage_path = `${this.uid}/${crypto.randomUUID()}-${file.name.replace(/[^\w.-]+/g, '_')}`;
+      storage_path = `${this.uid}/${crypto.randomUUID()}-${String(file.name || 'file').replace(/[^\w.-]+/g, '_')}`;
       this.ok(await this.sb.storage.from(BUCKET).upload(storage_path, file, { contentType: file.type }));
+      payload = { ...payload }; delete payload.data_url;
     }
-    return this.ok(await this.sb.from('submissions').insert({ kind, listing_id: listing_id || null, payload, rights_confirmed: !!rights_confirmed, storage_path }).select().single());
+    return this.ok(await this.sb.from('submissions').insert({ kind, listing_id: listing_id || null, author_id: this.uid, payload, rights_confirmed: !!rights_confirmed, storage_path }).select().single());
   }
   async listMySubmissions() {
     if (!this.uid) return [];
@@ -104,33 +155,46 @@ export class SupabaseBackend {
 
   // ---- SOCIAL (a): comments. RLS: approved, or your own, or moderator.
   async listComments(listingId) {
-    return this.ok(await this.sb.from('comments').select('*, author:profiles(handle)').eq('listing_id', listingId)
+    const rows = this.ok(await this.sb.from('comments').select(`*, ${A.comments}`).eq('listing_id', listingId)
       .in('status', ['approved', 'pending']).order('created_at'));
+    return rows.filter((c) => c.status === 'approved' || c.user_id === this.uid);
   }
   async createComment({ listing_id, body, parent_id = null }) {
     this.need();
-    return this.ok(await this.sb.from('comments').insert({ listing_id: listing_id || '', body, parent_id }).select().single());
+    return this.ok(await this.sb.from('comments').insert({ listing_id: listing_id || '', user_id: this.uid, body, parent_id }).select().single());
   }
   // ---- SOCIAL (b): the one general board
   async listBoard() {
-    const rows = this.ok(await this.sb.from('board_posts').select('*, author:profiles(handle)').in('status', ['approved', 'pending']).order('created_at'));
+    const rows = this.ok(await this.sb.from('board_posts').select(`*, ${A.board_posts}`).in('status', ['approved', 'pending']).order('created_at'))
+      .filter((b) => b.status === 'approved' || b.user_id === this.uid);
     return rows.filter((r) => !r.parent_id).reverse().map((p) => ({ ...p, replies: rows.filter((r) => r.parent_id === p.id) }));
   }
   async createBoardPost({ title = '', body, parent_id = null }) {
     this.need();
-    return this.ok(await this.sb.from('board_posts').insert({ title, body, parent_id }).select().single());
+    return this.ok(await this.sb.from('board_posts').insert({ title: parent_id ? '' : title, body, parent_id, user_id: this.uid }).select().single());
   }
 
   // ---- safety + moderation
+  // No .select() after insert: reporters can't read reports back (moderators only).
   async report({ target_type, target_id, reason, details }) {
     this.need();
-    return this.ok(await this.sb.from('reports').insert({ target_type, target_id, reason, details: details || '' }).select().single());
+    this.ok(await this.sb.from('reports').insert({ target_type, target_id: String(target_id), reason, details: String(details || '').slice(0, 1000), reporter_id: this.uid }));
+    return { ok: true };
   }
   async listQueue() {
-    const pend = (t) => this.sb.from(t).select('*, author:profiles(handle)').eq('status', 'pending').order('created_at');
+    const pend = (t) => this.sb.from(t).select(`*, ${A[t]}`).eq('status', 'pending').order('created_at');
     const [s, c, b, r] = await Promise.all([pend('submissions'), pend('comments'), pend('board_posts'),
       this.sb.from('reports').select('*').eq('status', 'open').order('created_at')]);
-    return { submissions: await this._withUrls(this.ok(s)), comments: this.ok(c), board: this.ok(b), reports: this.ok(r) };
+    const board = this.ok(b), parents = board.filter((x) => x.parent_id).map((x) => x.parent_id);
+    const pmap = new Map();
+    if (parents.length) for (const p of this.ok(await this.sb.from('board_posts').select('id, title').in('id', [...new Set(parents)]))) pmap.set(p.id, p);
+    const reports = this.ok(r);
+    for (const rep of reports) {
+      const t = { comment: 'comments', board_post: 'board_posts', submission: 'submissions' }[rep.target_type];
+      if (t) rep.target = (this.ok(await this.sb.from(t).select(`*, ${A[t]}`).eq('id', rep.target_id).maybeSingle())) || null;
+    }
+    return { submissions: await this._withUrls(this.ok(s)), comments: this.ok(c),
+      board: board.map((x) => ({ ...x, parent: x.parent_id ? pmap.get(x.parent_id) || null : null })), reports };
   }
   // Per-listing "Updated" signal: rpc returns listing_id, kinds, last_approved_at only (no content).
   async recentUpdates(days = 7) {
@@ -138,10 +202,12 @@ export class SupabaseBackend {
     if (error) { console.warn('recent_listing_updates unavailable', error.message); return []; }
     return data || [];
   }
+  // approved_at / moderated_by / moderated_at are set by the database trigger.
   async moderate(table, id, decision, note = '', opts = {}) {
     const patch = { status: decision, mod_note: note || null };
     if (table === 'submissions') patch.is_sample = decision === 'approved' && !!opts.is_sample;
-    this.ok(await this.sb.from(table).update(patch).eq('id', id));
+    const rows = this.ok(await this.sb.from(table).update(patch).eq('id', id).select('id'));
+    if (!rows?.length) throw new Error('Not allowed, or that item is gone');
   }
   async resolveReport(id, action) {
     const r = this.ok(await this.sb.from('reports').select('*').eq('id', id).single());

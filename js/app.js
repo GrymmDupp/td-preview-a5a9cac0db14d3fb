@@ -1,7 +1,6 @@
 // Twisted Deeds public site: shell, router and global event handling.
 import { CONFIG } from './config.js';
 import { loadFeed, feed, updatesMap } from './feed.js';
-import { setNotifyPref } from './notify.js';
 import { getBackend } from './backend/adapter.js';
 import { $, toast, esc } from './util.js';
 import { home } from './views/home.js';
@@ -31,6 +30,7 @@ async function refreshCtx() {
   ctx.membership = await ctx.be.getMembership();
   ctx.unlocks = (await ctx.be.listUnlocks()).map((u) => u.listing_id);
   ctx.comments = await ctx.be.commentCounts();
+  ctx.notifyPref = ctx.me && ctx.be.getNotifyPref ? await ctx.be.getNotifyPref().catch(() => null) : null;
   // listing_id -> { at, kinds } for approved submissions in the last CONFIG.newDays days (facts only)
   ctx.updates = updatesMap(ctx.be.recentUpdates ? await ctx.be.recentUpdates(CONFIG.newDays).catch(() => []) : []);
 }
@@ -84,16 +84,19 @@ function signInModal() {
   const d = modal(`<form method="dialog" class="form" data-signin-form><h2>${local ? 'Sign in (preview)' : 'Sign in'}</h2>
     ${local ? `<p class="notice">Preview mode: this creates a <b>test account in this browser only</b>. No email, nothing is sent anywhere.</p>
       <label>Handle<input name="handle" required maxlength="24" pattern="[A-Za-z0-9 _\\-]+" placeholder="e.g. grymm"></label>`
-    : `<p>We’ll email you a one-time sign-in link. No password. Your email is never shown or shared. Sign in with the same email on any device to see your unlocked files.</p><label>Email<input name="email" type="email" required></label>`}
+    : `<p>Sign in with your email and password, or create an account. Your email is never shown or shared. Sign in with the same email on any device to see your unlocked files.</p>
+      <label>Email<input name="email" type="email" required autocomplete="email"></label>
+      <label>Password<input name="password" type="password" required minlength="8" autocomplete="current-password"></label>
+      <label class="check"><input type="checkbox" name="create" value="1"> <span>I’m new: create my account (we’ll email you a link to confirm it)</span></label>`}
     <label class="check"><input type="checkbox" required> <span>I’ve read the <a href="#/rules" target="_blank">community rules</a></span></label>
-    <div class="row"><button class="btn ghost" value="cancel" formnovalidate>Cancel</button><button class="btn" value="ok">${local ? 'Sign in' : 'Email me a link'}</button></div></form>`);
+    <div class="row"><button class="btn ghost" value="cancel" formnovalidate>Cancel</button><button class="btn" value="ok">Sign in</button></div></form>`);
   d.querySelector('form').addEventListener('submit', async (e) => {
     if (e.submitter?.value === 'cancel') return;
     e.preventDefault();
-    const f = Object.fromEntries(new FormData(e.target));
+    const f = Object.fromEntries(new FormData(e.target)); f.create = !!f.create;
     try {
       const r = await ctx.be.signIn(f); d.close();
-      if (r?.sent) toast('Check your email for the sign-in link.'); else { toast(`Signed in as @${r.handle}.`); await refreshCtx(); route(); }
+      if (r?.sent) toast('Check your email to confirm your account, then sign in.'); else { toast(`Signed in as @${r.handle}.`); await refreshCtx(); route(); }
     } catch (err) { toast(err.message); }
   });
 }
@@ -178,8 +181,12 @@ document.addEventListener('change', (e) => {
   const f = e.target.closest('form[data-filters]');
   if (f) { const p = new URLSearchParams([...new FormData(f)].filter(([, v]) => v)); location.hash = '#/browse?' + p; }
   if (e.target.matches('[data-goto-state]') && e.target.value) location.hash = '#/browse?state=' + e.target.value;
-  // "Get notified about new Twisted Deeds": coming soon, saved in this browser only, sends nothing.
-  if (e.target.matches('[data-notify-pref]') && ctx.me) { setNotifyPref(ctx.me.id || ctx.me.handle, e.target.checked); toast(e.target.checked ? 'Saved. Nothing is sent yet: notifications are coming soon.' : 'Saved. You won’t be notified.'); }
+  // "Get notified about new Twisted Deeds": coming soon, saved to your account (live) or this browser (preview); sends nothing.
+  if (e.target.matches('[data-notify-pref]') && ctx.me) {
+    const on = e.target.checked;
+    ctx.be.setNotifyPref(on).then((p) => { ctx.notifyPref = p; toast(on ? 'Saved. Nothing is sent yet: notifications are coming soon.' : 'Saved. You won’t be notified.'); })
+      .catch((err) => { e.target.checked = !on; toast(err.message); });
+  }
 });
 let qTimer;
 document.addEventListener('input', (e) => {
@@ -192,7 +199,12 @@ document.addEventListener('input', (e) => {
   $('#disclaimer').textContent = DISCLAIMER;
   try { await loadFeed(); } catch (e) { $('#main').innerHTML = `<div class="empty-state"><h1>Listings unavailable</h1><p>${esc(e.message)}</p></div>`; return; }
   ctx.be = await getBackend();
-  if (ctx.be.isPreview) $('#preview-banner').hidden = false;
+  // Banner: preview store (or Supabase unreachable) = test data in this browser; live with
+  // mock checkout = purchases are examples, no real payment.
+  const banner = $('#preview-banner');
+  if (ctx.be.fallback) { banner.querySelector('.short').innerHTML = 'Community server unreachable: <b>using this browser only</b>.'; banner.querySelector('.long').innerHTML = 'The community server couldn’t be reached, so comments, posts, submissions, accounts and unlocks here are <b>test data stored only in this browser</b> and won’t reach the live site. Checkouts are examples: <b>no real payment</b>. Reload to try again.'; banner.hidden = false; }
+  else if (ctx.be.isPreview) banner.hidden = false;
+  else if (ctx.be.mockCheckout) { banner.querySelector('.short').innerHTML = 'Checkouts are examples: <b>no real payment</b>.'; banner.querySelector('.long').innerHTML = 'Private preview. Accounts, comments and submissions are real and moderated. Checkouts are examples: <b>no real payment</b> yet; example unlocks and memberships are saved to your account.'; banner.querySelector('[data-reset-preview]')?.remove(); banner.hidden = false; }
   $('#feed-meta').textContent = `Feed v${feed.meta.version} · ${feed.meta.count} listings · ${feed.source === 'live' ? 'live' : 'offline snapshot'}`;
   await refreshCtx();
   window.addEventListener('hashchange', route);

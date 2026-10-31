@@ -13,10 +13,10 @@ export const CONFIG = {
   fullLocalUrl: 'data/listings_full.local.json',
 
   // Community backend: 'local' (this browser only, preview data) or 'supabase'.
-  backend: 'local',
+  backend: 'supabase',
   supabase: {
-    url: '',      // e.g. https://abcdxyz.supabase.co
-    anonKey: '',  // the public "anon" key (safe in the browser; RLS protects the data)
+    url: 'https://lsifrtmxtmqbdnwxwpfp.supabase.co',
+    anonKey: 'sb_publishable_d2ad3BrsdSrKnRwa6r0gEw_Dj0Kv0u9',  // PUBLISHABLE key (safe in the browser; RLS protects the data)
     mediaBucket: 'contributions',
   },
 

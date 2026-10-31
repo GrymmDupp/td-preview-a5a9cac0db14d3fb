@@ -1,5 +1,5 @@
 import { html, fmtDate, ago, plural, safeUrl, host } from '../util.js';
-import { newTag, updatedTag, gradeBadge, layerChip, statusPill, plate, photoCredit, imageType, authorName, pendingTag, reportBtn, sourceLinks, listingCard, kindLabel, unlockPrice, membersLine, priceTier, TIER_LABEL } from '../components.js';
+import { newTag, updatedTag, gradeBadge, layerChip, statusPill, plate, photoCredit, imageType, imgAlt, authorName, pendingTag, reportBtn, sourceLinks, listingCard, kindLabel, unlockPrice, membersLine, priceTier, TIER_LABEL } from '../components.js';
 import { STATES, ratingLabel } from '../taxonomy.js';
 import { displayableImages, updateLine } from '../feed.js';
 
@@ -100,10 +100,10 @@ export async function listing(ctx, q, id) {
   </header>
 
   <section class="gallery">
-    <figure class="g-main">${imgs[0] ? html`<div class="ph big" data-ph>${plate(l, 'big')}<img src="${imgs[0].src || imgs[0].url}" alt="${imgs[0].caption || l.name}" referrerpolicy="no-referrer" data-ph-img>${imageType(imgs[0]) === 'illustration' ? html`<span class="ph-flag">Illustration, not a photo</span>` : ''}</div>
+    <figure class="g-main">${imgs[0] ? html`<div class="ph big" data-ph>${plate(l, 'big')}<img src="${imgs[0].src || imgs[0].url}" alt="${imgAlt(imgs[0], l.name)}" referrerpolicy="no-referrer" data-ph-img></div>
       <figcaption class="ph-credit">${photoCredit(imgs[0])}</figcaption>` : plate(l, 'big')}</figure>
     <div class="g-strip">
-      ${imgs.slice(1).map((i) => html`<figure class="g-item" data-ph-item><div class="ph" data-ph><img src="${i.src || i.url}" alt="${i.caption || l.name}" loading="lazy" referrerpolicy="no-referrer" data-ph-img>${imageType(i) === 'illustration' ? html`<span class="ph-flag">Illustration, not a photo</span>` : ''}</div><figcaption>${i.caption ? html`<span class="cap">${i.caption}</span>` : ''}<span class="ph-credit">${photoCredit(i)}</span></figcaption></figure>`)}
+      ${imgs.slice(1).map((i) => html`<figure class="g-item" data-ph-item><div class="ph" data-ph><img src="${i.src || i.url}" alt="${imgAlt(i, l.name)}" loading="lazy" referrerpolicy="no-referrer" data-ph-img></div><figcaption>${i.caption ? html`<span class="cap">${i.caption}</span>` : ''}<span class="ph-credit">${photoCredit(i)}</span></figcaption></figure>`)}
       ${samples.map((m) => html`<figure class="g-item community">${m.payload?.data_url ? html`<img src="${m.payload.data_url}" alt="${m.payload.title}" loading="lazy">` : html`<div class="doc-ph">photo<small>no image preview</small></div>`}<figcaption>${m.payload?.title} · ${m.payload?.credit || '@' + m.author?.handle}</figcaption></figure>`)}
       <div class="g-ref"><span class="era">Photos</span><strong>${imgs.length ? plural(imgs.length, 'photo') : samples.length ? 'Community sample photo' : 'No photo yet'}</strong><span class="src">${imgs.some((i) => ['listing', 'alt-listing'].includes(imageType(i))) ? 'Listing photos load from the source page and stay its owner’s; each links back.' : 'No usable listing photo; the plate stands in.'} See the <a href="${safeUrl(l.url) || '#'}" target="_blank" rel="noopener nofollow">original listing</a>.</span></div>
     </div>
