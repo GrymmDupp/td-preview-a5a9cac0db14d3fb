@@ -1,0 +1,26 @@
+{
+  "id": "./",
+  "name": "Twisted Deeds",
+  "short_name": "Twisted Deeds",
+  "description": "Houses for sale with a past. Read the record, add what you know, follow the ones that haunt you.",
+  "start_url": "./#/",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b0909",
+  "theme_color": "#0b0909",
+  "lang": "en-US",
+  "dir": "ltr",
+  "categories": ["lifestyle", "entertainment", "books"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Map", "url": "./#/map", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "Browse", "url": "./#/browse", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "Account", "url": "./#/account", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] }
+  ]
+}

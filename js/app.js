@@ -16,6 +16,7 @@ import { moderation } from './views/moderation.js';
 import { rules, about, DISCLAIMER } from './views/pages.js';
 import { packs } from './views/packs.js';
 import { archive } from './views/archive.js';
+import { initPwa } from './install.js';
 
 const ctx = { feed, be: null, me: null, membership: null, unlocks: [], comments: {}, config: CONFIG };
 
@@ -245,6 +246,7 @@ document.addEventListener('input', (e) => {
 });
 
 // ---------- boot
+initPwa();
 (async function boot() {
   $('#disclaimer').textContent = DISCLAIMER;
   try { await loadFeed(); } catch (e) { $('#main').innerHTML = `<div class="empty-state"><h1>Listings unavailable</h1><p>${esc(e.message)}</p></div>`; return; }

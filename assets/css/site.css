@@ -498,3 +498,36 @@ body.is-map .site-foot{display:none}
   .sponsors--inline .sponsor .sp-line{font-size:.8rem;line-height:1.4}
   .sponsors--inline .sponsor .orn{display:none}
 }
+
+/* installable app: header button, dismissible card, instruction sheets, update notice */
+.install-head{display:inline-flex;align-items:center;gap:5px;margin-left:auto;background:transparent;border:1px solid #5b4a1c;color:var(--gold);border-radius:var(--r);padding:5px 10px;font:600 .74rem/1 var(--display);letter-spacing:.08em;text-transform:uppercase;cursor:pointer;white-space:nowrap}
+.install-head:hover{border-color:var(--gold);color:#f0d68e}
+.install-head span{font-size:.95rem;line-height:1}
+.install-head:not([hidden])+.who{margin-left:0}
+.install-head em{font-style:normal}
+@media (max-width:639px){.install-head{padding:6px 9px}.install-head em{display:none}.install-head span{font-size:1.05rem}}
+body.pwa-standalone [data-install-entry],body.pwa-installed [data-install-entry]{display:none!important}
+.install-card{position:fixed;z-index:40;left:10px;right:10px;bottom:calc(var(--tabbar) + env(safe-area-inset-bottom) + 10px);display:grid;grid-template-columns:44px minmax(0,1fr);gap:10px 12px;align-items:center;
+  background:linear-gradient(160deg,#1f1612,var(--panel) 60%);border:1px solid #4a3a17;border-top:2px solid var(--gold);border-radius:10px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.6);
+  opacity:0;transform:translateY(12px);transition:opacity .3s,transform .3s}
+.install-card.show{opacity:1;transform:none}
+.install-card img{border-radius:10px}
+.install-card .ic-text b{display:block;font-family:var(--display);color:var(--gold);letter-spacing:.04em;font-size:.95rem}
+.install-card .ic-text span{display:block;font-size:.82rem;color:var(--parch);line-height:1.4}
+.install-card .ic-btns{grid-column:1/-1;display:flex;align-items:center;justify-content:flex-end;gap:14px}
+.install-card .link,.update-bar .link{background:none;border:0;color:var(--muted);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+@media (min-width:640px){.install-card{left:auto;right:16px;width:380px}}
+@media (min-width:960px){.install-card{bottom:20px}}
+.install-sheet h2{margin:0 0 2px}
+.install-head-row{display:flex;gap:12px;align-items:center;margin-bottom:12px}.install-head-row img{border-radius:12px;flex:0 0 auto}.install-head-row p{margin:0}
+.install-steps{margin:0 0 12px;padding-left:22px}.install-steps li{margin:0 0 8px}
+.ios-glyph{vertical-align:-3px;color:#4ea1ff;margin:0 1px}
+.install-other{margin:8px 0 0;padding-left:18px}.install-sheet details{margin:0 0 12px;color:var(--parch)}.install-sheet summary{cursor:pointer;color:var(--muted)}
+.install-inline{margin-top:14px}
+.update-bar{position:fixed;z-index:45;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top) + 10px);display:flex;gap:12px;align-items:center;background:var(--panel2);border:1px solid var(--gold);color:var(--bone);border-radius:8px;padding:8px 12px;font-size:.85rem;box-shadow:0 8px 24px rgba(0,0,0,.6);max-width:calc(100vw - 20px)}
+/* standalone (installed) app: respect the notch / status bar under black-translucent */
+@media (display-mode:standalone){
+  body{padding-top:env(safe-area-inset-top)}
+  body::before{content:"";position:fixed;left:0;right:0;top:0;height:env(safe-area-inset-top);background:var(--bg);z-index:60}
+  .site-head{top:env(safe-area-inset-top)}
+}

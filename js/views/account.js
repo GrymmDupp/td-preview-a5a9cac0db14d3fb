@@ -27,7 +27,8 @@ const STATUS = { pending: ['Awaiting review', 'pending'], approved: ['Approved',
 // Plain account page: the user's own submissions with moderation status, and their
 // unlocked files. Nothing here is public; there are no profiles.
 export async function account(ctx) {
-  if (!ctx.me) return html`<div class="empty-state"><h1>Account</h1><p>Sign in to see your unlocked files and your submissions.</p><button class="btn" data-signin>Sign in</button></div>`;
+  if (!ctx.me) return html`<div class="empty-state"><h1>Account</h1><p>Sign in to see your unlocked files and your submissions.</p><button class="btn" data-signin>Sign in</button>
+    <p class="small muted install-inline" data-install-entry>Want it on your home screen? <a href="#" data-install-app>Install the app</a></p></div>`;
   const [unlocks, subs] = await Promise.all([ctx.be.listUnlocks(), ctx.be.listMySubmissions()]);
   const L = (id) => ctx.feed.byId.get(id);
   return html`<div class="page-head"><h1>Account</h1><p class="muted">Signed in as <b>@${ctx.me.handle}</b>. Only you see this page.</p>
@@ -49,6 +50,7 @@ export async function account(ctx) {
       : html`<p class="muted">You haven’t submitted anything yet. <a href="#/contribute">Submit info, a photo, lore or a link</a>.</p>`}</section>
   </div><aside class="sidebar">
     <section class="box"><h4>Your account</h4><p class="small">Handle: <b>@${ctx.me.handle}</b></p><button class="btn sm ghost" data-signout>Sign out</button></section>
+    <section class="box install-box" data-install-entry><h4>The app</h4><p class="small">Install Twisted Deeds on your phone or computer. It opens full screen like an app, and you stay signed in.</p><button class="btn sm ghost" data-install-app>Install the app</button></section>
     <section class="box notify-box"><h4>Notifications <span class="soon">Coming soon</span></h4>
       <label class="check"><input type="checkbox" data-notify-pref ${ctx.notifyPref?.opted_in ? 'checked' : ''}> <span>Get notified about new Twisted Deeds</span></label>
       <p class="small muted">At most one short email a day, only when a new Twisted Deed is added, with a one-click unsubscribe. Nothing is sent yet; ${ctx.be.mode === 'local' ? 'this choice is saved in this browser only' : 'this choice is saved to your account'}.</p></section>
