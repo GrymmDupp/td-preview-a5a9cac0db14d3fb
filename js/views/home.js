@@ -28,7 +28,7 @@ export function sidebar(ctx) {
   <section class="box"><h4>Community</h4><p class="small">Comment on any listing, or talk research on the one general board.</p><a class="small" href="#/board">Community board →</a></section>
   <section class="box cta"><h4>Know a listing with a past?</h4><p>Found a house for sale with a documented dark history or a strong story? Send the link.</p><a class="btn sm" href="#/suggest">Suggest a property</a></section>
   <section class="box rules-mini"><h4>House rules</h4><ul><li>Public records and first-hand stories only</li><li>No doxxing of living private people</li><li>Never trespass or bother occupants</li></ul><a class="small" href="#/rules">Community rules →</a></section>
-  ${sponsorSlots()}
+  ${sponsorSlots('side')}
 </aside>`;
 }
 
@@ -67,7 +67,7 @@ export async function home(ctx, q) {
     <p>Every door here opens on a real house or building for sale today, its dark history researched and sourced from the public record.</p>
     <p>Read any file's preview free, then unlock the full file when one keeps hold of you.</p></div>
     <div class="hero-stats"><span><b>${actT1}</b> ${actT1 === 1 ? 'Twisted Deed' : 'Twisted Deeds'}</span><span><b>${actT2}</b> ${actT2 === 1 ? 'Strong Story' : 'Strong Stories'} on the market now</span><span>Full files <b>${standardPrice()}</b>${isTrial() ? ' during the trial' : ''}</span></div></div>
-  </section>${newThisWeekBlock(ctx)}${packsTeaser()}` : ''}
+  </section>${newThisWeekBlock(ctx)}${sponsorSlots('inline')}${packsTeaser()}` : ''}
   <div class="with-side"><div class="feed">
     <div class="feed-head"><h2>${page === 1 ? 'Latest listings' : `Listings · page ${page}`}</h2><span class="muted">Most twisted first, then strong stories</span></div>
     ${slice.map((l) => listingCard(l, ctx))}
@@ -79,11 +79,13 @@ export async function home(ctx, q) {
 }
 
 // Ad slots from CONFIG.sponsors (text only, no images). They grow to fill the sidebar's remaining
-// height on desktop, so the column ends level with the listings; on mobile they simply stack.
-function sponsorSlots() {
+// height on desktop, so the column ends level with the listings. The home page renders the slots in two
+// spots, the sidebar ('side', desktop) and right after New this week ('inline', one-column layouts < 960px);
+// CSS shows exactly one (display:none also removes the other from the accessibility tree).
+function sponsorSlots(where = 'side') {
   const list = (CONFIG.sponsors || []).filter((x) => x && x.name);
   if (!list.length) return '';
-  return html`<div class="sponsors" aria-label="Sponsors">${list.map((x) => { const u = x.url ? safeUrl(x.url) : '';
+  return html`<div class="sponsors sponsors--${where}" aria-label="Sponsors">${list.map((x) => { const u = x.url ? safeUrl(x.url) : '';
     return html`<section class="box sponsor">${x.sample ? html`<span class="ad-tag">Sample ad</span>` : html`<span class="ad-tag">Sponsor</span>`}
       <div class="sponsor-in"><span class="orn" aria-hidden="true">✦</span>
       <h4>${u ? html`<a href="${u}" rel="sponsored noopener" target="_blank">${x.name}</a>` : x.name}</h4>

@@ -485,3 +485,16 @@ body.is-map .site-foot{display:none}
 .hero .hero-intro p{margin:0 0 .45em;line-height:1.5}
 .hero .hero-intro p{font-size:1.15rem}
 .hero .hero-intro p:first-child{font-style:italic;color:var(--bone);font-size:1.25rem}
+/* Sample ad slots: sidebar copy on desktop (>= 960px, unchanged), compact inline copy after New this week
+   below 960px. Only one copy is ever displayed, so screen readers meet it once. */
+.sponsors--inline{display:none}
+@media (max-width:959.98px){
+  .sponsors--side{display:none}
+  .sponsors--inline{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:10px;margin:4px 0 18px;align-items:start}
+  .sponsors--inline .sponsor{min-height:0;flex:none;padding:32px 12px 14px}
+  .sponsors--inline .sponsor-in{gap:5px}
+  .sponsors--inline .sponsor h4{font-size:.98rem}
+  .sponsors--inline .sponsor .sp-place{font-size:.95rem}
+  .sponsors--inline .sponsor .sp-line{font-size:.8rem;line-height:1.4}
+  .sponsors--inline .sponsor .orn{display:none}
+}
