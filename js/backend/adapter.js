@@ -3,8 +3,8 @@
 //
 // Access model: every listing has a FREE PREVIEW (from the public feed) and a FULL
 // FILE that an account unlocks once, permanently, on every device it signs in on.
-// Price: $9 per file; $7 while a Monthly membership ($7/mo) is active; $5 with Lifetime
-// ($49 one time). Memberships only change the price of FUTURE unlocks; unlocked files
+// Price: TRIAL = one flat trial price for everyone, memberships "Coming soon" (app_settings).
+// Planned model (js/config.js): standard price per file, lower with Monthly or Lifetime. Memberships only change the price of FUTURE unlocks; unlocked files
 // stay unlocked forever. The price is resolved server-side from the caller's active
 // membership, never sent by the page. The only badge ("Lifetime") is on the member's own
 // account page.
@@ -31,7 +31,7 @@
 //   getMembership(): Promise<Membership|null>      caller's EFFECTIVE membership (lifetime, or monthly before period end)
 //   startMembershipCheckout(plan: 'monthly'|'lifetime', returnListingId?): Promise<{redirect?, active?}>
 //   cancelMembership(): Promise<void|{redirect}>    monthly: stop renewing (live: Stripe billing portal)
-//   startCheckout(listingId): Promise<{redirect?:string, unlocked?:boolean}>   $9 / $7 / $5 by membership
+//   startCheckout(listingId): Promise<{redirect?:string, unlocked?:boolean}>   trial price, or by membership (planned)
 //        local: records a MOCK unlock (no payment); supabase: Stripe Checkout via Edge Function,
 //        or a server-recorded example unlock (rpc preview_mock_unlock) while mockCheckout
 //   getFullFile(listingId): Promise<FullFile|null>    null unless unlocked (or moderator)

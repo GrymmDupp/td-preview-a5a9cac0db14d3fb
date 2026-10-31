@@ -431,3 +431,11 @@ body.is-map .site-foot{display:none}
 .card.compact .ph-note,.sidebar .card .ph-note{padding:2px 6px;font-size:10.5px}
 .card-media{text-decoration:none}
 .mc-photo.ph-failed{display:none}
+/* Trial period: quiet "Trial price" note and "Coming soon" chips for memberships (no purchase buttons). */
+.soon{font:600 .62rem/1 var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--dim);border:1px solid var(--line2);border-radius:3px;padding:3px 5px;margin-left:6px;vertical-align:middle;white-space:nowrap}
+.trial-note{font-size:.72rem;color:var(--muted);margin-left:8px;vertical-align:middle}
+.soon-btn[disabled]{opacity:.5;cursor:not-allowed;pointer-events:none}
+.soon-plans{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));margin:12px 0}
+.soon-plan h4{margin-top:0}
+.file-state.unlock-link{text-decoration:none}
+.unlock-cta{display:block;width:100%;text-align:center;margin:12px 0 4px}

@@ -9,7 +9,7 @@ import { getNotifyPref, setNotifyPref } from '../notify.js';
 import { uid, nowIso } from '../util.js';
 import { feed } from '../feed.js';
 import { CONFIG } from '../config.js';
-import { priceTier, tierAmount } from '../components.js';
+import { priceTier, tierAmount, viewerTier } from '../components.js';
 
 const KEY = 'td-community-preview-v3';
 // Older keys: v1 = first prototype (votes, badges); v2 = seeded EXAMPLE accounts/submissions/comments/board.
@@ -65,8 +65,9 @@ export class LocalBackend {
     const m = this.requireMe();
     if (!feed.byId.has(listingId)) throw new Error('Unknown listing');
     if (!(await this.hasUnlock(listingId))) {
-      // Price decided here (server-side in live mode), never by the page: $9 / $7 Monthly / $5 Lifetime.
-      const tier = priceTier(await this.getMembership()), amount = tierAmount(tier);
+      // Price decided here (server-side in live mode), never by the page: trial price while the
+      // trial runs, else the planned standard / Monthly / Lifetime price.
+      const tier = viewerTier(await this.getMembership()), amount = tierAmount(tier);
       this.db.unlocks.push({ id: uid('unl'), user_id: m.id, listing_id: listingId, unlocked_at: nowIso(),
         payment_ref: 'mock_' + uid('pay'), price_tier: tier, amount_paid: amount,
         amount_cents: Math.round(amount * 100), currency: CONFIG.pricing.currency, mock: true });
@@ -86,6 +87,7 @@ export class LocalBackend {
   async startMembershipCheckout(plan) {
     const m = this.requireMe();
     if (!['monthly', 'lifetime'].includes(plan)) throw new Error('Unknown plan');
+    if (!CONFIG.pricing.membershipsEnabled) throw new Error('Memberships are coming soon.');
     const cur = await this.getMembership();
     if (cur?.plan === 'lifetime' || (cur?.plan === plan && cur.status === 'active')) return { active: true };
     if (plan === 'lifetime') for (const x of this.myMemberships()) if (x.plan === 'monthly' && x.status !== 'ended') { x.status = 'ended'; x.current_period_end = nowIso(); }
@@ -96,7 +98,7 @@ export class LocalBackend {
       amount: plan === 'monthly' ? CONFIG.pricing.monthlyPrice : CONFIG.pricing.lifetimePrice, currency: CONFIG.pricing.currency, mock: true });
     this.save(); return { active: true };
   }
-  // Cancel = stop renewing. Price stays $7 until the period ends; unlocks are kept forever.
+  // Cancel = stop renewing. Member price stays until the period ends; unlocks are kept forever.
   async cancelMembership() {
     const cur = await this.getMembership(); if (!cur || cur.plan !== 'monthly') throw new Error('No monthly membership to cancel');
     cur.status = 'canceled'; this.save();

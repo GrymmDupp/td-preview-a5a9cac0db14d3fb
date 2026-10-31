@@ -1,14 +1,17 @@
 import { html, fmtDate } from '../util.js';
-import { standardPrice, monthlyUnlockPrice, lifetimeUnlockPrice, monthlyPrice, lifetimePrice, unlockPrice } from '../components.js';
+import { standardPrice, monthlyUnlockPrice, lifetimeUnlockPrice, monthlyPrice, lifetimePrice, unlockPrice, membershipsOn, soonChip, soonButton, trialNote } from '../components.js';
 
-// Membership checkout: Monthly ($7/mo, unlocks $7 while active) or Lifetime ($49 once,
-// unlocks $5 forever). Memberships ONLY change the unlock price. Files already unlocked
+// Membership checkout (planned model, prices in js/config.js): Monthly (per month, lower unlock
+// price while active) or Lifetime (one time, lowest unlock price forever). Memberships ONLY change the unlock price. Files already unlocked
 // stay unlocked whatever happens to the membership.
 // Local preview: MOCK (no payment). Live: Stripe Checkout via create-checkout.
+// TRIAL: while memberships are off (app_settings memberships_enabled = 'false') this page only
+// describes them as "Coming soon": no prices as offers and no purchase buttons.
 export async function membership(ctx, q) {
   const plan = q.get('plan') === 'monthly' ? 'monthly' : 'lifetime';
   const from = q.get('from'), l = from && ctx.feed.byId.get(from);
   const back = l ? html`<a href="#/l/${l.id}">← Back to ${l.name}</a>` : html`<a href="#/account">← Account</a>`;
+  if (!membershipsOn()) return comingSoon(ctx, back, l);
   const cur = ctx.membership;
   if (cur?.plan === 'lifetime' || (cur?.plan === plan && cur.status === 'active'))
     return html`<nav class="crumbs">${back}</nav><div class="empty-state"><h1>Membership</h1><p>You already have this plan. Unlocks are ${unlockPrice(ctx)}.</p><a class="btn" href="#/account">Account</a></div>`;
@@ -35,4 +38,15 @@ export async function membership(ctx, q) {
         : html`<button class="btn big" data-membership-checkout="${plan}" data-from="${from || ''}">Continue to secure checkout</button>`}`}
       <a class="btn ghost" href="${l ? '#/l/' + l.id : '#/account'}">Cancel</a></section>
   </div>`;
+}
+
+function comingSoon(ctx, back, l) {
+  return html`<nav class="crumbs">${back}</nav>
+  <div class="page-head"><h1>Memberships ${soonChip()}</h1><p class="muted">Monthly and Lifetime memberships aren’t available yet. Nothing to buy here for now.</p></div>
+  <div class="soon-plans">
+    <section class="box soon-plan"><h4>Monthly membership ${soonChip()}</h4><p class="small">Will lower the price of file unlocks while it’s active. Files you unlock stay unlocked forever.</p>${soonButton('Monthly')}</section>
+    <section class="box soon-plan"><h4>Lifetime membership ${soonChip()}</h4><p class="small">Will lower the price of every file unlock, for good. One time, no renewals.</p>${soonButton('Lifetime')}</section>
+  </div>
+  <p>Right now every full file is <b>${standardPrice()}</b> one time${trialNote()}, for everyone. ${l ? html`<a class="btn sm" href="#/unlock/${encodeURIComponent(l.id)}">Unlock ${l.name} · ${unlockPrice(ctx)}</a>` : html`<a href="#/browse">Browse the archive</a>`}</p>
+  <p class="small muted">Free previews, submissions, comments and the board are the same for everyone.</p>`;
 }

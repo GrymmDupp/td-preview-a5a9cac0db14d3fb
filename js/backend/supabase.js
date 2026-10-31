@@ -6,6 +6,7 @@
 // Stripe is set up (app_settings.checkout_mode = 'mock') the server-side functions
 // preview_mock_unlock / preview_mock_membership record EXAMPLE purchases (no payment).
 import { fullFromRow, feed } from '../feed.js';
+import { CONFIG } from '../config.js';
 const SDK = 'https://esm.sh/@supabase/supabase-js@2.118.0';
 const BUCKET = 'contributions';
 // Comment, board and submission rows reference profiles twice (author + moderator), so the
@@ -30,6 +31,14 @@ export class SupabaseBackend {
     ]);
     if (mode.error) throw new Error(mode.error.message);
     this.mockCheckout = mode.data === 'mock';
+    // Trial switches from app_settings (pricing_mode / trial_unlock_price / memberships_enabled).
+    // Display only: the server decides the recorded price and refuses memberships while off.
+    const ps = await this.sb.rpc('pricing_settings');
+    if (!ps.error && ps.data) {
+      const P = CONFIG.pricing;
+      P.trial = { active: !!ps.data.trial, unlockPrice: Number(ps.data.trial_unlock_price) || P.trial.unlockPrice };
+      P.membershipsEnabled = ps.data.memberships_enabled !== false;
+    } else console.warn('pricing_settings unavailable; using js/config.js defaults', ps.error?.message);
     const { data } = await this.sb.auth.getSession();
     this.uid = data.session?.user?.id || null;
     this.sb.auth.onAuthStateChange((_e, s) => { const id = s?.user?.id || null; if (id !== this.uid) { this.uid = id; this._me = undefined; } });
@@ -92,6 +101,7 @@ export class SupabaseBackend {
       || rows.find((x) => x.plan === 'monthly' && ['active', 'canceled', 'past_due'].includes(x.status) && x.current_period_end > now) || null;
   }
   async startMembershipCheckout(plan, returnListingId) {
+    if (!CONFIG.pricing.membershipsEnabled) throw new Error('Memberships are coming soon.');   // the server refuses too
     if (this.mockCheckout) { this.need(); this.ok(await this.sb.rpc('preview_mock_membership', { p_plan: plan, p_action: 'start' })); return { active: true }; }
     return this._checkout({ product: plan, return_listing_id: returnListingId || null });
   }
@@ -103,7 +113,7 @@ export class SupabaseBackend {
     if (!this.mockCheckout) throw new Error('Not available in live mode');
     this.need(); this.ok(await this.sb.rpc('preview_mock_membership', { p_plan: 'monthly', p_action: 'lapse' }));
   }
-  // The price ($9 / $7 / $5) is resolved server-side from the caller's membership.
+  // The price is resolved server-side (trial: app_settings trial_unlock_price; planned: by membership).
   async startCheckout(listingId) {
     if (this.mockCheckout) { this.need(); this.ok(await this.sb.rpc('preview_mock_unlock', { lid: listingId })); return { unlocked: true }; }
     return this._checkout({ product: 'unlock', listing_id: listingId });

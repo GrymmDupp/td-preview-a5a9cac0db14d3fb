@@ -1,5 +1,5 @@
 import { html, plural, ago, fmtDate } from '../util.js';
-import { listingCard, gradeBadge, unlockPrice, standardPrice, monthlyUnlockPrice, lifetimeUnlockPrice, monthlyPrice, lifetimePrice } from '../components.js';
+import { listingCard, gradeBadge, unlockPrice, standardPrice, monthlyUnlockPrice, lifetimeUnlockPrice, monthlyPrice, lifetimePrice, membershipsOn, trialNote, soonChip } from '../components.js';
 import { LAYERS, PRICE_BANDS, STATES, layerInfo } from '../taxonomy.js';
 import { newThisWeek } from '../feed.js';
 import { CONFIG } from '../config.js';
@@ -19,7 +19,7 @@ export function sidebar(ctx) {
     ${states.map((s) => html`<option value="${s}">${STATES[s] || s} (${count((l) => l.state === s)})</option>`)}</select>
     <a class="small" href="#/map">or explore the map →</a>
     ${ctx.feed.meta.scouting ? html`<p class="small muted scouting-mini">Currently scouting: <a href="#/browse?state=${ctx.feed.meta.scouting.focus.join(',')}">${ctx.feed.meta.scouting.label}</a></p>` : ''}</section>
-  <section class="box how"><h4>How files work</h4><ul class="small"><li><b>Free preview</b> on every listing: facts, a short summary, a lore teaser, sample photos and the original listing link.</li><li><b>Full file</b>: ${standardPrice()} one time per listing, yours permanently on every device.</li><li><b>Members unlock for less</b> (optional): Monthly ${monthlyPrice()}/mo, unlocks ${monthlyUnlockPrice()}; Lifetime ${lifetimePrice()} one time, unlocks ${lifetimeUnlockPrice()}.</li></ul><a class="small" href="#/about">More about the archive →</a></section>
+  <section class="box how"><h4>How files work</h4><ul class="small"><li><b>Free preview</b> on every listing: facts, a short summary, a lore teaser, sample photos and the original listing link.</li><li><b>Full file</b>: ${standardPrice()}${trialNote()} one time per listing, yours permanently on every device. Use “Unlock full file” on any listing.</li>${membershipsOn() ? html`<li><b>Members unlock for less</b> (optional): Monthly ${monthlyPrice()}/mo, unlocks ${monthlyUnlockPrice()}; Lifetime ${lifetimePrice()} one time, unlocks ${lifetimeUnlockPrice()}.</li>` : html`<li><b>Memberships</b> (Monthly and Lifetime): ${soonChip()}</li>`}</ul><a class="small" href="#/about">More about the archive →</a></section>
   <section class="box"><h4>Categories</h4><ul class="cats">
     <li class="cat-tier"><a href="#/browse?tier=1">Twisted Deeds <span>${count((l) => l.tier === 1)}</span></a></li>
     ${layers.map((k) => { const n = count((l) => l.layer === k); const i = layerInfo(k); return html`<li class="${n ? '' : 'empty'}"><a href="#/browse?layer=${k}" style="--c:${i.color}"><span class="dot"></span>${i.label} <span>${n || 'soon'}</span></a></li>`; })}

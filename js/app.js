@@ -134,9 +134,9 @@ document.addEventListener('click', async (e) => {
     else if ('signout' in ds) { await ctx.be.signOut(); await refreshCtx(); route(); }
     else if (ds.checkout) { e.preventDefault(); if (!needMe()) return; t.disabled = true; const r = await ctx.be.startCheckout(ds.checkout);
       if (r?.redirect) { location.href = r.redirect; return; } await refreshCtx(); location.hash = `#/l/${encodeURIComponent(ds.checkout)}?unlocked=1`; }
-    else if (ds.membershipCheckout) { e.preventDefault(); if (!needMe()) return; t.disabled = true; const plan = ds.membershipCheckout, from = ds.from || '';
+    else if (ds.membershipCheckout) { e.preventDefault(); if (!CONFIG.pricing.membershipsEnabled) { toast('Memberships are coming soon.'); return; } if (!needMe()) return; t.disabled = true; const plan = ds.membershipCheckout, from = ds.from || '';
       const r = await ctx.be.startMembershipCheckout(plan, from); if (r?.redirect) { location.href = r.redirect; return; }
-      await refreshCtx(); toast(`${plan === 'monthly' ? 'Monthly' : 'Lifetime'} membership active. Unlocks are now $${plan === 'monthly' ? CONFIG.pricing.monthlyUnlockPrice : CONFIG.pricing.lifetimeUnlockPrice}.`);
+      await refreshCtx(); toast(`${plan === 'monthly' ? 'Monthly' : 'Lifetime'} membership active.`);
       if (from) location.hash = `#/l/${encodeURIComponent(from)}?at=file`; else if (location.hash === '#/account') route(); else location.hash = '#/account'; }
     else if ('cancelMembership' in ds) { if (!confirm('Cancel your Monthly membership? It stays active until the end of this period. Files you unlocked stay unlocked forever.')) return;
       const r = await ctx.be.cancelMembership(); if (r?.redirect) { location.href = r.redirect; return; } await refreshCtx(); toast('Membership canceled. It won’t renew.'); route(); }
@@ -204,7 +204,7 @@ document.addEventListener('input', (e) => {
   const banner = $('#preview-banner');
   if (ctx.be.fallback) { banner.querySelector('.short').innerHTML = 'Community server unreachable: <b>using this browser only</b>.'; banner.querySelector('.long').innerHTML = 'The community server couldn’t be reached, so comments, posts, submissions, accounts and unlocks here are <b>test data stored only in this browser</b> and won’t reach the live site. Checkouts are examples: <b>no real payment</b>. Reload to try again.'; banner.hidden = false; }
   else if (ctx.be.isPreview) banner.hidden = false;
-  else if (ctx.be.mockCheckout) { banner.querySelector('.short').innerHTML = 'Checkouts are examples: <b>no real payment</b>.'; banner.querySelector('.long').innerHTML = 'Private preview. Accounts, comments and submissions are real and moderated. Checkouts are examples: <b>no real payment</b> yet; example unlocks and memberships are saved to your account.'; banner.querySelector('[data-reset-preview]')?.remove(); banner.hidden = false; }
+  else if (ctx.be.mockCheckout) { banner.querySelector('.short').innerHTML = 'Checkouts are examples: <b>no real payment</b>.'; banner.querySelector('.long').innerHTML = 'Private preview. Accounts, comments and submissions are real and moderated. Checkouts are examples: <b>no real payment</b> yet; example unlocks are saved to your account.'; banner.querySelector('[data-reset-preview]')?.remove(); banner.hidden = false; }
   $('#feed-meta').textContent = `Feed v${feed.meta.version} · ${feed.meta.count} listings · ${feed.source === 'live' ? 'live' : 'offline snapshot'}`;
   await refreshCtx();
   window.addEventListener('hashchange', route);

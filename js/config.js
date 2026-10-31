@@ -35,17 +35,25 @@ export const CONFIG = {
     fallbackAttribution: 'Tiles © Esri — Esri, HERE, Garmin, © OpenStreetMap contributors',
   },
 
-  // Pricing, locked in by Grymm 2026-10-30. The preview checkout is still a mock
-  // (no real payment); real payments go through Stripe, see README "Payments".
+  // Pricing. TRIAL PERIOD (owner request 2026-10-31): every full-file unlock is
+  // trial.unlockPrice ($5) for everyone, and Monthly / Lifetime memberships are shown as
+  // "Coming soon" with no purchase buttons. In live (Supabase) mode these switches are read
+  // from app_settings at startup (rpc pricing_settings: pricing_mode, trial_unlock_price,
+  // memberships_enabled) and override the defaults below; the server records the price, the
+  // page never sends one. The preview checkout is still a mock (no real payment).
+  //
+  // PLANNED post-trial model (unchanged, not offered while the trial runs; set
+  // pricing_mode = 'planned' and memberships_enabled = 'true' in app_settings to return to it):
   //  - unlockPrice: one-time unlock of ONE listing's full file, permanent, every device.
   //  - Monthly membership: monthlyPrice per month; while active, unlocks cost
-  //    monthlyUnlockPrice. Files unlocked stay unlocked forever after it lapses; lapsing
-  //    only changes the price of future unlocks.
+  //    monthlyUnlockPrice. Files unlocked stay unlocked forever after it lapses.
   //  - Lifetime membership: lifetimePrice one time, never expires; unlocks cost
-  //    lifetimeUnlockPrice forever.
-  //  Memberships only change the price. The one badge ("Lifetime") is shown ONLY on
-  //  the member's own account page, never next to comments, posts or listings.
+  //    lifetimeUnlockPrice forever. The one badge ("Lifetime") is shown ONLY on the
+  //    member's own account page, never next to comments, posts or listings.
   pricing: {
+    trial: { active: true, unlockPrice: 5 },   // live: app_settings pricing_mode / trial_unlock_price
+    membershipsEnabled: false,                 // live: app_settings memberships_enabled
+    // planned (post-trial) values, coming soon:
     unlockPrice: 9,
     monthlyUnlockPrice: 7,
     lifetimeUnlockPrice: 5,

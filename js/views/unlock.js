@@ -1,5 +1,5 @@
 import { html, fmtDate } from '../util.js';
-import { gradeBadge, plate, unlockPrice, membersLine, priceTier, TIER_LABEL } from '../components.js';
+import { gradeBadge, plate, unlockPrice, membersLine, viewerTier, TIER_LABEL, trialNote, isTrial } from '../components.js';
 
 // Checkout. Local preview: a MOCK that records a test unlock, no card, no payment.
 // Supabase mode: hands off to Stripe Checkout (Edge Function create-checkout); the
@@ -20,8 +20,8 @@ export async function unlock(ctx, q, id) {
       <p class="small muted">One-time payment for this one file. It stays unlocked on your account permanently and on every device you sign in on. No subscription, no renewals.</p>
     </section>
     <section class="co-pay">
-      <dl class="co-lines"><dt>Full file · ${l.name}</dt><dd>${unlockPrice(ctx)}</dd>${ctx.membership ? html`<dt class="small muted">${TIER_LABEL[priceTier(ctx.membership)]}</dt><dd></dd>` : ''}<dt><b>Total</b></dt><dd><b>${unlockPrice(ctx)} ${ctx.config.pricing.currency}</b></dd></dl>
-      ${ctx.membership ? '' : html`<p class="small muted">${membersLine(l.id)}</p>`}
+      <dl class="co-lines"><dt>Full file · ${l.name}</dt><dd>${unlockPrice(ctx)}${trialNote()}</dd>${ctx.membership && !isTrial() ? html`<dt class="small muted">${TIER_LABEL[viewerTier(ctx.membership)]}</dt><dd></dd>` : ''}<dt><b>Total</b></dt><dd><b>${unlockPrice(ctx)} ${ctx.config.pricing.currency}</b></dd></dl>
+      ${ctx.membership && !isTrial() ? '' : html`<p class="small muted">${membersLine(l.id)}</p>`}
       ${!ctx.me ? html`<p>Sign in first so the unlock is saved to your account.</p><button class="btn big" data-signin>Sign in to continue</button>`
         : html`<p class="small">Account: <b>@${ctx.me.handle}</b></p>
         ${mock ? html`<div class="mock-card" aria-hidden="true"><span>Card details would be entered on Stripe’s secure page.</span><span class="muted">Not collected in this example.</span></div>
