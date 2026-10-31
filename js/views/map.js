@@ -12,7 +12,7 @@ const loadLib = () => maplibreP ||= new Promise((res, rej) => {
 });
 
 export async function mapView(ctx, q) {
-  const L = ctx.feed.listings;
+  const L = ctx.feed.catalog;  // default map = for-sale catalog (Active + Pending); ?status=archive shows the archive
   const layers = [...new Set([...Object.keys(LAYERS), ...L.map((l) => l.layer)])];
   return html`<div class="map-wrap">
     <div class="map-bar">
@@ -22,7 +22,7 @@ export async function mapView(ctx, q) {
     </div>
     <div id="map" aria-label="Map of listings"></div>
     <div class="map-card" data-map-card hidden></div>
-    <div class="map-note muted small">Hollow pins are approximate (town centre). Points come from the feed; nothing is geocoded here.</div>
+    <div class="map-note muted small">Hollow pins are approximate (town centre). Showing properties for sale; sold and off-market ones are in the <a href="#/archive">archive</a>.</div>
   </div>`;
 }
 

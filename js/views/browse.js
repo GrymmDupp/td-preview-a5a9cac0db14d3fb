@@ -1,7 +1,11 @@
 import { html, plural } from '../util.js';
 import { listingCard } from '../components.js';
 import { LAYERS, PRICE_BANDS, STATES, STATUSES, layerInfo, statusInfo, kindLabel, ratingLabel } from '../taxonomy.js';
-import { sortListings, isNew, feed } from '../feed.js';
+import { sortListings, isNew, isOpen, feed } from '../feed.js';
+
+// status param: '' (default) = Active + Pending catalog; 'archive' = Sold, Off market, Stale…;
+// 'all' = everything; 'open' = same as default; any single status name = that status.
+const statusOk = (l, st) => !st || st === 'open' ? isOpen(l) : st === 'archive' ? !isOpen(l) : st === 'all' ? true : l.status === st;
 
 const stateList = (s) => String(s || '').split(',').map((x) => x.trim().toUpperCase()).filter(Boolean);
 const stateName = (codes) => codes.map((c) => STATES[c] || c).join(' & ');
@@ -13,14 +17,14 @@ export function applyFilters(L, q, updates) {
   const text = (q.get('q') || '').trim().toLowerCase();
   const band = PRICE_BANDS.find((b) => b.key === price);
   return L.filter((l) => (!s.length || s.includes(l.state)) && (!added || (added === 'week' ? isNew(l) : added === 'updated' ? !!updates?.has?.(l.id) : true)) && (!layer || l.layer === layer) && (!tier || String(l.tier) === tier)
-    && (!status || (status === 'open' ? ['Active', 'Pending'].includes(l.status) : l.status === status)) && (!kind || l.kind === kind)
+    && statusOk(l, status) && (!kind || l.kind === kind)
     && (!band || (band.min == null ? (l.priceNum == null || l.auction) : (l.priceNum != null && l.priceNum >= band.min && l.priceNum < band.max)))
     && (!text || [l.name, l.place, l.address, l.preview?.summary, l.preview?.teaser, l.facts, ratingLabel(l)].join(' ').toLowerCase().includes(text)));
 }
 
 export async function browse(ctx, q) {
-  const L = ctx.feed.listings;
-  const list = sortListings(applyFilters(L, q, ctx.updates), q.get('sort') || 'featured');
+  const ALL = ctx.feed.listings, L = ctx.feed.catalog, nArch = ctx.feed.archive.length;
+  const list = sortListings(applyFilters(ALL, q, ctx.updates), q.get('sort') || 'featured');
   const nNew = L.filter((l) => isNew(l)).length, nUpd = ctx.updates?.size || 0;
   const sc = feed.meta.scouting, scN = sc ? L.filter((l) => sc.focus.includes(l.state)).length : 0;
   const curStates = stateList(q.get('state'));
@@ -30,10 +34,11 @@ export async function browse(ctx, q) {
   const states = [...new Set(L.map((l) => l.state).filter(Boolean))].sort();
   const layers = [...new Set([...Object.keys(LAYERS), ...L.map((l) => l.layer)])];
   const kinds = [...new Set(L.map((l) => l.kind))];
-  const statuses = [...new Set([...Object.keys(STATUSES), ...L.map((l) => l.status)])];
+  const statuses = [...new Set([...Object.keys(STATUSES), ...ALL.map((l) => l.status)])].filter((x) => ALL.some((l) => l.status === x));
+  const stQ = q.get('status') || '';
   const active = [...q.entries()].filter(([k, v]) => v && k !== 'sort');
   const stateCounts = states.map((s) => [s, L.filter((l) => l.state === s).length]);
-  return html`<div class="page-head"><h1>Browse the archive</h1><p class="muted">Filter by state, category and price. Twisted Deeds always rank first.</p>
+  return html`<div class="page-head"><h1>Browse the archive</h1><p class="muted">Filter by state, category and price. Twisted Deeds always rank first. Shows properties for sale (active or pending); sold and off-market ones are in the <a href="#/archive">Sold & Off market archive</a>.</p>
     ${sc ? html`<p class="scouting small">Currently scouting: <b>${sc.label}</b> · ${scOn ? html`<span class="muted">showing ${plural(scN, 'listing')}</span> · <a href="#/browse">all states</a>`
       : html`<a href="#/browse?state=${sc.focus.join(',')}">See ${sc.label} (${scN})</a>`}</p>` : ''}</div>
   <form class="filters" data-filters>
@@ -44,7 +49,11 @@ export async function browse(ctx, q) {
     ${sel('layer', layers.map((k) => [k, layerInfo(k).label]), 'Category')}
     ${sel('price', PRICE_BANDS.map((b) => [b.key, b.label]), 'Price')}
     ${sel('kind', kinds.map((k) => [k, kindLabel(k)]), 'Type')}
-    ${sel('status', [['open', 'Active or pending'], ...statuses.map((s) => [s, statusInfo(s).label])], 'Status')}
+    <label class="f"><span>Status</span><select name="status">
+      <option value="" ${!stQ || stQ === 'open' ? 'selected' : ''}>For sale: Active or pending (${L.length})</option>
+      ${statuses.map((s) => html`<option value="${s}" ${stQ === s ? 'selected' : ''}>${statusInfo(s).label} (${ALL.filter((l) => l.status === s).length})</option>`)}
+      <option value="archive" ${stQ === 'archive' ? 'selected' : ''}>Sold & Off market archive (${nArch})</option>
+      <option value="all" ${stQ === 'all' ? 'selected' : ''}>Everything, archive included (${ALL.length})</option></select></label>
     <label class="f"><span>Sort</span><select name="sort">${[['featured', 'Most twisted first'], ['newest', 'Newest added'], ['priceAsc', 'Price: low to high'], ['priceDesc', 'Price: high to low'], ['name', 'Name']].map(([v, t]) => html`<option value="${v}" ${(q.get('sort') || 'featured') === v ? 'selected' : ''}>${t}</option>`)}</select></label>
   </form>
   <div class="chips-row">${layers.map((k) => { const i = layerInfo(k); const on = q.get('layer') === k; const n = L.filter((l) => l.layer === k).length;

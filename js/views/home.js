@@ -7,7 +7,7 @@ import { CONFIG } from '../config.js';
 const PER = 10;
 
 export function sidebar(ctx) {
-  const L = ctx.feed.listings;
+  const L = ctx.feed.catalog;
   const states = [...new Set(L.map((l) => l.state).filter(Boolean))].sort();
   const layers = [...new Set([...Object.keys(LAYERS), ...L.map((l) => l.layer)])];
   const count = (f) => L.filter(f).length;
@@ -35,7 +35,7 @@ export function sidebar(ctx) {
 // "New this week": listings first added to the archive in the last 7 days, plus a quiet line
 // for listings whose files gained approved community additions. Nothing new -> one quiet line.
 function newThisWeekBlock(ctx) {
-  const N = newThisWeek(ctx.feed.listings), upd = ctx.updates?.size || 0, SHOW = 6;
+  const N = newThisWeek(ctx.feed.catalog), upd = ctx.updates?.size || 0, SHOW = 6;
   if (!N.length && !upd) return html`<p class="new-week-none small muted">Nothing new added in the last ${CONFIG.newDays} days.</p>`;
   return html`<section class="new-week" aria-labelledby="nw-h">
     <div class="feed-head"><h2 id="nw-h">New this week</h2>
@@ -45,9 +45,16 @@ function newThisWeekBlock(ctx) {
   </section>`;
 }
 
+// Home teaser for the themed dossier packs (#/packs). Coming soon: no purchase button.
+function packsTeaser() {
+  return html`<section class="packs-teaser"><div><h2>Dossier Packs ${soonChip()}</h2>
+    <p>Themed bundles of full files in one printable PDF: closed institutions, houses with a documented dark past, and a Midwest circuit.</p></div>
+    <a class="btn ghost" href="#/packs">See the packs →</a></section>`;
+}
+
 export async function home(ctx, q) {
   const page = Math.max(1, +q.get('page') || 1);
-  const L = ctx.feed.listings;
+  const L = ctx.feed.catalog;   // for-sale catalog only: Active + Pending
   const slice = L.slice((page - 1) * PER, page * PER);
   const pages = Math.ceil(L.length / PER);
   const t1 = L.filter((l) => l.tier === 1).length;
@@ -56,13 +63,14 @@ export async function home(ctx, q) {
     <div><h1>Houses for sale <em>with a past</em></h1>
     <p>${plural(L.length, 'buyable property', 'buyable properties')} across ${new Set(L.map((l) => l.state)).size} states, each with a sourced dark history or a strong story. Read the free preview, unlock the full file, add what you know.</p>
     <div class="hero-stats"><span><b>${t1}</b> Twisted Deeds</span><span>${L.length - t1 ? html`<b>${L.length - t1}</b> Strong Story` : html`<b>Strong Story</b> tier opening soon`}</span><span>Full file <b>${unlockPrice(ctx)}</b> one time</span><span>Feed v${ctx.feed.meta.version} · ${fmtDate(ctx.feed.meta.generated_at)}</span></div></div>
-  </section>${newThisWeekBlock(ctx)}` : ''}
+  </section>${newThisWeekBlock(ctx)}${packsTeaser()}` : ''}
   <div class="with-side"><div class="feed">
     <div class="feed-head"><h2>${page === 1 ? 'Latest listings' : `Listings · page ${page}`}</h2><span class="muted">Most twisted first, then strong stories</span></div>
     ${slice.map((l) => listingCard(l, ctx))}
     <nav class="pager">${page > 1 ? html`<a class="btn ghost" href="#/?page=${page - 1}">← Newer</a>` : html`<span></span>`}
       <span class="muted">Page ${page} of ${pages}</span>
       ${page < pages ? html`<a class="btn ghost" href="#/?page=${page + 1}">Older listings →</a>` : html`<span></span>`}</nav>
+    ${ctx.feed.archive.length ? html`<p class="small muted archive-line">${plural(ctx.feed.archive.length, 'property', 'properties')} no longer for sale ${ctx.feed.archive.length === 1 ? 'is' : 'are'} kept in the <a href="#/archive">Sold & Off market archive</a>.</p>` : ''}
   </div>${sidebar(ctx)}</div>`;
 }
 

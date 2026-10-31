@@ -14,6 +14,8 @@ import { account } from './views/account.js';
 import { contribute } from './views/contribute.js';
 import { moderation } from './views/moderation.js';
 import { rules, about, DISCLAIMER } from './views/pages.js';
+import { packs } from './views/packs.js';
+import { archive } from './views/archive.js';
 
 const ctx = { feed, be: null, me: null, membership: null, unlocks: [], comments: {}, config: CONFIG };
 
@@ -22,6 +24,7 @@ const ROUTES = [
   [/^\/?$/, home, 'Listings'], [/^\/browse$/, browse, 'Browse'], [/^\/l\/(.+)$/, listing, null], [/^\/map$/, mapView, 'Map'],
   [/^\/board$/, board, 'Community board'], [/^\/unlock\/(.+)$/, unlock, 'Unlock the full file'], [/^\/membership$/, membership, 'Membership'], [/^\/lifetime$/, (c, q) => { q.set('plan', 'lifetime'); return membership(c, q); }, 'Membership'], [/^\/account$/, account, 'Account'],
   [/^\/contribute$/, contribute, 'Submit'], [/^\/suggest$/, suggest, 'Suggest a property'], [/^\/moderate$/, moderation, 'Moderation'],
+  [/^\/packs$/, packs, 'Dossier Packs'], [/^\/archive$/, archive, 'Sold & Off market archive'],
   [/^\/rules$/, rules, 'Community rules'], [/^\/about$/, about, 'About'],
 ];
 
@@ -39,7 +42,7 @@ async function refreshCtx() {
 }
 
 function renderChrome(path) {
-  const nav = [['#/', 'Listings', /^\/?$/], ['#/browse', 'Browse', /^\/browse/], ['#/map', 'Map', /^\/map/], ['#/board', 'Board', /^\/board/]];
+  const nav = [['#/', 'Listings', /^\/?$/], ['#/browse', 'Browse', /^\/browse/], ['#/map', 'Map', /^\/map/], ['#/packs', 'Dossier Packs', /^\/packs/], ['#/board', 'Board', /^\/board/]];
   $('#nav').innerHTML = nav.map(([h, t, re]) => `<a href="${h}" class="${re.test(path) ? 'on' : ''}">${t}</a>`).join('') + `<a href="#/contribute" class="nav-cta ${/contribute|suggest/.test(path) ? 'on' : ''}">Submit</a>`;
   $('#who').innerHTML = (ctx.me
     ? `${['moderator', 'admin'].includes(ctx.me.role) ? '<a class="modlink" href="#/moderate" title="Moderation queue">⚖</a>' : ''}

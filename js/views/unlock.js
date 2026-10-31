@@ -1,4 +1,5 @@
 import { html, fmtDate } from '../util.js';
+import { isArchived } from '../feed.js';
 import { gradeBadge, plate, unlockPrice, membersLine, viewerTier, TIER_LABEL, trialNote, isTrial } from '../components.js';
 
 // Checkout. Local preview: a MOCK that records a test unlock, no card, no payment.
@@ -18,6 +19,7 @@ export async function unlock(ctx, q, id) {
       <h1>Unlock the full file</h1>
       <div class="co-item">${plate(l, 'thumb')}<div><div>${gradeBadge(l)}</div><h3>${l.name}</h3><p class="muted">${l.place}</p></div></div>
       <ul class="incl"><li>Full story, history and timeline</li><li>Citations and sources</li><li>Full lore</li><li>Ownership chain and Strong Story notes (where recorded)</li><li>All approved community photos, documents and stories</li><li>The dossier (where one exists)</li></ul>
+      ${isArchived(l) ? html`<p class="no-longer small"><b>No longer for sale.</b> This property is marked ${l.status}. The file covers its history and story, not a purchase opportunity.</p>` : ''}
       <p class="small muted">One-time payment for this one file. It stays unlocked on your account permanently and on every device you sign in on. No subscription, no renewals.</p>
     </section>
     <section class="co-pay">

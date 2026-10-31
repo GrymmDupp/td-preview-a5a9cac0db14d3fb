@@ -7,7 +7,13 @@ import { gradeInfo, layerInfo, GRADES, LAYERS } from './taxonomy.js';
 const SEEN_KEY = 'td-feed-seen-v1';     // last price/status this browser saw, per listing
 const EVENTS_KEY = 'td-feed-events-v1'; // detected changes (price, status, new)
 
-export const feed = { meta: null, listings: [], byId: new Map(), source: '', events: [], fullLocal: new Map() };
+// Default catalog = for-sale leads only (Active + Pending). Sold, Off market, Stale and any other
+// status stay viewable in the Sold & Off market archive (#/archive) and by direct link.
+export const OPEN_STATUSES = ['Active', 'Pending'];
+export const isOpen = (l) => OPEN_STATUSES.includes(l?.status);
+export const isArchived = (l) => !!l && !isOpen(l);
+
+export const feed = { meta: null, listings: [], catalog: [], archive: [], byId: new Map(), source: '', events: [], fullLocal: new Map() };
 
 // ---- access split: FREE PREVIEW vs FULL FILE
 // Feed schema v3 (2026-10-30) is preview-only: summary, loreTeaser, basic facts and
@@ -155,6 +161,8 @@ export async function loadFeed() {
   feed.meta = { version: data.version, schema_version: data.schema_version, generated_at: data.generated_at, count: listings.length, geo_attribution: data.geo_attribution, scouting: cleanScouting(data.scouting) };
   feed.listings = sortListings(listings);
   feed.byId = new Map(listings.map((l) => [l.id, l]));
+  feed.catalog = feed.listings.filter(isOpen);
+  feed.archive = feed.listings.filter(isArchived);
   feed.source = source;
   if (CONFIG.backend !== 'supabase') await loadFullLocal();
   detectChanges();
@@ -216,14 +224,15 @@ export function simulateFeedChange(listingId) {
   return ev;
 }
 
-// ---- "New this week": listings first added to the feed in the last CONFIG.newDays days
+// ---- "New this week": ACTIVE listings first added to the feed in the last CONFIG.newDays days
 // (today counts as day 0, so 7 = today and the six days before it). Content, not users.
 const localDay = (d = new Date()) => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
 export function daysSince(ymd, now = new Date()) {
   const m = String(ymd || '').match(/^(\d{4})-(\d{2})-(\d{2})$/); if (!m) return Infinity;
   return Math.round((localDay(now) - Date.UTC(+m[1], +m[2] - 1, +m[3])) / 864e5);
 }
-export const isNew = (l, now = new Date()) => { const d = daysSince(l.addedAt, now); return d >= 0 && d < CONFIG.newDays; };
+// Only Active listings count as new: Pending, Sold, Off market and Stale never get the New tag.
+export const isNew = (l, now = new Date()) => { if (l?.status !== 'Active') return false; const d = daysSince(l.addedAt, now); return d >= 0 && d < CONFIG.newDays; };
 export const newThisWeek = (list, now = new Date()) => sortListings(list.filter((l) => isNew(l, now)), 'newest');
 
 // Scouting focus from the feed envelope: { focus: ['MI','OH'], label, since }. Optional.

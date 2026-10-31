@@ -1,0 +1,209 @@
+{
+ "note": "Preview-safe pack index. Titles, descriptions, listing ids/names, counts and suggested trial prices only. No full-file content.",
+ "builtAt": "2026-10-31T20:27:10Z",
+ "asOf": "2026-10-31",
+ "singleUnlockPrice": 5,
+ "packs": [
+  {
+   "slug": "closed-institutions",
+   "title": "Closed Doors: Asylums, Sanatoriums, Jails & Infirmaries",
+   "description": "Former poorhouses, asylums, a tuberculosis sanatorium site, a state eugenics colony, county jails and a house that was once a hospital, each one currently offered for sale. Every file is built from public records and press, with the institution's documented history, the current asking price and status, and where it sits on the map.",
+   "listingIds": [
+    "eloise-complex",
+    "central-virginia",
+    "bayview-hospital",
+    "byron-campus",
+    "wheeler-mansion-orange",
+    "old-henrico-county",
+    "jackson-county-old-jail-kc",
+    "ozark-franklin-county-jail"
+   ],
+   "listings": [
+    {
+     "id": "eloise-complex",
+     "name": "Eloise Complex",
+     "place": "Westland, Wayne County, MI"
+    },
+    {
+     "id": "central-virginia",
+     "name": "Central Virginia Training Center (former Virginia Colony for Epileptics and Feebleminded)",
+     "place": "Madison Heights, Amherst County, VA"
+    },
+    {
+     "id": "bayview-hospital",
+     "name": "Bay View General Hospital",
+     "place": "Port Townsend, Jefferson County, WA"
+    },
+    {
+     "id": "byron-campus",
+     "name": "Byron Health Campus",
+     "place": "Fort Wayne, Allen County, IN"
+    },
+    {
+     "id": "wheeler-mansion-orange",
+     "name": "Wheeler Mansion (former Eastern Star Home)",
+     "place": "Orange, Franklin, MA"
+    },
+    {
+     "id": "old-henrico-county",
+     "name": "Old Henrico County Courthouse & Jail",
+     "place": "Richmond (Shockoe Bottom), Richmond City, VA"
+    },
+    {
+     "id": "jackson-county-old-jail-kc",
+     "name": "Former Jackson County Detention Center block",
+     "place": "Downtown, Kansas City, MO"
+    },
+    {
+     "id": "ozark-franklin-county-jail",
+     "name": "Old Franklin County Jail (1914 stone jailhouse)",
+     "place": "Downtown, Franklin, AR"
+    }
+   ],
+   "count": 8,
+   "suggestedPrice": 29,
+   "status": "coming_soon",
+   "asOf": "2026-10-31"
+  },
+  {
+   "slug": "documented-dark-houses",
+   "title": "The Record Remembers: Houses with a Documented Dark Past",
+   "description": "Historic houses for sale whose pasts are on the public record: family suicides in a brewing mansion, the Tate murder site, an unsolved double homicide, Salem witch-trial testimony, a federal LSD raid, a former mortuary and a brothel-era mansion. Ghost stories appear only as labeled witness claims; the hook in every file is documented history.",
+   "listingIds": [
+    "holliday-house",
+    "lemp-mansion",
+    "cielo-drive-estate",
+    "philip-knight-house",
+    "fobes-ranch",
+    "lumber-baron-inn-denver",
+    "wheeler-mansion-orange",
+    "verdier-mansion-sf"
+   ],
+   "listings": [
+    {
+     "id": "holliday-house",
+     "name": "1895 Holliday House",
+     "place": "Marion, Marion County, SC"
+    },
+    {
+     "id": "lemp-mansion",
+     "name": "Lemp Mansion (Restaurant & Inn)",
+     "place": "St. Louis, St. Louis City, MO"
+    },
+    {
+     "id": "cielo-drive-estate",
+     "name": "Cielo Drive estate (Tate/Manson murder site)",
+     "place": "Beverly Hills area, Los Angeles County, CA"
+    },
+    {
+     "id": "philip-knight-house",
+     "name": "Philip Knight House (Salem Witch Trials accuser's home)",
+     "place": "Middleton, Essex County, MA"
+    },
+    {
+     "id": "fobes-ranch",
+     "name": "Fobes Ranch ('LSD Ranch')",
+     "place": "Mountain Center, Riverside County, CA"
+    },
+    {
+     "id": "lumber-baron-inn-denver",
+     "name": "Lumber Baron Inn (John Mouat House)",
+     "place": "Denver (Potter Highlands), Denver, CO"
+    },
+    {
+     "id": "wheeler-mansion-orange",
+     "name": "Wheeler Mansion (former Eastern Star Home)",
+     "place": "Orange, Franklin, MA"
+    },
+    {
+     "id": "verdier-mansion-sf",
+     "name": "Verdier Mansion ('House of the Grand Passion')",
+     "place": "San Francisco (Russian Hill), San Francisco, CA"
+    }
+   ],
+   "count": 8,
+   "suggestedPrice": 29,
+   "status": "coming_soon",
+   "asOf": "2026-10-31"
+  },
+  {
+   "slug": "midwest-strong-stories",
+   "title": "Heartland Ledger: Midwest Strong Stories",
+   "description": "A Michigan, Ohio and Missouri circuit of properties for sale with a story worth the drive: the Lemp brewing mansion, Underground Railroad houses, a Second Empire mansion of the Hudson's founder, a Frank Lloyd Wright Usonian, a roadside legend rock, a fire-rebuilt factory and a vanished pirate park. Institutional sites are kept in the Closed Doors pack to avoid overlap.",
+   "listingIds": [
+    "lemp-mansion",
+    "hyde-house",
+    "sloane-house",
+    "oakhill",
+    "brooklyn-castle",
+    "hudson-evans",
+    "castle-rock",
+    "eppstein-house",
+    "zinc-collar-pad",
+    "pirates-park",
+    "farrand-hall"
+   ],
+   "listings": [
+    {
+     "id": "lemp-mansion",
+     "name": "Lemp Mansion (Restaurant & Inn)",
+     "place": "St. Louis, St. Louis City, MO"
+    },
+    {
+     "id": "hyde-house",
+     "name": "Hyde House",
+     "place": "Rushville, Fairfield County, OH"
+    },
+    {
+     "id": "sloane-house",
+     "name": "Rush R. Sloane House",
+     "place": "Sandusky, Erie County, OH"
+    },
+    {
+     "id": "oakhill",
+     "name": "Oakhill",
+     "place": "Marshall, Calhoun County, MI"
+    },
+    {
+     "id": "brooklyn-castle",
+     "name": "Brooklyn Centre Castle",
+     "place": "Cleveland, Cuyahoga County, OH"
+    },
+    {
+     "id": "hudson-evans",
+     "name": "Hudson-Evans House",
+     "place": "Detroit, Wayne County, MI"
+    },
+    {
+     "id": "castle-rock",
+     "name": "Castle Rock (roadside lookout & Paul Bunyan statues)",
+     "place": "St. Ignace, Mackinac, MI"
+    },
+    {
+     "id": "eppstein-house",
+     "name": "Eppstein House (Frank Lloyd Wright Usonian, The Acres)",
+     "place": "Galesburg, Kalamazoo, MI"
+    },
+    {
+     "id": "zinc-collar-pad",
+     "name": "Zinc Collar Pad Company Building",
+     "place": "Buchanan, Berrien, MI"
+    },
+    {
+     "id": "pirates-park",
+     "name": "Former Pirate's Park (closed fun park, Flint Township)",
+     "place": "Flint Township, Genesee, MI"
+    },
+    {
+     "id": "farrand-hall",
+     "name": "Farrand Hall (1854 Greek Revival homestead)",
+     "place": "Colon, St. Joseph, MI"
+    }
+   ],
+   "count": 11,
+   "suggestedPrice": 39,
+   "status": "coming_soon",
+   "asOf": "2026-10-31"
+  }
+ ]
+}

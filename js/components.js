@@ -3,7 +3,7 @@ import { html, raw, esc, fmtDate, truncate, plural, safeUrl, host } from './util
 import { CONFIG } from './config.js';
 import { statusInfo, kindLabel, tierInfo, storyLabel, PUBLIC_TIER1, PUBLIC_TIER2 } from './taxonomy.js';
 import { displayableImages } from './feed.js';
-import { isNew, updateLine } from './feed.js';
+import { isNew, isArchived, updateLine } from './feed.js';
 
 // Public rating badge. Tier 1 = prominent "Twisted Deed"; tier 2 = muted "Strong Story"
 // with its category. The internal grade (and its letters/emoji) is never shown.
@@ -110,7 +110,7 @@ export function listingCard(l, { comments = {}, unlocks = [], compact = false, u
     <div class="card-badges">${gradeBadge(l)} ${compact ? newTag(l) : ''} ${updatedTag(upd)} ${layerChip(l)} ${statusPill(l)}</div>
     <h3><a href="#/l/${encodeURIComponent(l.id)}">${l.name}</a></h3>
     <div class="card-place">${l.place.replace(/,\s*[A-Z]{2}$/, '')}${l.state ? html`, <a href="#/browse?state=${l.state}">${l.state}</a>` : ''}</div>
-    <div class="card-price">${l.price || 'Price not listed'}</div>
+    ${isArchived(l) ? html`<div class="card-price archived">Last known: ${l.price || 'price not listed'}${l.lastChecked ? html` <span class="muted">(${fmtDate(l.lastChecked)})</span>` : ''}</div><div class="no-sale small">No longer for sale</div>` : html`<div class="card-price">${l.price || 'Price not listed'}</div>`}
     ${compact ? '' : html`<p class="card-story">${truncate(l.blurb, 220)}</p>`}
     ${l.facts && !compact ? html`<div class="card-facts">${l.facts}</div>` : ''}
     <div class="card-foot">

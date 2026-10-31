@@ -1,7 +1,7 @@
 import { html, fmtDate, ago, plural, safeUrl, host } from '../util.js';
 import { newTag, updatedTag, gradeBadge, layerChip, statusPill, plate, photoCredit, imageType, imgAlt, authorName, pendingTag, reportBtn, sourceLinks, listingCard, kindLabel, unlockPrice, membersLine, viewerTier, TIER_LABEL, trialNote, isTrial } from '../components.js';
 import { STATES, ratingLabel } from '../taxonomy.js';
-import { displayableImages, updateLine } from '../feed.js';
+import { displayableImages, updateLine, isArchived } from '../feed.js';
 
 const SIG = { landmark: 'National Historic Landmark', register: 'National Register of Historic Places', district: 'Historic district', local: 'Local record' };
 const LANE = { institution: 'Closed institution', inn: 'Inn or theater', death: 'Ordinary death', attraction: 'Failed attraction', disaster: 'Disaster', bundle: 'Business included' };
@@ -97,19 +97,21 @@ export async function listing(ctx, q, id) {
   const [comments, samples, full, counts] = await Promise.all([ctx.be.listComments(l.id), ctx.be.samplePhotos(l.id), ctx.be.getFullFile(l.id), ctx.be.fileCounts(l.id)]);
   const top = comments.filter((c) => !c.parent_id), kids = (c) => comments.filter((r) => r.parent_id === c.id);
   const imgs = displayableImages(l);
-  const nearby = ctx.feed.listings.filter((x) => x.state === l.state && x.id !== l.id).slice(0, 3);
+  const nearby = ctx.feed.catalog.filter((x) => x.state === l.state && x.id !== l.id).slice(0, 3);
   const signedIn = !!ctx.me;
   const unlocked = !!full && ctx.unlocks.includes(l.id);
   const upd = ctx.updates?.get(l.id);   // fact + kinds only; the content stays in the full file
 
-  return html`<nav class="crumbs"><a href="#/">Listings</a> › ${l.state ? html`<a href="#/browse?state=${l.state}">${STATES[l.state] || l.state}</a> › ` : ''}<span>${l.name}</span></nav>
+  const arch = isArchived(l);
+  return html`<nav class="crumbs">${arch ? html`<a href="#/archive">Sold & Off market archive</a> › ` : html`<a href="#/">Listings</a> › `}${l.state ? html`<a href="#/browse?state=${l.state}">${STATES[l.state] || l.state}</a> › ` : ''}<span>${l.name}</span></nav>
   <header class="detail-head" style="--c:${l.layerI.color}">
     <div class="detail-badges">${gradeBadge(l, true)} ${newTag(l)} ${updatedTag(upd)} ${layerChip(l)} ${statusPill(l)} ${unlocked ? html`<span class="file-state open">🔓 Full file unlocked</span>` : full ? html`<span class="file-state open">Moderator view</span>` : html`<span class="file-state">🔒 Free preview</span> <a class="file-state unlock-link" href="#/unlock/${encodeURIComponent(l.id)}">Unlock full file · ${unlockPrice(ctx)}</a>`}</div>
     <h1>${l.name}</h1>
     <div class="detail-place">${l.place}</div>
-    <div class="detail-price"><span>${l.price || 'Price not listed'}</span> <span class="muted">· ${l.status}</span>
+    <div class="detail-price"><span>${arch ? 'Last known price: ' : ''}${l.price || 'Price not listed'}</span> <span class="muted">· ${l.status}</span>
       ${safeUrl(l.url) ? html`<a class="btn ghost" href="${safeUrl(l.url)}" target="_blank" rel="noopener nofollow">View original listing ↗</a>` : ''}</div>
   </header>
+  ${arch ? html`<div class="no-longer" role="note"><b>No longer for sale.</b> This property is marked <b>${l.status}</b>${l.statusChangedAt ? html` since ${fmtDate(l.statusChangedAt)}` : ''}${l.lastChecked ? html` (last checked ${fmtDate(l.lastChecked)})` : ''}. The price shown is the last known asking price, not an offer. It stays in the <a href="#/archive">Sold & Off market archive</a> for its story; the original listing may be gone.</div>` : ''}
 
   <section class="gallery">
     <figure class="g-main">${imgs[0] ? html`<div class="ph big" data-ph>${plate(l, 'big')}<img src="${imgs[0].src || imgs[0].url}" alt="${imgAlt(imgs[0], l.name)}" referrerpolicy="no-referrer" data-ph-img></div>

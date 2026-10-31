@@ -47,6 +47,7 @@ export const STATUSES = {
   Pending: { label: 'Pending', cls: 'warn' },
   Sold:    { label: 'Sold',    cls: 'off' },
   Stale:   { label: 'Unverified', cls: 'off' },
+  'Off market': { label: 'Off market', cls: 'off' },
   Watch:   { label: 'To watch', cls: 'warn' },
 };
 

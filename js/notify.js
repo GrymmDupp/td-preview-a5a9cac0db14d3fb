@@ -1,6 +1,6 @@
 // Notification hook: STRUCTURE ONLY. Nothing here sends anything, asks for push
 // permission, or shows badges/counters. It computes what a digest WOULD contain:
-// new Twisted Deed (Tier 1) listings first added to the feed since the last check.
+// new ACTIVE Twisted Deed (Tier 1) listings first added to the feed since the last check.
 // The real sender is a Supabase scheduled function (see NOTIFICATIONS.md); this
 // module is the shared shape so the site and that function agree.
 import { CONFIG } from './config.js';
@@ -12,7 +12,7 @@ const PREF_KEY = 'td-notify-pref-v1';   // { [handleOrUserId]: { opted_in, tier1
 export function newTwistedDeedsSince(listings, since, { tier1Only = CONFIG.notifications?.tier1Only !== false } = {}) {
   const sinceDay = String(since || '').slice(0, 10);
   const items = (listings || [])
-    .filter((l) => l && l.addedAt && (!sinceDay || l.addedAt > sinceDay) && (!tier1Only || l.tier === 1))
+    .filter((l) => l && l.status === 'Active' && l.addedAt && (!sinceDay || l.addedAt > sinceDay) && (!tier1Only || l.tier === 1))
     .sort((a, b) => String(b.addedAt).localeCompare(String(a.addedAt)) || a.name.localeCompare(b.name))
     .map((l) => ({ id: l.id, name: l.name, place: l.place, addedAt: l.addedAt, path: `#/l/${encodeURIComponent(l.id)}` }));
   return { kind: 'new-twisted-deeds', since: sinceDay || null, tier1Only, count: items.length, listings: items };
