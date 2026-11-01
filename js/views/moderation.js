@@ -1,5 +1,6 @@
 import { html, ago } from '../util.js';
 import { authorName } from '../components.js';
+import { researchModSection } from './research.js';
 
 // One queue for everything user-written: DATA (submissions) and SOCIAL (comments,
 // board posts and replies). Nothing is public until approved here.
@@ -11,6 +12,8 @@ export async function moderation(ctx) {
   const qd = await ctx.be.listQueue();
   // Payment Link mode: unlock requests waiting for a moderator to match the payment in Stripe.
   const pays = ctx.be.paymentLinkCheckout && ctx.be.listUnlockRequests ? await ctx.be.listUnlockRequests('pending').catch((e) => { console.warn(e.message); return []; }) : null;
+  // Paid research intake (separate service): listed here for moderators only.
+  const rreq = ctx.be.listResearchRequests ? await ctx.be.listResearchRequests().catch((e) => { console.warn(e.message); return null; }) : null;
   const L = (id) => ctx.feed.byId.get(id);
   const lk = (id) => L(id) ? html`<a href="#/l/${id}">${L(id).name}</a>` : html`<span class="muted">No listing</span>`;
   const actions = (table, row) => html`<form class="mod-actions" data-moderate="${table}:${row.id}"><input name="note" placeholder="Note to author (optional)" maxlength="300">
@@ -27,6 +30,7 @@ export async function moderation(ctx) {
       <p class="small muted">client_reference_id: <code>${p.client_reference_id}</code></p>
       <div class="mod-actions"><button class="btn sm ok" data-confirm-paid="${p.id}">Confirm paid</button><button class="btn sm ghost" data-reject-paid="${p.id}">Reject</button></div></div>`)
     : html`<p class="muted">No payments waiting.</p>`}</section>` : ''}
+  ${researchModSection(rreq)}
   <section><h2>Reports <small>${qd.reports.length}</small></h2>${qd.reports.length ? qd.reports.map((r) => html`<div class="mod-item report"><div class="post-meta"><span class="kind warn">${r.reason}</span> on ${r.target_type.replace('_', ' ')} · ${ago(r.created_at)}</div>
     <p>${r.details || html`<span class="muted">No details</span>`}</p>${r.target ? html`<blockquote>${r.target.title || r.target.body || r.target.payload?.title || ''}</blockquote>` : html`<p class="muted small">Target: ${r.target_type} ${r.target_id}</p>`}
     <div class="mod-actions"><button class="btn sm ghost" data-resolve="${r.id}:dismissed">Dismiss</button><button class="btn sm danger" data-resolve="${r.id}:removed">Remove content</button></div></div>`) : html`<p class="muted">No open reports.</p>`}</section>

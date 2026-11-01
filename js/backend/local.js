@@ -15,7 +15,7 @@ const KEY = 'td-community-preview-v3';
 // Older keys: v1 = first prototype (votes, badges); v2 = seeded EXAMPLE accounts/submissions/comments/board.
 // Dropped once on load so returning browsers lose the old example records.
 const OLD_KEYS = ['td-community-preview-v1', 'td-community-preview-v2'];
-const EMPTY = { accounts: [], unlocks: [], memberships: [], submissions: [], comments: [], board: [], reports: [], session: null };
+const EMPTY = { accounts: [], unlocks: [], memberships: [], submissions: [], comments: [], board: [], reports: [], research: [], session: null };
 const TABLE = { submissions: 'submissions', comments: 'comments', board_posts: 'board' };
 const TARGET = { comment: 'comments', board_post: 'board', submission: 'submissions' };
 
@@ -129,6 +129,24 @@ export class LocalBackend {
     if (file) p.data_url = await shrinkImage(file);
     const s = { id: uid('s'), kind, listing_id: listing_id || null, author_id: m.id, payload: p, rights_confirmed: !!rights_confirmed, is_sample: false, status: 'pending', created_at: nowIso(), is_example: false };
     this.db.submissions.push(s); this.save(); return s;
+  }
+  // Paid Research Pack intake (preview: this browser only; no link to listings).
+  async requestResearch({ address, purpose, ack }) {
+    const m = this.requireMe(); if (!ack) throw new Error('Please acknowledge the research terms');
+    address = this.text(address, 5, 300, 'Address'); purpose = String(purpose || '').trim().slice(0, 1000);
+    this.db.research = this.db.research || [];
+    if (this.db.research.filter((r) => r.user_id === m.id && ['requested', 'paid', 'in_progress'].includes(r.status)).length >= 5) throw new Error('You already have 5 open research requests');
+    const d = new Date(), ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+    const r = { id: uid('rr'), user_id: m.id, email: '', address, purpose, notes: '', status: 'requested',
+      reference: ['PR', ymd, Math.random().toString(36).slice(2, 6).toUpperCase().padEnd(4, 'X')].join('-'), created_at: nowIso(), delivered_at: null };
+    this.db.research.push(r); this.save(); return r;
+  }
+  async myResearchRequests() { return (this.db.research || []).filter((r) => r.user_id === this.db.session).sort((a, b) => b.created_at.localeCompare(a.created_at)); }
+  async listResearchRequests() { if (!this.isMod()) return null; return [...(this.db.research || [])].sort((a, b) => b.created_at.localeCompare(a.created_at)); }
+  async setResearchStatus(id, status, note) {
+    if (!this.isMod()) throw new Error('Moderators only'); const r = (this.db.research || []).find((x) => x.id === id); if (!r) throw new Error('Unknown request');
+    r.status = status; r.delivered_at = status === 'delivered' ? (r.delivered_at || nowIso()) : null;
+    if (note && note.trim()) r.notes = (r.notes ? r.notes + '\n' : '') + note.trim().slice(0, 300); this.save(); return r;
   }
   async listMySubmissions() { return this.db.submissions.filter((s) => s.author_id === this.db.session).sort((a, b) => b.created_at.localeCompare(a.created_at)); }
 

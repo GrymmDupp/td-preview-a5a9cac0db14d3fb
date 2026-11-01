@@ -17,6 +17,7 @@ import { rules, about, DISCLAIMER } from './views/pages.js';
 import { packs } from './views/packs.js';
 import { archive } from './views/archive.js';
 import { heritage } from './views/heritage.js';
+import { research } from './views/research.js';
 import { initPwa } from './install.js';
 
 const ctx = { feed, be: null, me: null, membership: null, unlocks: [], comments: {}, config: CONFIG };
@@ -28,6 +29,7 @@ const ROUTES = [
   [/^\/contribute$/, contribute, 'Submit'], [/^\/suggest$/, suggest, 'Suggest a property'], [/^\/moderate$/, moderation, 'Moderation'],
   [/^\/packs$/, packs, 'Dossier Packs'], [/^\/archive$/, archive, 'Sold & Off market archive'],
   [/^\/heritage$/, heritage, 'Heritage Homes'],
+  [/^\/research$/, research, 'Commission a Research File'],
   [/^\/rules$/, rules, 'Community rules'], [/^\/about$/, about, 'About'],
 ];
 
@@ -212,6 +214,10 @@ document.addEventListener('submit', async (e) => {
     else if (ds.commentReply) { e.preventDefault(); if (!needMe()) return; await ctx.be.createComment({ parent_id: ds.commentReply, body: data().body }); toast('Reply sent for review.'); route(); }
     else if ('newBoard' in ds) { e.preventDefault(); if (!needMe()) return; const d = data(); await ctx.be.createBoardPost({ title: d.title, body: d.body }); toast('Post sent for review. Only you can see it until it’s approved.'); route(); }
     else if (ds.boardReply) { e.preventDefault(); if (!needMe()) return; await ctx.be.createBoardPost({ parent_id: ds.boardReply, body: data().body }); toast('Reply sent for review.'); route(); }
+    else if ('research' in ds) { e.preventDefault(); if (!needMe()) return; const d = data();
+      const r = await ctx.be.requestResearch({ address: d.address, purpose: d.purpose, ack: !!d.ack });
+      toast(`Request ${r?.reference || ''} received. We’ll email you to confirm price and turnaround.`); route(); }
+    else if (ds.researchStatus) { e.preventDefault(); const d = data(); await ctx.be.setResearchStatus(ds.researchStatus, d.status, d.note || ''); toast('Research request updated.'); route(); }
     else if (ds.moderate) { e.preventDefault(); const [table, id] = ds.moderate.split(':'); const decision = e.submitter?.value; await ctx.be.moderate(table, id, decision, data().note || '', { is_sample: !!data().is_sample }); toast(decision === 'approved' ? (table === 'submissions' ? 'Approved. It’s now part of the full file.' : 'Approved. It’s public now.') : 'Rejected.'); await refreshCtx(); route(); }
     else if (ds.submit) {
       e.preventDefault(); if (!needMe()) return;

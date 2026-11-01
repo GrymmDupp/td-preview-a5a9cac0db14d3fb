@@ -153,6 +153,14 @@ export class SupabaseBackend {
     if (error) throw new Error('Couldn’t reach the payment check. Try again in a moment.');
     return data?.results || [];
   }
+  // Paid Research Pack intake (separate service; no link to listings). RLS: own rows; moderators see all.
+  async requestResearch({ address, purpose, ack }) { this.need(); return this.ok(await this.sb.rpc('request_research', { p_address: address || '', p_purpose: purpose || '', p_ack: !!ack })); }
+  async myResearchRequests() {
+    if (!this.uid) return [];
+    return this.ok(await this.sb.from('research_requests').select('id,reference,address,status,created_at,delivered_at').eq('user_id', this.uid).order('created_at', { ascending: false })) || [];
+  }
+  async listResearchRequests() { this.need(); return this.ok(await this.sb.from('research_requests').select('*').order('created_at', { ascending: false }).limit(200)) || []; }
+  async setResearchStatus(id, status, note) { return this.ok(await this.sb.rpc('set_research_status', { rid: id, p_status: status, p_note: note || null })); }
   async listUnlockRequests(status = 'pending') { return this.ok(await this.sb.rpc('list_unlock_requests', { p_status: status })) || []; }
   async confirmUnlockRequest(id) { return this.ok(await this.sb.rpc('confirm_unlock_request', { rid: id })); }
   async rejectUnlockRequest(id, note) { this.ok(await this.sb.rpc('reject_unlock_request', { rid: id, p_note: note || null })); }
