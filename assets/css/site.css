@@ -576,3 +576,13 @@ body.pwa-standalone [data-install-entry],body.pwa-installed [data-install-entry]
 .rf-terms{margin:8px 0 24px}.rf-terms li{margin:0 0 8px}
 .rf-notes{white-space:pre-line}
 .foot-links .foot-research{opacity:.75;font-style:italic}
+/* First-visit strip (install.js showFirstRun): inline under the header, never fixed over content. */
+.firstrun{position:relative;max-width:1180px;margin:10px auto 0;padding:10px 44px 10px 14px;border:1px solid #5b4310;border-radius:var(--r);
+  background:linear-gradient(180deg,#221a0b,#171213);box-shadow:inset 0 0 0 1px rgba(201,162,39,.12);color:var(--parch);font-size:.88rem;line-height:1.45}
+@media (max-width:1210px){.firstrun{margin:10px 10px 0}}
+.firstrun p{margin:0}
+.firstrun b{color:var(--gold);font-family:var(--display);font-weight:600;letter-spacing:.03em}
+.firstrun .fr-mark{color:var(--gold)}
+.firstrun .link{color:#f2d79a;text-decoration:underline;text-underline-offset:2px;font:inherit;padding:0;background:none;border:0;cursor:pointer;min-height:24px}
+.firstrun .fr-x{position:absolute;top:4px;right:4px;width:36px;height:36px;border:0;background:none;color:var(--muted);font-size:1.4rem;line-height:1;cursor:pointer;border-radius:50%}
+.firstrun .fr-x:hover,.firstrun .fr-x:focus-visible{color:var(--bone);background:rgba(255,255,255,.06)}

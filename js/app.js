@@ -18,7 +18,8 @@ import { packs } from './views/packs.js';
 import { archive } from './views/archive.js';
 import { heritage } from './views/heritage.js';
 import { research } from './views/research.js';
-import { initPwa } from './install.js';
+import { initPwa, showFirstRun } from './install.js';
+import { standardPrice } from './components.js';
 
 const ctx = { feed, be: null, me: null, membership: null, unlocks: [], comments: {}, config: CONFIG };
 
@@ -262,14 +263,15 @@ initPwa();
   // Banner: preview store (or Supabase unreachable) = test data in this browser; live with
   // mock checkout = purchases are examples, no real payment.
   const banner = $('#preview-banner');
-  if (ctx.be.fallback) { banner.querySelector('.short').innerHTML = 'Community server unreachable: <b>using this browser only</b>.'; banner.querySelector('.long').innerHTML = 'The community server couldn’t be reached, so comments, posts, submissions, accounts and unlocks here are <b>test data stored only in this browser</b> and won’t reach the live site. Checkouts are examples: <b>no real payment</b>. Reload to try again.'; banner.hidden = false; }
+  if (ctx.be.fallback) { banner.querySelector('b').textContent = 'Offline'; banner.querySelector('.short').innerHTML = 'Can’t reach the community server: <b>nothing posted now reaches the live site</b>.'; banner.querySelector('.long').innerHTML = 'Can’t reach the community server right now, so comments, posts, submissions, sign-in and unlocks won’t be saved to your account. Listings still work. Reload to try again.'; banner.querySelector('[data-reset-preview]')?.remove(); banner.hidden = false; }
   else if (ctx.be.isPreview) banner.hidden = false;
-  else if (ctx.be.paymentLinkCheckout) { banner.querySelector('.short').innerHTML = 'Private preview. Files unseal the moment your payment clears.'; banner.querySelector('.long').innerHTML = 'Private preview. Accounts, comments and submissions are real and moderated. File unlocks are paid on Stripe’s secure page and <b>unseal instantly</b>: the moment Stripe shows your payment, the file is yours.'; banner.querySelector('[data-reset-preview]')?.remove(); banner.hidden = false; }
-  else if (ctx.be.mockCheckout) { banner.querySelector('.short').innerHTML = 'Checkouts are examples: <b>no real payment</b>.'; banner.querySelector('.long').innerHTML = 'Private preview. Accounts, comments and submissions are real and moderated. Checkouts are examples: <b>no real payment</b> yet; example unlocks are saved to your account.'; banner.querySelector('[data-reset-preview]')?.remove(); banner.hidden = false; }
+  // Live with Stripe (payment_link): no banner; accounts, comments, submissions and unlocks are real.
+  else if (ctx.be.mockCheckout) { banner.querySelector('b').textContent = 'Note'; banner.querySelector('.short').innerHTML = 'Checkout isn’t live yet: <b>no payment is taken</b>.'; banner.querySelector('.long').innerHTML = 'Accounts, comments and submissions are saved and moderated. Checkout isn’t live yet: <b>no payment is taken</b>, and unlocks made now are saved to your account as examples.'; banner.querySelector('[data-reset-preview]')?.remove(); banner.hidden = false; }
   $('#feed-meta').textContent = `Feed v${feed.meta.version} · ${feed.meta.count} listings · ${feed.source === 'live' ? 'live' : 'offline snapshot'}`;
   await refreshCtx();
   window.addEventListener('hashchange', route);
   await route();
+  showFirstRun(standardPrice());
   // Back from Stripe (or any load with a pending payment): check now, then keep watching briefly.
   if (hasPending()) { checkPayments(); startPoll(60000); }
 })();

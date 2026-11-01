@@ -2,7 +2,7 @@
  * Scope is the folder this file is served from ('./'), so it works on a GitHub Pages subpath.
  * Bump VERSION on every deploy (the preview deploy script stamps it automatically); the old
  * caches are deleted when the new worker activates. See _build/PWA_NOTES.md. */
-const VERSION = 'td-pwa-20261101-030557';
+const VERSION = 'td-pwa-20261101-105915';
 const SHELL = `${VERSION}-shell`;      // precached app shell
 const RUNTIME = `${VERSION}-runtime`;  // static assets + data seen while browsing
 const OFFLINE = 'offline.html';

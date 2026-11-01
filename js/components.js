@@ -43,7 +43,7 @@ export function plate(l, cls = '') {
 <rect width="400" height="250" fill="#120e0f"/><rect width="400" height="250" fill="url(#p${h})"/><rect width="400" height="250" fill="url(#g${h})"/>
 <path d="M0 210 H400" stroke="${c}" stroke-opacity=".5"/>${body}
 <rect x="10" y="10" width="380" height="230" fill="none" stroke="#e8dcc4" stroke-opacity=".14"/></svg>
-<span class="plate-cap">${l.year ? `c. ${l.year} · ` : ''}${esc(l.city)}${l.state ? ', ' + l.state : ''}</span></div>`);
+<span class="plate-cap">No photo on file · ${l.year ? `c. ${l.year} · ` : ''}${esc(l.city)}${l.state ? ', ' + l.state : ''}</span></div>`);
 }
 
 export const money = (n) => `$${Number(n).toFixed(Number.isInteger(Number(n)) ? 0 : 2)}`;

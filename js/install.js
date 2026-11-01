@@ -6,6 +6,7 @@ import { esc, toast } from './util.js';
 
 const LS_DISMISS = 'td-install-dismissed';
 const LS_INSTALLED = 'td-installed';
+const LS_FIRSTRUN = 'td-firstrun-dismissed';
 const ua = navigator.userAgent;
 const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const isAndroid = /Android/i.test(ua);
@@ -93,6 +94,7 @@ export async function startInstall() {
 // ---------- dismissible card
 function hideCard() { if (card) { card.remove(); card = null; } }
 function maybeShowCard() {
+  if (strip) return;   // the first-run strip already carries the install link; never stack the two
   if (card || isStandalone() || ls.get(LS_INSTALLED) === '1' || ls.get(LS_DISMISS)) return;
   if (!deferred && !isIOS) return;
   card = document.createElement('aside'); card.className = 'install-card'; card.setAttribute('aria-label', 'Install the app');
@@ -101,6 +103,19 @@ function maybeShowCard() {
     <div class="ic-btns"><button class="btn sm" data-install-app>${isIOS ? 'How to install' : 'Install'}</button><button class="link small" data-install-dismiss>Not now</button></div>`;
   document.body.appendChild(card);
   requestAnimationFrame(() => card?.classList.add('show'));
+}
+
+// ---------- first-visit strip (once per browser, remembered in localStorage)
+let strip = null;
+const installedish = () => isStandalone() || ls.get(LS_INSTALLED) === '1';
+function closeStrip() { ls.set(LS_FIRSTRUN, String(Date.now())); strip?.remove(); strip = null; }
+export function showFirstRun(price = '$5') {
+  if (strip || ls.get(LS_FIRSTRUN)) return;
+  strip = document.createElement('aside'); strip.className = 'firstrun'; strip.setAttribute('aria-label', 'Welcome');
+  strip.innerHTML = `<p><span class="fr-mark" aria-hidden="true">✦</span> <b>Free preview on every listing.</b> Unlock the full sourced file for ${esc(price)}.<span class="fr-install"${installedish() ? ' hidden' : ''}> <button type="button" class="link" data-firstrun-install>Install to your home screen.</button></span></p>
+    <button type="button" class="fr-x" data-firstrun-close aria-label="Dismiss this tip">×</button>`;
+  const main = document.getElementById('main'); main.parentNode.insertBefore(strip, main);
+  hideCard();
 }
 
 // ---------- update notice
@@ -132,15 +147,17 @@ export function initPwa() {
     setTimeout(maybeShowCard, 2500);
   });
   window.addEventListener('appinstalled', () => {
-    ls.set(LS_INSTALLED, '1'); deferred = null; hideCard(); setState();
+    ls.set(LS_INSTALLED, '1'); deferred = null; hideCard(); setState(); strip?.querySelector('.fr-install')?.setAttribute('hidden', '');
     toast('Installed. Twisted Deeds is in your apps.');
   });
   window.matchMedia?.('(display-mode: standalone)').addEventListener?.('change', setState);
   if (isIOS) setTimeout(maybeShowCard, 4000);
   document.addEventListener('click', (e) => {
-    const t = e.target.closest('[data-install-app], [data-install-dismiss], [data-sw-refresh], [data-sw-later]'); if (!t) return;
+    const t = e.target.closest('[data-install-app], [data-install-dismiss], [data-sw-refresh], [data-sw-later], [data-firstrun-install], [data-firstrun-close]'); if (!t) return;
     e.preventDefault();
-    if ('installApp' in t.dataset) startInstall();
+    if ('firstrunClose' in t.dataset) closeStrip();
+    else if ('firstrunInstall' in t.dataset) { closeStrip(); startInstall(); }
+    else if ('installApp' in t.dataset) startInstall();
     else if ('installDismiss' in t.dataset) { ls.set(LS_DISMISS, String(Date.now())); hideCard(); }
     else if ('swRefresh' in t.dataset) location.reload();
     else if ('swLater' in t.dataset) t.closest('.update-bar')?.remove();
