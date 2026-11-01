@@ -586,3 +586,4 @@ body.pwa-standalone [data-install-entry],body.pwa-installed [data-install-entry]
 .firstrun .link{color:#f2d79a;text-decoration:underline;text-underline-offset:2px;font:inherit;padding:0;background:none;border:0;cursor:pointer;min-height:24px}
 .firstrun .fr-x{position:absolute;top:4px;right:4px;width:36px;height:36px;border:0;background:none;color:var(--muted);font-size:1.4rem;line-height:1;cursor:pointer;border-radius:50%}
 .firstrun .fr-x:hover,.firstrun .fr-x:focus-visible{color:var(--bone);background:rgba(255,255,255,.06)}
+.co-item .plate-cap,.thumb .plate-cap{display:none}
