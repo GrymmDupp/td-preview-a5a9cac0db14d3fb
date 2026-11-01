@@ -23,7 +23,8 @@ export function sidebar(ctx) {
   <section class="box"><h4>Categories</h4><ul class="cats">
     <li class="cat-tier"><a href="#/browse?tier=1">Twisted Deeds <span>${count((l) => l.tier === 1)}</span></a></li>
     ${layers.map((k) => { const n = count((l) => l.layer === k); const i = layerInfo(k); return html`<li class="${n ? '' : 'empty'}"><a href="#/browse?layer=${k}" style="--c:${i.color}"><span class="dot"></span>${i.label} <span>${n || 'soon'}</span></a></li>`; })}
-    <li class="cat-tier"><a href="#/browse?tier=2">Strong Story <span>${count((l) => l.tier === 2) || 'new tier'}</span></a></li></ul></section>
+    <li class="cat-tier"><a href="#/browse?tier=2">Strong Story <span>${count((l) => l.tier === 2) || 'new tier'}</span></a></li></ul>
+    <p class="small heritage-side"><a href="#/heritage">❦ Heritage Homes</a> <span class="muted">· a separate collection: one family, 100+ years${(ctx.feed.heritage || []).length ? ` (${ctx.feed.heritage.length})` : ''}</span></p></section>
   <section class="box"><h4>By price</h4><ul class="cats">${PRICE_BANDS.map((b) => html`<li><a href="#/browse?price=${b.key}">${b.label}</a></li>`)}</ul></section>
   <section class="box"><h4>Community</h4><p class="small">Comment on any listing, or talk research on the one general board.</p><a class="small" href="#/board">Community board →</a></section>
   <section class="box cta"><h4>Know a listing with a past?</h4><p>Found a house for sale with a documented dark history or a strong story? Send the link.</p><a class="btn sm" href="#/suggest">Suggest a property</a></section>

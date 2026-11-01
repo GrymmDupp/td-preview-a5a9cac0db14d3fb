@@ -1,16 +1,24 @@
 // Shared UI pieces: grade labels, listing cards, the archival "plate" image, price, lock.
 import { html, raw, esc, fmtDate, truncate, plural, safeUrl, host } from './util.js';
 import { CONFIG } from './config.js';
-import { statusInfo, kindLabel, tierInfo, storyLabel, PUBLIC_TIER1, PUBLIC_TIER2 } from './taxonomy.js';
+import { statusInfo, kindLabel, tierInfo, storyLabel, PUBLIC_TIER1, PUBLIC_TIER2, PUBLIC_HERITAGE, heritageTierInfo } from './taxonomy.js';
 import { displayableImages } from './feed.js';
 import { isNew, isArchived, updateLine } from './feed.js';
 
 // Public rating badge. Tier 1 = prominent "Twisted Deed"; tier 2 = muted "Strong Story"
 // with its category. The internal grade (and its letters/emoji) is never shown.
-export const gradeBadge = (l, big = false) => l.tier === 1
+// Heritage Homes tier badge (Century / Sesquicentennial / Bicentennial), gold, separate from the core ratings.
+export const heritageBadge = (h, big = false) => { if (!h) return ''; const t = heritageTierInfo(h.tier);
+  return html`<span class="badge heritage hb-${h.tier} ${big ? 'big' : ''}" title="${PUBLIC_HERITAGE}: ${t.long}" aria-label="${PUBLIC_HERITAGE}, ${t.label} tier"><span class="hb-orn" aria-hidden="true">❦</span>${t.label}<i>${h.years} yrs</i></span>`; };
+// Cross-links between the separate collections (a listing may qualify for both).
+export const heritageCrossLink = (l) => !l?.heritage ? '' : l.collection === 'heritage'
+  ? '' : html`<a class="xlink heritage-x" href="#/heritage" title="This house also qualifies for the separate Heritage Homes collection">❦ Also a Heritage Home · ${heritageTierInfo(l.heritage.tier).label}</a>`;
+export const coreCrossLink = (l) => !l?.heritage || l.collection === 'heritage' ? ''
+  : html`<a class="xlink core-x" href="#/l/${encodeURIComponent(l.id)}">Also a ${l.tier === 1 ? PUBLIC_TIER1 : PUBLIC_TIER2}</a>`;
+export const gradeBadge = (l, big = false) => l.collection === 'heritage' ? heritageBadge(l.heritage, big) : l.tier === 1
   ? html`<span class="badge ddd ${big ? 'big' : ''}" style="--c:#c41e32" title="${PUBLIC_TIER1}" aria-label="Rating: ${PUBLIC_TIER1}"><b>${PUBLIC_TIER1}</b></span>`
   : html`<span class="badge story ${big ? 'big' : ''}" title="${PUBLIC_TIER2}${storyLabel(l) ? ': ' + storyLabel(l) : ''}" aria-label="Rating: ${PUBLIC_TIER2}${storyLabel(l) ? ', ' + storyLabel(l) : ''}">${PUBLIC_TIER2}${storyLabel(l) ? html`<i>${storyLabel(l)}</i>` : ''}</span>`;
-export const layerChip = (l) => html`<a class="layer" style="--c:${l.layerI.color}" href="#/browse?layer=${encodeURIComponent(l.layer || '')}"><span class="dot"></span>${l.layerI.label}</a>`;
+export const layerChip = (l) => l.collection === 'heritage' ? html`<a class="layer" style="--c:#c9a227" href="#/heritage"><span class="dot"></span>Heritage Homes</a>` : html`<a class="layer" style="--c:${l.layerI.color}" href="#/browse?layer=${encodeURIComponent(l.layer || '')}"><span class="dot"></span>${l.layerI.label}</a>`;
 export const statusPill = (l) => { const s = statusInfo(l.status); return html`<span class="status ${s.cls}">${s.label}</span>`; };
 export const pendingTag = (row) => row?.status === 'pending' ? html`<span class="pending" title="Only you can see this until a moderator approves it">Awaiting review</span>` : '';
 
@@ -107,7 +115,7 @@ export function listingCard(l, { comments = {}, unlocks = [], compact = false, u
   <a class="card-media" href="#/l/${encodeURIComponent(l.id)}" aria-label="${l.name}">${photoOrPlate(l)}
     ${isNew(l) ? html`<span class="ribbon">New</span>` : ''}</a>
   <div class="card-body">
-    <div class="card-badges">${gradeBadge(l)} ${compact ? newTag(l) : ''} ${updatedTag(upd)} ${layerChip(l)} ${statusPill(l)}</div>
+    <div class="card-badges">${gradeBadge(l)} ${compact ? newTag(l) : ''} ${updatedTag(upd)} ${layerChip(l)} ${statusPill(l)} ${heritageCrossLink(l)}</div>
     <h3><a href="#/l/${encodeURIComponent(l.id)}">${l.name}</a></h3>
     <div class="card-place">${l.place.replace(/,\s*[A-Z]{2}$/, '')}${l.state ? html`, <a href="#/browse?state=${l.state}">${l.state}</a>` : ''}</div>
     ${isArchived(l) ? html`<div class="card-price archived">Last known: ${l.price || 'price not listed'}${l.lastChecked ? html` <span class="muted">(${fmtDate(l.lastChecked)})</span>` : ''}</div><div class="no-sale small">No longer for sale</div>` : html`<div class="card-price">${l.price || 'Price not listed'}</div>`}

@@ -13,7 +13,10 @@ export const OPEN_STATUSES = ['Active', 'Pending'];
 export const isOpen = (l) => OPEN_STATUSES.includes(l?.status);
 export const isArchived = (l) => !!l && !isOpen(l);
 
-export const feed = { meta: null, listings: [], catalog: [], archive: [], byId: new Map(), source: '', events: [], fullLocal: new Map() };
+// listings/catalog/archive = CORE only (Twisted Deeds + Strong Stories). Heritage Homes are a separate
+// collection: feed.heritage = heritage-only listings (feed/heritage.json) + core listings that also qualify.
+// byId holds both, so listing pages and unlocks work for every id.
+export const feed = { meta: null, listings: [], catalog: [], archive: [], heritage: [], byId: new Map(), source: '', events: [], fullLocal: new Map() };
 
 // ---- access split: FREE PREVIEW vs FULL FILE
 // Feed schema v3 (2026-10-30) is preview-only: summary, loreTeaser, basic facts and
@@ -86,6 +89,7 @@ export function parsePrice(text) {
 function deriveTier(l) {
   const t = Number(l.tier);
   if (t === 1 || t === 2) return t;
+  if (t === 3 || l.collection === 'heritage') return 3;   // Heritage Homes: separate collection, never core
   if (GRADES[l.grade]) return GRADES[l.grade].tier;
   if (l.grade == null && LAYERS[l.layer]) return LAYERS[l.layer].tier;
   return 2; // unknown grade: neutral, never outranks tier 1 (Twisted Deed)
@@ -100,6 +104,9 @@ export function normalize(raw) {
   l.state = st;
   l.city = l.place.split(',')[0]?.trim() || '';
   l.tier = deriveTier(l);
+  l.heritage = cleanHeritage(raw.heritage);
+  l.collection = raw.collection === 'heritage' || l.tier === 3 ? 'heritage' : 'core';
+  if (l.collection === 'heritage') l.tier = 3;
   l.gradeI = l.tier === 2 && !GRADES[l.grade] ? { ...gradeInfo('story'), label: 'Story' } : gradeInfo(l.grade);
   l.layerI = layerInfo(l.layer || 'record');
   l.priceNum = parsePrice(l.price);
@@ -130,6 +137,19 @@ export function normalize(raw) {
   return l;
 }
 
+// Optional Heritage Homes object: { tier, since, years, family?, structureType, sourceCount }. Anything odd -> null.
+const H_TIERS = ['century', 'sesquicentennial', 'bicentennial'];
+function cleanHeritage(h) {
+  if (!h || typeof h !== 'object') return null;
+  const since = parseInt(h.since, 10), years = parseInt(h.years, 10) || (since ? new Date().getFullYear() - since : NaN);
+  if (!(years >= 100)) return null;
+  const tier = H_TIERS.includes(h.tier) ? h.tier : years >= 200 ? 'bicentennial' : years >= 150 ? 'sesquicentennial' : 'century';
+  return { tier, since: since || null, years, family: typeof h.family === 'string' ? h.family.slice(0, 60) : '',
+    structureType: ['residence', 'farm', 'commercial'].includes(h.structureType) ? h.structureType : 'residence',
+    sourceCount: parseInt(h.sourceCount, 10) || 0 };
+}
+export const isHeritageOnly = (l) => l?.collection === 'heritage';
+
 // Tier 1 (Twisted Deed) first, always. Then the chosen key.
 export function sortListings(list, key = 'featured') {
   const cmp = {
@@ -156,17 +176,37 @@ export async function loadFeed() {
     console.warn('Live feed unavailable, using bundled snapshot', e);
     data = await fetchJson(CONFIG.feedFallback); source = 'snapshot';
   }
-  const listings = (Array.isArray(data?.listings) ? data.listings : [])
+  const all = (Array.isArray(data?.listings) ? data.listings : [])
     .map(normalize).filter((l) => l.id);
+  // Defensive: a heritage-only listing must never enter core counts, lists, the map or packs.
+  const listings = all.filter((l) => !isHeritageOnly(l));
+  const hOnly = [...all.filter(isHeritageOnly), ...(await loadHeritage(data, source))];
   feed.meta = { version: data.version, schema_version: data.schema_version, generated_at: data.generated_at, count: listings.length, geo_attribution: data.geo_attribution, scouting: cleanScouting(data.scouting) };
   feed.listings = sortListings(listings);
-  feed.byId = new Map(listings.map((l) => [l.id, l]));
+  feed.byId = new Map([...hOnly, ...listings].map((l) => [l.id, l]));
+  feed.heritage = sortHeritage([...new Map([...hOnly, ...listings.filter((l) => l.heritage)].map((l) => [l.id, l])).values()]);
   feed.catalog = feed.listings.filter(isOpen);
   feed.archive = feed.listings.filter(isArchived);
   feed.source = source;
   if (CONFIG.backend !== 'supabase') await loadFullLocal();
   detectChanges();
   return feed;
+}
+
+// Heritage Homes collection: feed/heritage.json, advertised by the core envelope as heritage: {count, url}
+// only once it has listings. Missing/failed -> empty collection (the #/heritage page shows its empty state).
+async function loadHeritage(data, source) {
+  const h = data?.heritage;
+  if (source !== 'live' || !h || !(h.count > 0) || !/^https:\/\/grymmdupp\.github\.io\//.test(String(h.url || ''))) return [];
+  try {
+    const d = await fetchJson(h.url);
+    return (Array.isArray(d?.listings) ? d.listings : []).map((x) => normalize({ ...x, collection: 'heritage' })).filter((l) => l.id && l.heritage);
+  } catch (e) { console.info('Heritage collection unavailable', e.message); return []; }
+}
+// Oldest family tenure first; Active before Pending before anything else.
+export function sortHeritage(list) {
+  const statusRank = (s) => (s === 'Active' ? 0 : s === 'Pending' ? 1 : 2);
+  return [...list].sort((a, b) => statusRank(a.status) - statusRank(b.status) || (b.heritage?.years || 0) - (a.heritage?.years || 0) || a.name.localeCompare(b.name));
 }
 
 // Local preview only: full files from the private, git-ignored local copy. Only

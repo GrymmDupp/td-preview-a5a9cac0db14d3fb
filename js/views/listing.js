@@ -1,4 +1,5 @@
 import { html, fmtDate, ago, plural, safeUrl, host } from '../util.js';
+import { heritageCrossLink } from '../components.js';
 import { newTag, updatedTag, gradeBadge, layerChip, statusPill, plate, photoCredit, imageType, imgAlt, authorName, pendingTag, reportBtn, sourceLinks, listingCard, kindLabel, unlockPrice, membersLine, viewerTier, TIER_LABEL, trialNote, isTrial } from '../components.js';
 import { STATES, ratingLabel } from '../taxonomy.js';
 import { displayableImages, updateLine, isArchived } from '../feed.js';
@@ -107,6 +108,7 @@ export async function listing(ctx, q, id) {
   return html`<nav class="crumbs">${arch ? html`<a href="#/archive">Sold & Off market archive</a> › ` : html`<a href="#/">Listings</a> › `}${l.state ? html`<a href="#/browse?state=${l.state}">${STATES[l.state] || l.state}</a> › ` : ''}<span>${l.name}</span></nav>
   <header class="detail-head" style="--c:${l.layerI.color}">
     <div class="detail-badges">${gradeBadge(l, true)} ${newTag(l)} ${updatedTag(upd)} ${layerChip(l)} ${statusPill(l)} ${unlocked ? html`<span class="file-state open">🔓 Full file unlocked</span>` : full ? html`<span class="file-state open">Moderator view</span>` : html`<span class="file-state">🔒 Free preview</span> <a class="file-state unlock-link" href="#/unlock/${encodeURIComponent(l.id)}">Unlock full file · ${unlockPrice(ctx)}</a>`}</div>
+    ${l.collection === 'heritage' ? html`<p class="small heritage-crumb"><a href="#/heritage">❦ Heritage Homes</a> · a separate collection: one family, ${l.heritage?.years || '100+'} years${l.heritage?.since ? html` (since ${l.heritage.since})` : ''}</p>` : heritageCrossLink(l) ? html`<p class="small">${heritageCrossLink(l)}</p>` : ''}
     <h1>${l.name}</h1>
     <div class="detail-place">${l.place}</div>
     <div class="detail-price"><span>${arch ? 'Last known price: ' : ''}${l.price || 'Price not listed'}</span> <span class="muted">· ${l.status}</span>

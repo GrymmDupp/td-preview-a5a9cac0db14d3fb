@@ -9,12 +9,24 @@ export const GRADES = {
   split:     { label: 'Twisted Deed', icon: '', color: '#d2457a', tier: 1 },
   sovereign: { label: 'Twisted Deed', icon: '', color: '#ff4a4a', tier: 1 },
   story:     { label: 'Strong Story', icon: '', color: '#cbbd9f', tier: 2 },
+  heritage:  { label: 'Heritage Home', icon: '', color: '#c9a227', tier: 3 },   // separate collection (#/heritage)
 };
 
 export const TIERS = {
   1: { key: 'triple-d', label: 'Twisted Deed', long: 'Murder, crime, mayhem and the darkest records' },
   2: { key: 'story', label: 'Strong Story', long: 'Architectural oddities, lore-heavy vacancies, folklore, failed attractions, closed institutions, heritage' },
+  3: { key: 'heritage-home', label: 'Heritage Home', long: 'One family, one house, a hundred years or more (separate collection, never in core lists)' },
 };
+
+// Heritage Homes (2026-11-01): a SEPARATE collection, never counted or listed with Twisted Deeds / Strong Stories.
+export const PUBLIC_HERITAGE = 'Heritage Home';
+export const HERITAGE_TIERS = {
+  century:          { label: 'Century',          min: 100, roman: 'C',  long: 'One family for 100 years or more' },
+  sesquicentennial: { label: 'Sesquicentennial', min: 150, roman: 'CL', long: 'One family for 150 years or more' },
+  bicentennial:     { label: 'Bicentennial',     min: 200, roman: 'CC', long: 'One family for 200 years or more' },
+};
+export const STRUCTURE_TYPES = { residence: 'Residence', farm: 'Farm', commercial: 'Commercial' };
+export const heritageTierInfo = (t) => HERITAGE_TIERS[t] || HERITAGE_TIERS.century;
 
 // Public display names. The internal keys (grade, tier, storyCategory) are unchanged;
 // the site never shows the internal grade letters or their emoji string.
@@ -23,7 +35,7 @@ export const PUBLIC_TIER2 = 'Strong Story';
 const STORY_CATS = { oddity: 'Architecture & Oddity', folklore: 'Folklore', attraction: 'Failed Attraction', heritage: 'Heritage', 'long-vacant': 'Long-Vacant', research: 'Heritage' };
 // Sub-label for a Strong Story badge (storyCategory, else the layer). Empty for tier 1.
 export const storyLabel = (l) => l.tier === 1 ? '' : (STORY_CATS[l.storyCategory] || (LAYERS[l.layer]?.tier === 2 ? { oddity: 'Architecture & Oddity', folklore: 'Folklore', attraction: 'Failed Attraction', heritage: 'Heritage' }[l.layer] : '') || '');
-export const ratingLabel = (l) => l.tier === 1 ? PUBLIC_TIER1 : PUBLIC_TIER2 + (storyLabel(l) ? ' · ' + storyLabel(l) : '');
+export const ratingLabel = (l) => l.collection === 'heritage' ? PUBLIC_HERITAGE + ' · ' + heritageTierInfo(l.heritage?.tier).label : l.tier === 1 ? PUBLIC_TIER1 : PUBLIC_TIER2 + (storyLabel(l) ? ' · ' + storyLabel(l) : '');
 // Labels for the contribute form's "what kind of story" choice (values stay internal keys).
 export const CONTRIB_GRADE_LABELS = { death: 'Twisted Deed: a death, murder or violent crime', diseased: 'Twisted Deed: asylum, sanatorium or epidemic history', split: 'Twisted Deed: scandal or stigma', story: 'Strong Story: architecture, folklore, failed attraction, heritage or long-vacant' };
 
