@@ -47,6 +47,8 @@ input[type=checkbox]{width:auto;accent-color:var(--crimson);margin:3px 0 0}
 .brand{display:flex;align-items:center;gap:7px;text-decoration:none;font-family:var(--display);font-size:1.35rem;letter-spacing:.06em}
 .brand .b1{color:var(--bone)}.brand .b2{color:var(--ember)}
 .brand.small{font-size:1.1rem}
+.brand .brand-shield{height:40px;width:auto;flex:0 0 auto;display:block;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))}
+.brand.small .brand-shield{height:32px}
 .tag{display:none;font-family:var(--serif);font-style:italic;color:var(--muted);font-size:1.05rem}
 .who{margin-left:auto;display:flex;align-items:center;gap:10px}
 .who .me{display:flex;align-items:center;gap:7px;text-decoration:none}.who .me>span:not(.avatar){display:none}
@@ -309,6 +311,8 @@ body.is-map .site-foot{display:none}
   .tag{display:inline}
   .head-in{padding:14px 20px 6px}
   .brand{font-size:1.7rem}
+  .brand .brand-shield{height:52px}
+  .brand.small .brand-shield{height:32px}
   .nav{display:flex;max-width:1200px;margin:0 auto;padding:0 14px;gap:2px}
   .nav a{padding:9px 12px;text-decoration:none;color:var(--muted);font-family:var(--display);font-size:.82rem;letter-spacing:.08em;text-transform:uppercase;border-bottom:2px solid transparent}
   .nav a.on,.nav a:hover{color:var(--bone);border-bottom-color:var(--crimson)}
