@@ -615,7 +615,7 @@ body.pwa-standalone [data-install-entry],body.pwa-installed [data-install-entry]
   button.link,.report-btn{display:inline-flex;align-items:center;padding-top:0;padding-bottom:0}
   .filters select,.filters input,main select,main input:not([type=checkbox]):not([type=radio]):not([type=file]){min-height:44px}
   .tabbar a{min-height:44px}
-  .card-place a,.crumbs a,.card h3 a,.ph-credit a,.src a,main a.small,main .small>a:not(.btn),.result-bar a,.feed-head a,.box a.small,.heritage-crumb a,.tag-new,.tag-upd{display:inline-block;padding:13px 6px;margin:-13px -6px;position:relative}
+  .card-place a,.crumbs a,.card h3 a,.ph-credit a,.src a,main a.small,main .small>a:not(.btn),.result-bar a,.feed-head a,.box a.small,.heritage-crumb a{display:inline-block;padding:13px 6px;margin:-13px -6px;position:relative}
   .card h3 a{padding:10px 0;margin:-10px 0}
   .card-badges a,.detail-badges a:not(.file-state){display:inline-flex;align-items:center;min-height:44px}
   .states-all summary{display:flex;align-items:center;min-height:44px}
