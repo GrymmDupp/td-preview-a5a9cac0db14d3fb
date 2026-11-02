@@ -591,3 +591,66 @@ body.pwa-standalone [data-install-entry],body.pwa-installed [data-install-entry]
 .firstrun .fr-x{position:absolute;top:4px;right:4px;width:36px;height:36px;border:0;background:none;color:var(--muted);font-size:1.4rem;line-height:1;cursor:pointer;border-radius:50%}
 .firstrun .fr-x:hover,.firstrun .fr-x:focus-visible{color:var(--bone);background:rgba(255,255,255,.06)}
 .co-item .plate-cap,.thumb .plate-cap{display:none}
+
+/* ---- mobile UX polish (2026-11-02): folding filters, 44px tap targets, sticky unlock bar, footer clearance */
+/* Browse filters: desktop/tablet keeps the open grid (the panel wrapper is transparent to the grid). */
+.f-toggle,.f-actions{display:none}
+.f-more{display:contents}
+@media (max-width:720px){
+  .filters{grid-template-columns:minmax(0,1fr) auto;align-items:end}
+  .filters .f.grow{grid-column:1}
+  .f-toggle{display:inline-flex;min-height:44px;white-space:nowrap}
+  .f-toggle.has-active{border-color:var(--gold);color:var(--gold)}
+  .f-more{display:none}
+  .filters.f-open .f-more{display:grid;grid-column:1/-1;grid-template-columns:1fr 1fr;gap:8px;border-top:1px solid var(--line);padding-top:10px;margin-top:2px}
+  .filters.f-open .f-toggle{border-color:var(--gold);background:var(--panel2)}
+  .f-actions{display:flex;grid-column:1/-1;gap:8px;position:sticky;bottom:calc(var(--tabbar) + env(safe-area-inset-bottom));background:var(--panel);padding:8px 0 2px;margin-top:2px}
+  .f-actions .btn{flex:1}
+}
+/* Tap targets: 44px minimum wherever the tab bar shows (below 960px). Inline links grow their hit
+   area with padding + an equal negative margin, so text layout doesn't move. */
+@media (max-width:959.98px){
+  .btn,.btn.sm,.chip,.file-state.unlock-link,.card-foot .cc,.install-head,.who .me,.who .modlink,.link:not(.firstrun .link),.report-btn{min-height:44px}
+  .chip,.file-state.unlock-link,.card-foot .cc,.who .me,.who .modlink{display:inline-flex;align-items:center}
+  button.link,.report-btn{display:inline-flex;align-items:center;padding-top:0;padding-bottom:0}
+  .filters select,.filters input,main select,main input:not([type=checkbox]):not([type=radio]):not([type=file]){min-height:44px}
+  .tabbar a{min-height:44px}
+  .card-place a,.crumbs a,.card h3 a,.ph-credit a,.src a,main a.small,main .small>a:not(.btn),.result-bar a,.feed-head a,.box a.small,.heritage-crumb a,.tag-new,.tag-upd{display:inline-block;padding:13px 6px;margin:-13px -6px;position:relative}
+  .card h3 a{padding:10px 0;margin:-10px 0}
+  .card-badges a,.detail-badges a:not(.file-state){display:inline-flex;align-items:center;min-height:44px}
+  .states-all summary{display:flex;align-items:center;min-height:44px}
+  .state-grid a{display:flex;align-items:center;min-height:44px}
+  .contrib a{display:inline-flex;align-items:center;min-height:44px}
+  .foot-links{gap:0 18px}
+  .foot-links a{display:inline-flex;align-items:center;min-height:44px}
+  label.check{min-height:44px;align-items:center}
+  /* Footer clears the fixed tab bar (and the unlock bar where shown) instead of the body. */
+  body:not(.is-map){padding-bottom:0}
+  .site-foot{padding-bottom:calc(var(--tabbar) + env(safe-area-inset-bottom))}
+  body.has-ubar .site-foot{padding-bottom:calc(var(--tabbar) + var(--ubar) + env(safe-area-inset-bottom))}
+}
+/* Mobile sticky unlock bar: price + primary action, sits on the tab bar. Hidden when unlocked (not rendered). */
+:root{--ubar:66px}
+.ubar{display:none}
+@media (max-width:959.98px){
+  .ubar{display:flex;align-items:center;gap:12px;position:fixed;z-index:29;left:0;right:0;bottom:calc(var(--tabbar) + env(safe-area-inset-bottom));height:var(--ubar);
+    padding:0 14px;background:linear-gradient(180deg,#1c1516,#130f10);border-top:1px solid #5b4310;box-shadow:0 -6px 18px rgba(0,0,0,.55)}
+  .ubar-price{display:flex;flex-direction:column;line-height:1.15;min-width:0}
+  .ubar-price b{font-family:var(--serif);font-size:1.45rem;color:var(--gold);font-weight:600}
+  .ubar-price span{font-size:.72rem;color:var(--muted);white-space:nowrap}
+  .ubar .btn{margin-left:auto;min-height:46px;padding:0 20px;font-size:1rem}
+  body.has-ubar .install-card{bottom:calc(var(--tabbar) + var(--ubar) + env(safe-area-inset-bottom) + 10px)}
+  body.has-ubar #toast{bottom:calc(var(--tabbar) + var(--ubar) + 16px)}
+}
+@media (max-width:959.98px){
+  .card h3 a{padding:11px 0;margin:-11px 0}
+  .brand{min-height:44px}
+  .firstrun .fr-x{width:44px;height:44px;top:0;right:0}
+  .firstrun .link{display:inline-block;padding:10px 4px;margin:-10px -4px;min-height:44px;position:relative}
+}
+@media (max-width:959.98px){
+  .cats li a{min-height:44px}
+  .card.compact h3 a{padding:14px 0;margin:-14px 0}
+  .maplibregl-ctrl-group button{width:44px!important;height:44px!important}
+}
+@media (max-width:959.98px){.card-badges,.detail-badges{align-items:center}}

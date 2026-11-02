@@ -65,6 +65,9 @@ export const monthlyPrice = () => money(P.monthlyPrice);
 export const lifetimePrice = () => money(P.lifetimePrice);
 export const TIER_LABEL = { standard: 'standard', trial: 'Trial price', monthly: 'Monthly member price', lifetime: 'Lifetime member price' };
 // Small, quiet note next to the $5 while the trial runs. No urgency.
+// Mobile sticky unlock bar (shown below 960px, above the tab bar): price + the page's primary action.
+// `action` is the same button/link markup the page's own call to action uses.
+export const unlockBar = (ctx, action) => html`<div class="ubar" role="region" aria-label="Unlock the full file"><div class="ubar-price"><b>${unlockPrice(ctx)}</b><span>${isTrial() ? 'Trial price · one time' : 'One time · yours for good'}</span></div>${action}</div>`;
 export const trialNote = () => (isTrial() ? html` <span class="trial-note">Trial price</span>` : '');
 // "Coming soon" chip + a non-clickable button stand-in for memberships while they're off.
 export const soonChip = () => html`<span class="soon">Coming soon</span>`;

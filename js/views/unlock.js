@@ -1,6 +1,6 @@
 import { html, fmtDate } from '../util.js';
 import { isArchived } from '../feed.js';
-import { gradeBadge, plate, unlockPrice, membersLine, viewerTier, TIER_LABEL, trialNote, isTrial } from '../components.js';
+import { gradeBadge, plate, unlockPrice, membersLine, viewerTier, TIER_LABEL, trialNote, isTrial, unlockBar } from '../components.js';
 
 // Checkout. Local preview: a MOCK that records a test unlock, no card, no payment.
 // Supabase mode (Payment Link trial): opens the Stripe Payment Link; the unlock row is written
@@ -36,5 +36,7 @@ export async function unlock(ctx, q, id) {
         : html`<button class="btn big" data-checkout="${l.id}">Continue to secure checkout · ${unlockPrice(ctx)}</button><p class="small muted">Payment is handled by Stripe. We never see or store your card.</p>`}`}
       <a class="btn ghost" href="#/l/${l.id}">Cancel</a>
     </section>
-  </div>`;
+  </div>
+  ${unlockBar(ctx, !ctx.me ? html`<button class="btn" data-signin>Sign in to continue</button>`
+    : html`<button class="btn" data-checkout="${l.id}">${pend ? 'Open payment page again' : plink ? 'Continue to payment' : mock ? 'Complete example checkout' : 'Continue to checkout'}</button>`)}`;
 }

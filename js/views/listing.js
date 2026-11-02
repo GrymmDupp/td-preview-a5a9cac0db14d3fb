@@ -1,6 +1,6 @@
 import { html, fmtDate, ago, plural, safeUrl, host } from '../util.js';
 import { heritageCrossLink } from '../components.js';
-import { newTag, updatedTag, gradeBadge, layerChip, statusPill, plate, photoCredit, imageType, imgAlt, authorName, pendingTag, reportBtn, sourceLinks, listingCard, kindLabel, unlockPrice, membersLine, viewerTier, TIER_LABEL, trialNote, isTrial } from '../components.js';
+import { newTag, updatedTag, gradeBadge, layerChip, statusPill, plate, photoCredit, imageType, imgAlt, authorName, pendingTag, reportBtn, sourceLinks, listingCard, kindLabel, unlockPrice, membersLine, viewerTier, TIER_LABEL, trialNote, isTrial, unlockBar } from '../components.js';
 import { STATES, ratingLabel } from '../taxonomy.js';
 import { displayableImages, updateLine, isArchived } from '../feed.js';
 
@@ -90,7 +90,8 @@ function lockedPanel(ctx, l, counts, signedIn) {
     ${pendingReq(ctx, l) || html`<div class="unlock-cta"><a class="btn big" href="#/unlock/${encodeURIComponent(l.id)}" data-unlock-link>Unlock this file · ${unlockPrice(ctx)}</a>${trialNote()}</div>`}
     ${ctx.membership && !isTrial() ? html`<p class="small muted member-line">${TIER_LABEL[viewerTier(ctx.membership)]}.</p>`
       : html`<p class="small muted member-line">${membersLine(l.id)}</p>`}
-    ${signedIn ? '' : html`<p class="small muted">You’ll be asked to sign in first, so the unlock is saved to your account.</p>`}</div></section>`;
+    ${signedIn ? '' : html`<p class="small muted">You’ll be asked to sign in first, so the unlock is saved to your account.</p>`}</div></section>
+  ${ctx.unlockRequests?.get(l.id)?.status === 'pending' && ctx.be.paymentLinkCheckout ? '' : unlockBar(ctx, html`<a class="btn" href="#/unlock/${encodeURIComponent(l.id)}" data-unlock-link>Unlock this file</a>`)}`;
 }
 
 export async function listing(ctx, q, id) {

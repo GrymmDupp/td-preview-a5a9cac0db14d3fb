@@ -22,6 +22,12 @@ export function applyFilters(L, q, updates) {
     && (!text || [l.name, l.place, l.address, l.preview?.summary, l.preview?.teaser, l.facts, ratingLabel(l)].join(' ').toLowerCase().includes(text)));
 }
 
+// Mobile (<= 720px): the dropdowns fold behind a "Filters (n)" button. Open/closed survives the
+// re-render that every filter change triggers; desktop ignores it (the panel is display:contents).
+export const filterPanel = { open: false };
+const FILTER_KEYS = ['state', 'new', 'tier', 'layer', 'price', 'kind', 'status'];
+export const activeFilterCount = (q) => FILTER_KEYS.filter((k) => q.get(k) && !(k === 'status' && q.get(k) === 'open')).length + (q.get('sort') && q.get('sort') !== 'featured' ? 1 : 0);
+
 export async function browse(ctx, q) {
   const ALL = ctx.feed.listings, L = ctx.feed.catalog, nArch = ctx.feed.archive.length;
   const list = sortListings(applyFilters(ALL, q, ctx.updates), q.get('sort') || 'featured');
@@ -38,11 +44,14 @@ export async function browse(ctx, q) {
   const stQ = q.get('status') || '';
   const active = [...q.entries()].filter(([k, v]) => v && k !== 'sort');
   const stateCounts = states.map((s) => [s, L.filter((l) => l.state === s).length]);
+  const nAct = activeFilterCount(q), fOpen = filterPanel.open;
   return html`<div class="page-head"><h1>Browse the archive</h1><p class="muted">Filter by state, category and price. Twisted Deeds always rank first. Shows properties for sale (active or pending); sold and off-market ones are in the <a href="#/archive">Sold & Off market archive</a>.</p>
     ${sc ? html`<p class="scouting small">Currently scouting: <b>${sc.label}</b> · ${scOn ? html`<span class="muted">showing ${plural(scN, 'listing')}</span> · <a href="#/browse">all states</a>`
       : html`<a href="#/browse?state=${sc.focus.join(',')}">See ${sc.label} (${scN})</a>`}</p>` : ''}</div>
-  <form class="filters" data-filters>
+  <form class="filters ${fOpen ? 'f-open' : ''}" data-filters>
     <label class="f grow"><span>Search</span><input name="q" type="search" value="${q.get('q') || ''}" placeholder="Name, town, story…"></label>
+    <button type="button" class="btn ghost f-toggle ${nAct ? 'has-active' : ''}" data-filters-toggle aria-expanded="${fOpen ? 'true' : 'false'}" aria-controls="f-panel"><span aria-hidden="true">⚙</span> Filters${nAct ? ` (${nAct})` : ''}</button>
+    <div class="f-more" id="f-panel">
     ${sel('state', [...(curStates.length > 1 ? [[curStates.join(','), stateName(curStates)]] : []), ...states.map((s) => [s, STATES[s] || s])], 'State')}
     ${sel('new', [['week', `New this week${nNew ? ` (${nNew})` : ''}`], ...(nUpd ? [['updated', `Recently updated (${nUpd})`]] : [])], 'Added')}
     ${sel('tier', [['1', 'Twisted Deed'], ['2', 'Strong Story']], 'Tier')}
@@ -55,10 +64,12 @@ export async function browse(ctx, q) {
       <option value="archive" ${stQ === 'archive' ? 'selected' : ''}>Sold & Off market archive (${nArch})</option>
       <option value="all" ${stQ === 'all' ? 'selected' : ''}>Everything, archive included (${ALL.length})</option></select></label>
     <label class="f"><span>Sort</span><select name="sort">${[['featured', 'Most twisted first'], ['newest', 'Newest added'], ['priceAsc', 'Price: low to high'], ['priceDesc', 'Price: high to low'], ['name', 'Name']].map(([v, t]) => html`<option value="${v}" ${(q.get('sort') || 'featured') === v ? 'selected' : ''}>${t}</option>`)}</select></label>
+    <div class="f-actions"><a class="btn ghost" href="#/browse${q.get('q') ? '?' + new URLSearchParams({ q: q.get('q') }) : ''}" data-filters-clear>Clear${nAct ? ` (${nAct})` : ''}</a><button type="button" class="btn" data-filters-done>Show ${plural(list.length, 'result')}</button></div>
+    </div>
   </form>
   <div class="chips-row">${layers.map((k) => { const i = layerInfo(k); const on = q.get('layer') === k; const n = L.filter((l) => l.layer === k).length;
     return html`<a class="chip ${on ? 'on' : ''} ${n ? '' : 'dim'}" style="--c:${i.color}" href="#/browse?${new URLSearchParams({ ...Object.fromEntries(q), layer: on ? '' : k })}"><span class="dot"></span>${i.label}<small>${n}</small></a>`; })}</div>
-  <div class="result-bar"><strong>${plural(list.length, 'property', 'properties')}</strong>
+  <div class="result-bar" id="results"><strong>${plural(list.length, 'property', 'properties')}</strong>
     ${active.length ? html`<a class="small" href="#/browse">Clear filters</a>` : ''}
     <a class="small" href="#/map?${q}">Show these on the map →</a></div>
   ${list.length ? html`<div class="grid">${list.map((l) => listingCard(l, { ...ctx, compact: false }))}</div>`

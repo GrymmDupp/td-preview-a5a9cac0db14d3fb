@@ -4,7 +4,7 @@ import { loadFeed, feed, updatesMap } from './feed.js';
 import { getBackend } from './backend/adapter.js';
 import { $, toast, esc } from './util.js';
 import { home } from './views/home.js';
-import { browse } from './views/browse.js';
+import { browse, filterPanel } from './views/browse.js';
 import { listing } from './views/listing.js';
 import { mapView, mountMap } from './views/map.js';
 import { board } from './views/board.js';
@@ -91,8 +91,11 @@ function renderChrome(path) {
   const tabs = [['#/', 'Feed', '⌂', /^\/?$/], ['#/browse', 'Browse', '☰', /^\/browse/], ['#/map', 'Map', '◎', /^\/map/], ['#/board', 'Board', '✉', /^\/board/], ['#/account', 'Account', '☺', /^\/account/]];
   $('#tabbar').innerHTML = tabs.map(([h, t, i, re]) => `<a href="${h}" class="${re.test(path) ? 'on' : ''}"><span>${i}</span>${t}</a>`).join('');
   document.body.classList.toggle('is-map', /^\/map/.test(path));
+  // Footer "Moderation" link: moderators and admins only.
+  const fm = $('#foot-mod'); if (fm) fm.hidden = !(ctx.me && ['moderator', 'admin'].includes(ctx.me.role));
 }
 
+let refocusFilter = null;   // a filter dropdown that just changed: keep focus on it after the re-render
 async function route() {
   const raw = location.hash.replace(/^#/, '') || '/';
   const [path, qs] = raw.split('?');
@@ -104,12 +107,16 @@ async function route() {
     try {
       const out = await view(ctx, q, ...m.slice(1).map(decodeURIComponent));
       main.innerHTML = String(out);
+      // Mobile sticky unlock bar (CSS shows it below 960px only): reserve room for it at the page foot.
+      document.body.classList.toggle('has-ubar', !!main.querySelector('.ubar'));
+      if (view !== browse) filterPanel.open = false;
       const l = path.startsWith('/l/') ? feed.byId.get(decodeURIComponent(m[1])) : null;
       document.title = (l ? l.name : title || 'Twisted Deeds') + ' · Twisted Deeds';
       if (view === mapView) await mountMap(ctx, q, main);
       if (view === account && hasPending()) checkPayments();
       const at = q.get('at') || (q.get('tab') === 'talk' ? 'comments' : '') || (q.get('unlocked') ? 'file' : '');
-      if (at && document.getElementById(at)) document.getElementById(at).scrollIntoView({ block: 'start' }); else window.scrollTo(0, 0);
+      const refocus = (view === browse && refocusFilter && main.querySelector(`form[data-filters] [name="${refocusFilter}"]`)) || null; refocusFilter = null;
+      if (at && document.getElementById(at)) document.getElementById(at).scrollIntoView({ block: 'start' }); else { window.scrollTo(0, 0); refocus?.focus({ preventScroll: true }); }
       if (q.get('unlocked') && l && ctx.unlocks.includes(l.id)) toast('Full file unlocked on your account.');
     } catch (e) { console.error(e); main.innerHTML = `<div class="empty-state"><h1>Something went wrong</h1><p>${esc(e.message)}</p></div>`; }
     return;
@@ -176,7 +183,9 @@ document.addEventListener('click', async (e) => {
   const t = e.target.closest('button, a'); if (!t) return;
   const ds = t.dataset;
   try {
-    if ('signin' in ds) { e.preventDefault(); signInModal(); }
+    if ('filtersToggle' in ds) { const f = t.closest('form'); const open = !f.classList.contains('f-open'); f.classList.toggle('f-open', open); filterPanel.open = open; t.setAttribute('aria-expanded', String(open)); if (open) f.querySelector('#f-panel select')?.focus({ preventScroll: true }); }
+    else if ('filtersDone' in ds) { const f = t.closest('form'); f.classList.remove('f-open'); filterPanel.open = false; const b = f.querySelector('[data-filters-toggle]'); b?.setAttribute('aria-expanded', 'false'); document.getElementById('results')?.scrollIntoView({ block: 'start' }); b?.focus({ preventScroll: true }); }
+    else if ('signin' in ds) { e.preventDefault(); signInModal(); }
     else if ('signout' in ds) { await ctx.be.signOut(); await refreshCtx(); route(); }
     else if (ds.checkout) { e.preventDefault(); if (!needMe()) return; t.disabled = true;
       // Payment Link: open the tab synchronously (popup blockers), then point it at Stripe.
@@ -239,7 +248,7 @@ document.addEventListener('submit', async (e) => {
 
 document.addEventListener('change', (e) => {
   const f = e.target.closest('form[data-filters]');
-  if (f) { const p = new URLSearchParams([...new FormData(f)].filter(([, v]) => v)); location.hash = '#/browse?' + p; }
+  if (f) { const p = new URLSearchParams([...new FormData(f)].filter(([, v]) => v)); if (e.target.name && e.target.name !== 'q') refocusFilter = e.target.name; location.hash = '#/browse?' + p; }
   if (e.target.matches('[data-goto-state]') && e.target.value) location.hash = '#/browse?state=' + e.target.value;
   // "Get notified about new Twisted Deeds": coming soon, saved to your account (live) or this browser (preview); sends nothing.
   if (e.target.matches('[data-notify-pref]') && ctx.me) {
