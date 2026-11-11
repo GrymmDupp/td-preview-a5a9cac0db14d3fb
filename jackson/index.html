@@ -15,7 +15,7 @@
 .chip{border:2px solid #6b5640;background:#241d17;color:#f1e9dc;border-radius:20px;padding:9px 12px;font-size:14px;font-weight:600}
 .chip.on{background:#8f2d1f;border-color:#d4553f}
 .chip.lead.on{background:#a8601a;border-color:#f0a23a}.chip.ctx.on{background:#4a4f57;border-color:#9aa3ad}.chip.far.on{background:#2f5a4a;border-color:#58b08f}
-#bar{position:absolute;z-index:1000;left:8px;right:8px;bottom:calc(env(safe-area-inset-bottom) + 8px);display:flex;gap:8px}
+.leaflet-bottom.leaflet-right{margin-bottom:84px}#bar{position:absolute;z-index:1000;left:8px;right:8px;bottom:calc(env(safe-area-inset-bottom) + 8px);display:flex;gap:8px}
 #bar button{flex:1;border:0;border-radius:14px;padding:16px 8px;font-size:17px;font-weight:700;background:#2b6cb0;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.5)}
 #bar button.alt{background:#5c4630}#bar button.on{background:#1f8f55}
 #alert{position:absolute;z-index:1001;left:8px;right:8px;top:calc(env(safe-area-inset-top) + 92px);display:none;background:#b8321f;border:3px solid #ffd27a;border-radius:14px;padding:12px 14px;font-size:20px;font-weight:800;box-shadow:0 4px 14px rgba(0,0,0,.6)}
@@ -44,7 +44,7 @@ const PINS=[{"id":"baptist-church-downtown-jackson","cat":"lead","name":"Former 
 const JX=[42.2459,-84.4013], NEAR_MI=0.5;
 const map=L.map('map',{zoomControl:false,attributionControl:true}).setView(JX,12);
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);
-L.control.zoom({position:'topright'}).addTo(map);
+L.control.zoom({position:'bottomright'}).addTo(map);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const state={sheet:true,lead:true,context:false,far:false};let me=null,meDot=null,meAcc=null,follow=false,watchId=null;
 function inactive(p){return p.cat==='sheet'&&!/^active/i.test(p.status)}
