@@ -81,14 +81,14 @@ function startPoll(ms = 120000) {
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && hasPending()) { checkPayments(); startPoll(60000); } });
 
 function renderChrome(path) {
-  const nav = [['#/', 'Listings', /^\/?$/], ['#/browse', 'Browse', /^\/browse/], ['#/map', 'Map', /^\/map/], ['#/packs', 'Dossier Packs', /^\/packs/], ['#/heritage', 'Heritage Homes', /^\/heritage/], ['#/board', 'Board', /^\/board/]];
+  const nav = [['#/', 'Listings', /^\/?$/], ['#/browse', 'Browse', /^\/browse/], ['#/map', 'Map', /^\/map/], ['live/', 'Live', /^$/], ['#/packs', 'Dossier Packs', /^\/packs/], ['#/heritage', 'Heritage Homes', /^\/heritage/], ['#/board', 'Board', /^\/board/]];
   $('#nav').innerHTML = nav.map(([h, t, re]) => `<a href="${h}" class="${re.test(path) ? 'on' : ''}">${t}</a>`).join('') + `<a href="#/contribute" class="nav-cta ${/contribute|suggest/.test(path) ? 'on' : ''}">Submit</a>`;
   $('#who').innerHTML = (ctx.me
     ? `${['moderator', 'admin'].includes(ctx.me.role) ? '<a class="modlink" href="#/moderate" title="Moderation queue">⚖</a>' : ''}
        <a class="me" href="#/account">@${esc(ctx.me.handle)}</a>
        <button class="link small" data-signout>Sign out</button>`
     : `<button class="btn sm" data-signin>Sign in</button>`);
-  const tabs = [['#/', 'Feed', '⌂', /^\/?$/], ['#/browse', 'Browse', '☰', /^\/browse/], ['#/map', 'Map', '◎', /^\/map/], ['#/board', 'Board', '✉', /^\/board/], ['#/account', 'Account', '☺', /^\/account/]];
+  const tabs = [['#/', 'Feed', '⌂', /^\/?$/], ['#/browse', 'Browse', '☰', /^\/browse/], ['#/map', 'Map', '◎', /^\/map/], ['live/', 'Live', '◉', /^$/], ['#/board', 'Board', '✉', /^\/board/], ['#/account', 'Account', '☺', /^\/account/]];
   $('#tabbar').innerHTML = tabs.map(([h, t, i, re]) => `<a href="${h}" class="${re.test(path) ? 'on' : ''}"><span>${i}</span>${t}</a>`).join('');
   document.body.classList.toggle('is-map', /^\/map/.test(path));
   // Footer "Moderation" link: moderators and admins only.

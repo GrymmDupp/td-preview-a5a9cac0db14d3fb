@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+<meta name="googlebot" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0909">
+<title>Twisted Deeds · Live navigator</title>
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="stylesheet" href="../assets/fonts/fonts.css">
+<link rel="stylesheet" href="vendor/leaflet.css">
+<link rel="stylesheet" href="live.css">
+</head>
+<body>
+<div id="app">
+  <header id="top">
+    <a class="brand" href="../" aria-label="Back to the Twisted Deeds app"><img src="../assets/logo-shield-48.png" width="34" height="35" alt=""><span><b>Twisted</b> <i>Deeds</i> <em>LIVE</em></span></a>
+    <span id="gps" class="gps off" role="status" aria-live="polite">GPS off</span>
+    <a class="tl" href="../jackson/">Jackson</a>
+  </header>
+  <div id="chips" class="chips" role="group" aria-label="What to show">
+    <button class="chip c-deed on" data-k="deed" aria-label="Twisted Deeds" aria-pressed="true"><i>D</i><span>Deeds</span></button>
+    <button class="chip c-story on" data-k="story" aria-label="Strong Stories" aria-pressed="true"><i>S</i><span>Stories</span></button>
+    <button class="chip c-lead on" data-k="lead" aria-label="Stigmatized leads" aria-pressed="true"><i>L</i><span>Leads</span></button>
+    <button class="chip c-unv on" data-k="unverified" aria-label="Unverified" aria-pressed="true"><i>?</i><span>Unverified</span></button>
+    <button class="chip c-ctx" data-k="context" aria-label="Context" aria-pressed="false"><i>C</i><span>Context</span></button>
+  </div>
+  <div id="stage">
+    <div id="map" aria-label="Map"></div>
+    <div id="alert" role="alert" hidden></div>
+    <div id="toast" role="status" hidden></div>
+    <button id="recenter" class="float" hidden>Recenter</button>
+    <button id="pickcancel" class="float" hidden>Cancel: tap the map…</button>
+    <section id="sheet" hidden aria-live="polite"><div class="sh-bar"><b id="sh-title"></b><button id="sh-close" aria-label="Close">×</button></div><div id="sh-body"></div></section>
+  </div>
+  <footer id="dock">
+    <div class="rad" role="group" aria-label="Alert radius"><span>Alert me within</span>
+      <button data-r="0.25">¼ mi</button><button data-r="0.5" class="on">½ mi</button><button data-r="1">1 mi</button><button data-r="2">2 mi</button></div>
+    <div class="main">
+      <button id="start" class="big go">▶ Start</button>
+      <button id="here" class="big here">What’s here?</button>
+    </div>
+    <div class="mini">
+      <button id="nearby">Nearby <span id="ncount">0</span></button>
+      <button id="leads">My leads <span id="lcount">0</span></button>
+      <button id="sound" aria-pressed="false">Chime: off</button>
+    </div>
+  </footer>
+</div>
+<script src="vendor/leaflet.js"></script>
+<script src="live.js"></script>
+</body>
+</html>

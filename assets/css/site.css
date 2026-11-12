@@ -654,3 +654,12 @@ body.pwa-standalone [data-install-entry],body.pwa-installed [data-install-entry]
   .maplibregl-ctrl-group button{width:44px!important;height:44px!important}
 }
 @media (max-width:959.98px){.card-badges,.detail-badges{align-items:center}}
+
+/* Live navigator link (header + tab bar) */
+.live-head{display:inline-flex;align-items:center;gap:6px;margin-left:auto;background:linear-gradient(180deg,#e6c352,#c9a227);color:#1a1200;border:1px solid #f3dc8a;border-radius:var(--r);padding:7px 12px;min-height:44px;font:700 .8rem/1 var(--display);letter-spacing:.08em;text-transform:uppercase;text-decoration:none;white-space:nowrap;box-shadow:0 1px 6px rgba(0,0,0,.5)}
+.live-head:hover{color:#000;filter:brightness(1.08)}
+.live-head span{font-size:1rem;line-height:1;color:#b21226}.live-head em{font-style:normal}
+.live-head+.install-head,.live-head+.who{margin-left:0}
+.tabbar a[href="live/"]{color:var(--gold)}
+.nav a[href="live/"]{color:var(--gold)}
+.live-head~.who{margin-left:0}
