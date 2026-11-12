@@ -262,12 +262,11 @@
   "status": "Active",
   "price": "$389,900",
   "hook": "A farmhouse and a barn on 8 acres, near Hillsdale.",
-  "src": [
-   "https://michiganwhitetailproperties.com/michigan-land-for-sale/country-home-for-sale-in-hillsdale-county-8-03-acres-property-id-23579/"
-  ],
+  "src": [],
   "conf": "",
   "asof": "sheet cache Nov 6, 2026",
-  "jackson": true
+  "jackson": true,
+  "find": true
  },
  {
   "id": "oakhill",
@@ -283,7 +282,8 @@
   "src": [],
   "conf": "",
   "asof": "sheet cache Nov 6, 2026",
-  "jackson": true
+  "jackson": true,
+  "find": true
  },
  {
   "id": "eppstein-house",
@@ -356,7 +356,8 @@
   "src": [],
   "conf": "",
   "asof": "sheet cache Nov 6, 2026",
-  "jackson": true
+  "jackson": true,
+  "find": true
  },
  {
   "id": "eloise-complex",
@@ -369,13 +370,11 @@
   "status": "Active",
   "price": "$6,500,000 - Active (commercial; Signature Associates; updated Oct 23, 2026)",
   "hook": "Expedition X filmed Ghosts of Eloise Asylum here in 2023.",
-  "src": [
-   "https://www.commercialcafe.com/commercial-property/us/mi/westland/eloise-complex/",
-   "https://www.commercialsearch.com/commercial-property/us/mi/westland/eloise-complex/"
-  ],
+  "src": [],
   "conf": "High",
   "asof": "sheet cache Nov 6, 2026",
-  "jackson": true
+  "jackson": true,
+  "find": true
  },
  {
   "id": "walter-funeral",
@@ -388,12 +387,11 @@
   "status": "Active",
   "price": "$1,295,000",
   "hook": "Working Toledo funeral home, business and building offered together or apart.",
-  "src": [
-   "https://brevitas.com/p/cI2elBR/walter-funeral-home"
-  ],
+  "src": [],
   "conf": "",
   "asof": "sheet cache Nov 6, 2026",
-  "jackson": true
+  "jackson": true,
+  "find": true
  },
  {
   "id": "cbrown-funeral",
@@ -409,7 +407,8 @@
   "src": [],
   "conf": "",
   "asof": "sheet cache Nov 6, 2026",
-  "jackson": true
+  "jackson": true,
+  "find": true
  },
  {
   "id": "ellis-funeral",
@@ -422,12 +421,10 @@
   "status": "Pending",
   "price": "$1,150,000 - For Sale (updated Oct 29, 2026)",
   "hook": "1941 funeral home with a chapel, beside Grand Lawn Cemetery.",
-  "src": [
-   "https://www.commercialcafe.com/commercial-property/us/mi/detroit/ellis-funeral-home/",
-   "https://www.commercialsearch.com/commercial-property/us/mi/detroit/ellis-funeral-home/"
-  ],
+  "src": [],
   "conf": "Medium",
   "asof": "sheet cache Nov 6, 2026",
-  "jackson": true
+  "jackson": true,
+  "find": true
  }
 ]
