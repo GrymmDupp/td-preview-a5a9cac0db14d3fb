@@ -3,6 +3,7 @@
 // Views render the markup with bookShell()/scrollShell(); app.js calls mountTomes() after each render.
 import { esc } from './util.js';
 
+import { playOpenFx } from './effects.js';
 export const reduced = () => document.documentElement.classList.contains('rm');
 const ROMAN = ['i', 'ii', 'iii', 'iv', 'v', 'vi'];
 export const rule = (cls = '') => `<svg class="orn-rule ${cls}" viewBox="0 0 200 14" aria-hidden="true"><use href="#rule"/></svg>`;
@@ -33,7 +34,7 @@ const waxSeal = () => `<svg viewBox="0 0 120 120" aria-hidden="true">
 /* ---------------- markup ---------------- */
 // B = { id, name, kicker, place, city, state, era, sealHTML, pages: [plate, title, facts, timeline, sources, finis] (HTML strings) }
 export function bookShell(B) {
-  return `<section class="tome th tome-book" data-book="${esc(B.id)}" aria-label="${esc(B.name)}: the book"${B.leather ? ` style="--leather:${esc(B.leather)};--band:${esc(B.band || '#8d2012')}"` : ''}>
+  return `<section class="tome th tome-book" data-book="${esc(B.id)}" aria-label="${esc(B.name)}: the book"${B.fx ? ` data-fx="${esc(B.fx)}"` : ''}${B.leather ? ` style="--leather:${esc(B.leather)};--band:${esc(B.band || '#8d2012')}"` : ''}>
     <div class="book-stage" data-book-stage></div>
     <div class="ctl">
       <button class="ctl-b" data-act="prev" aria-label="Previous page">‹</button>
@@ -106,6 +107,8 @@ function mountBook(root) {
   let mode = 'spread', W = 300, H = 420, leaves = [], k = 0, busy = false;
   try { k = +(sessionStorage.getItem(KEY) || 0) || 0; } catch { /* private mode */ }
   const verso = () => '<div class="verso"></div>';
+  // category opening effect (js/effects.js), keyed off data-fx on the book root; skipped under reduced motion
+  const fx = () => { if (root.dataset.fx) setTimeout(() => playOpenFx(stage, root.dataset.fx), 120); };
   function build() {
     const faces = mode === 'spread'
       ? [[cover, pages[0]], [pages[1], pages[2]], [pages[3], pages[4]], [pages[5], endpaper()]]
@@ -173,6 +176,7 @@ function mountBook(root) {
     preInk(k + dir);
     const b = stage.querySelector('.book');
     if (dir > 0 && k === 0) {
+      fx();
       b.classList.add('open');
       const r = stage.getBoundingClientRect();
       const hh = document.querySelector('.site-head')?.offsetHeight || 0;
@@ -216,6 +220,7 @@ function mountBook(root) {
     const to = d.dir > 0 ? (commit ? -180 : 0) : (commit ? 0 : -180);
     if (!commit && d.dir > 0 && k === 0) stage.querySelector('.book').classList.remove('open');
     if (commit && d.dir < 0 && k === 1) stage.querySelector('.book').classList.remove('open');
+    if (commit && d.dir > 0 && k === 0) fx();
     animate(d.el, d.ang, to, 420, () => { if (commit) k += d.dir; busy = false; place(); });
   });
   stage.addEventListener('pointercancel', () => { if (drag?.el) { drag = null; place(); } drag = null; });

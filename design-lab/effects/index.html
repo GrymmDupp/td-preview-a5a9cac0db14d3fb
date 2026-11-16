@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+<meta name="googlebot" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1b1b1a">
+<base href="../../">
+<title>Twisted Deeds · Design Lab · Opening effects</title>
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32">
+<link rel="stylesheet" href="assets/fonts/fonts.css">
+<link rel="stylesheet" href="assets/fonts/shadow-fonts.css">
+<link rel="stylesheet" href="assets/css/site.css">
+<link rel="stylesheet" href="assets/css/tome.css">
+<link rel="stylesheet" href="assets/css/shadow.css">
+<link rel="stylesheet" href="assets/css/effects.css">
+<style>
+.fxlab{max-width:1100px;margin:0 auto;padding:16px 14px 40px}
+.fxlab h1{margin:.2em 0 .1em}
+.fxlab .intro{color:#d9d5cc;max-width:62ch}
+.fx-btns{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 4px}
+.fx-btns button{font:.95rem 'IM Fell English SC',serif;color:#f2efe8;background:#1a1716;border:1px solid #55524d;border-radius:3px;padding:8px 10px;min-height:40px;cursor:pointer}
+.fx-btns button[aria-pressed=true]{border-color:#b3261e;background:#3a1210}
+.fx-btns button .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--c);margin-right:6px;vertical-align:1px}
+.fx-now{font:.95rem 'IM Fell English',serif;font-style:italic;color:#cfcac0;min-height:1.5em;margin:6px 0 10px}
+.fx-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:4px 0 8px}
+.fx-row .small{color:#a19d95}
+</style></head><body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <filter id="wax-edge"><feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="2" seed="7"/><feDisplacementMap in="SourceGraphic" scale="9"/></filter>
+    <radialGradient id="wax-th" cx="38%" cy="30%" r="78%"><stop offset="0" stop-color="#a3332a"/><stop offset=".45" stop-color="#60130b"/><stop offset="1" stop-color="#2a0603"/></radialGradient>
+    <radialGradient id="wax-th-in" cx="62%" cy="66%" r="72%"><stop offset="0" stop-color="#4a0d07"/><stop offset="1" stop-color="#74180f"/></radialGradient>
+    <filter id="th-dark"><feColorMatrix values="0 0 0 0 .12 0 0 0 0 .01 0 0 0 0 .0 0 0 0 .9 0"/></filter>
+    <symbol id="fleuron" viewBox="0 0 60 60"><path d="M4 4h22M4 4v22M4 4c10 2 16 8 18 18M10 4c0 8 4 12 12 12M4 10c8 0 12 4 12 12M26 4c3 3 3 6 0 9M4 26c3 3 6 3 9 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="22" cy="22" r="2.6" fill="currentColor"/></symbol>
+    <symbol id="rule" viewBox="0 0 200 14"><path d="M0 7h80M120 7h80" stroke="currentColor" stroke-width="1"/><path d="M100 1l6 6-6 6-6-6z" fill="currentColor"/><circle cx="86" cy="7" r="1.8" fill="currentColor"/><circle cx="114" cy="7" r="1.8" fill="currentColor"/></symbol>
+  </defs>
+</svg>
+<main class="fxlab">
+<p class="small"><a href="design-lab/">← Design Lab</a> · <a href="design-lab/fonts/">Fonts</a></p>
+<h1>Opening effects by category</h1>
+<p class="intro">Each listing's book plays a short flourish (2.5 seconds or less) for its category the moment it opens. Pick a category: the sample book is rebound in that category's leather and opens. The effect never covers anything you can tap, and it is skipped under reduced motion or when Effects is off.</p>
+<div class="fx-btns" data-fx-btns></div>
+<div class="fx-row"><button class="btn sm ghost" type="button" data-replay>Replay</button><span class="small" data-fx-state></span></div>
+<p class="fx-now" data-fx-now aria-live="polite"></p>
+<div data-fx-book></div>
+</main>
+<script type="module">
+import { bookShell, bookCover, pageHead, folio, mountTomes, reduced } from './js/tome.js';
+import { FX_LIST, fxOn } from './js/effects.js';
+import { LAYERS, leatherFor } from './js/taxonomy.js';
+try { if (localStorage.getItem('td-rm') === '1') document.documentElement.classList.add('rm'); } catch {}
+const keys = Object.keys(FX_LIST);
+const btns = document.querySelector('[data-fx-btns]'), host = document.querySelector('[data-fx-book]'), now = document.querySelector('[data-fx-now]');
+btns.innerHTML = keys.map((k) => `<button type="button" data-k="${k}" aria-pressed="false" style="--c:${LAYERS[k].color}"><span class="dot"></span>${LAYERS[k].label}</button>`).join('');
+document.querySelector('[data-fx-state]').textContent = reduced() ? 'Reduced motion is on: effects are skipped (as in the app).' : (fxOn() ? '' : 'Effects are off in this browser (the app footer toggle).');
+const page = (t, body, n) => `${pageHead('Sample book', t)}<div class="pg-body ink"><h3>${t}</h3><p>${body}</p></div>${folio(n)}`;
+let cur = null;
+function show(k) {
+  cur = k;
+  btns.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.k === k)));
+  now.textContent = `${LAYERS[k].label}: ${FX_LIST[k]}`;
+  try { sessionStorage.removeItem('td-book-fx-demo'); } catch {}
+  const pages = ['Plate', 'Story', 'Facts', 'Timeline', 'Sources', 'Finis'].map((t, i) => page(t, 'Sample page for the effects preview. No listing data.', i + 1));
+  host.innerHTML = bookShell({ id: 'fx-demo', name: 'A ' + LAYERS[k].label + ' house', pages, leather: leatherFor(k), band: LAYERS[k].color, fx: k,
+    cover: bookCover({ kicker: LAYERS[k].label, name: 'A ' + LAYERS[k].label + ' house', place: 'Sample · Not a listing', era: '' }) });
+  const T = mountTomes(host);
+  setTimeout(() => T.book.go(1), 350);
+}
+btns.addEventListener('click', (e) => { const b = e.target.closest('[data-k]'); if (b) show(b.dataset.k); });
+document.querySelector('[data-replay]').addEventListener('click', () => cur && show(cur));
+window.TD_FXLAB = { show, keys };
+show(new URLSearchParams(location.search).get('fx') || 'spectral');
+</script>
+</body></html>

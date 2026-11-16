@@ -1,4 +1,5 @@
 // Twisted Deeds public site: shell, router and global event handling.
+import { fxOn, setFx } from './effects.js';
 import { CONFIG } from './config.js';
 import { loadFeed, feed, updatesMap } from './feed.js';
 import { getBackend } from './backend/adapter.js';
@@ -219,6 +220,7 @@ document.addEventListener('click', async (e) => {
       const title = (l?.name || 'A listing') + ' · Twisted Deeds';
       if (navigator.share) { try { await navigator.share({ title, url }); } catch { /* dismissed */ } }
       else { try { await navigator.clipboard.writeText(url); toast('Link copied. It opens this listing’s book.'); } catch { prompt('Copy this link:', url); } } }
+    else if ('effects' in ds) { const on = !fxOn(); setFx(on); syncFx(); toast(on ? 'Opening effects on.' : 'Opening effects off.'); }
     else if ('reduceMotion' in ds) { const on = !document.documentElement.classList.contains('rm'); setReduceMotion(on); syncRm(); toast(on ? 'Motion reduced: no smoke, grain or page animations.' : 'Motion back on.'); }
     else if ('resetPreview' in ds) { if (confirm('Clear all preview data (test accounts, comments, posts, submissions, unlocks) in this browser?')) { ctx.be.reset(); location.reload(); } }
   } catch (err) { toast(err.message); }
@@ -275,10 +277,11 @@ document.addEventListener('input', (e) => {
 
 // ---------- boot
 initPwa();
+function syncFx() { const on = fxOn(); document.querySelectorAll('[data-effects]').forEach((b) => { b.setAttribute('aria-pressed', String(on)); b.textContent = on ? 'Effects: on' : 'Effects: off'; }); }
 function syncRm() { const on = document.documentElement.classList.contains('rm'); document.querySelectorAll('[data-reduce-motion]').forEach((b) => { b.setAttribute('aria-pressed', String(on)); b.textContent = on ? 'Motion reduced' : 'Reduce motion'; }); window.TD_ATMO_SYNC?.(); }
 matchMedia('(prefers-reduced-motion: reduce)').addEventListener?.('change', (e) => { let saved = null; try { saved = localStorage.getItem('td-rm'); } catch { /* ignore */ } if (saved == null) { setReduceMotion(e.matches, false); syncRm(); } });
 (async function boot() {
-  syncRm();
+  syncRm(); syncFx();
   $('#disclaimer').textContent = DISCLAIMER;
   try { await loadFeed(); } catch (e) { $('#main').innerHTML = `<div class="empty-state"><h1>Listings unavailable</h1><p>${esc(e.message)}</p></div>`; return; }
   ctx.be = await getBackend();

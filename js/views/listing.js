@@ -208,7 +208,7 @@ function bookFor(ctx, l, imgs, finis) {
       ${folio(5)}</div>`,
   ];
   const cover = bookCover({ kicker: ratingLabel(l), name, place: [l.city, l.state].filter(Boolean).join(' · '), era: tl.era });
-  return bookShell({ id: l.id, name, pages, cover, leather: leatherFor(l.layer), band: layerInfo(l.layer).color });
+  return bookShell({ id: l.id, name, pages, cover, leather: leatherFor(l.layer), band: layerInfo(l.layer).color, fx: l.layer });
 }
 
 export async function listing(ctx, q, id) {
