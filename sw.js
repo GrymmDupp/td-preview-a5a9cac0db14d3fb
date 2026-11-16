@@ -2,7 +2,7 @@
  * Scope is the folder this file is served from ('./'), so it works on a GitHub Pages subpath.
  * Bump VERSION on every deploy (the preview deploy script stamps it automatically); the old
  * caches are deleted when the new worker activates. See _build/PWA_NOTES.md. */
-const VERSION = 'td-pwa-20261112-155607';
+const VERSION = 'td-pwa-20261116-145833';
 const SHELL = `${VERSION}-shell`;      // precached app shell
 const RUNTIME = `${VERSION}-runtime`;  // static assets + data seen while browsing
 const OFFLINE = 'offline.html';
@@ -118,8 +118,8 @@ self.addEventListener('fetch', (event) => {
   if (req.mode === 'navigate') { if (inScope) event.respondWith(navigate(event)); return; }
   if (/\/feed\/listings\.json$/.test(url.pathname)) { event.respondWith(networkFirst(event)); return; }
   if (!inScope) return;
-  // The Live navigator and Jackson map files: network first so a deploy shows up at once (cache only when offline).
-  if (/\/(live|jackson)\/.+\.(js|json|css)$/.test(url.pathname)) { event.respondWith(networkFirst(event)); return; }
+  // The Live navigator, Jackson map and Design Lab files: network first so a deploy shows up at once (cache only when offline).
+  if (/\/(live|jackson|design-lab)\/.+\.(js|json|css)$/.test(url.pathname)) { event.respondWith(networkFirst(event)); return; }
   if (url.pathname.endsWith('/sw.js') || /listings_full/.test(url.pathname)) return;
   if (url.search && !/\.(css|js|json|woff2|png|jpe?g|webp|svg|webmanifest)$/.test(url.pathname)) return;
   if (/\.(css|js|json|woff2?|png|jpe?g|webp|svg|ico|webmanifest)$/.test(url.pathname)) event.respondWith(staleWhileRevalidate(event));
