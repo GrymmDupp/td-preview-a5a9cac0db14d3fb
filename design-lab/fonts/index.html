@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+<meta name="googlebot" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1b1b1a">
+<title>Twisted Deeds · Design Lab · Display font candidates</title>
+<link rel="icon" href="../../icons/favicon-32.png" sizes="32x32">
+<link rel="stylesheet" href="../../assets/fonts/shadow-fonts.css">
+<style>@font-face{font-family:'UnifrakturMaguntia';src:url(f/UnifrakturMaguntia-400.woff2) format('woff2');font-display:swap}
+@font-face{font-family:'Grenze Gotisch';src:url(f/GrenzeGotisch-500.woff2) format('woff2');font-weight:100 900;font-display:swap}
+@font-face{font-family:'Pirata One';src:url(f/PirataOne-400.woff2) format('woff2');font-display:swap}
+@font-face{font-family:'Cinzel Decorative';src:url(f/CinzelDecorative-700.woff2) format('woff2');font-weight:700;font-display:swap}
+@font-face{font-family:'Cinzel Decorative';src:url(f/CinzelDecorative-900.woff2) format('woff2');font-weight:900;font-display:swap}
+@font-face{font-family:'IM Fell Double Pica SC';src:url(f/IMFellDoublePicaSC-400.woff2) format('woff2');font-display:swap}
+*{box-sizing:border-box}html{background:#1b1b1a}body{margin:0;color:#f2efe8;font:17px/1.5 'IM Fell English',Georgia,serif;
+ background:radial-gradient(ellipse at 50% 0%,#4a4a47 0%,#2d2d2d 45%,#1b1b1a 100%) fixed}
+body:before{content:'';position:fixed;inset:0;background:url(../../assets/th/grain.png);opacity:.35;mix-blend-mode:overlay;pointer-events:none}
+header.top{max-width:1500px;margin:0 auto;padding:22px 16px 6px}
+header.top h1{font:400 1.6rem 'IM Fell English SC',Georgia,serif;margin:0 0 4px;letter-spacing:.03em}
+header.top p{margin:4px 0;color:#d9d5cc;max-width:60ch}
+.grid{max-width:1500px;margin:0 auto;padding:10px 12px 40px;display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,390px));gap:26px;justify-content:center}
+.cand{position:relative;background:rgba(10,10,9,.45);border:1px solid #4a4a47;border-radius:6px;padding:14px 14px 18px}
+.cand.ref{border-style:dashed;opacity:.92}
+.lbl{display:flex;align-items:baseline;gap:10px;margin:0 0 4px}
+.lbl b{font:400 1.5rem 'IM Fell English SC',serif;color:#fff;background:#60130b;border:1px solid #b3261e;border-radius:3px;padding:0 10px}
+.cand.ref .lbl b{background:#2d2d2d;border-color:#6f6a62;font-size:1.1rem}
+.lbl span{font:1rem 'Special Elite',monospace;color:#d9d5cc}
+.note{margin:2px 0 12px;font-size:.95rem;color:#cfcac0;font-style:italic}
+.k{font:.72rem 'Special Elite',monospace;color:#a19d95;letter-spacing:.08em;text-transform:uppercase;margin:14px 0 5px}
+/* title card */
+.card{position:relative;overflow:hidden;border-radius:4px;padding:34px 18px 22px;text-align:center;
+ background:radial-gradient(ellipse at 50% 30%,#605d5d 0%,#4a4a47 40%,#2d2d2d 80%,#1b1b1a 100%);box-shadow:inset 0 0 40px rgba(0,0,0,.7),0 0 0 1px #000}
+.card:before{content:'';position:absolute;inset:0;background:url(../../assets/th/grain.png);opacity:.45;mix-blend-mode:overlay}
+.card .v{position:absolute;width:86px;opacity:.85}.card .v.l{top:4px;left:4px}.card .v.r{top:4px;right:4px;transform:scaleX(-1)}
+.card .g{position:absolute;left:50%;bottom:-10px;width:230px;transform:translateX(-50%);opacity:.16;filter:grayscale(1)}
+.card>*:not(.v):not(.g){position:relative}
+.wm{font-weight:var(--w,400);font-family:var(--f);font-size:calc(3.05rem * var(--s));line-height:1.02;color:#f2efe8;text-shadow:0 2px 0 rgba(0,0,0,.6),0 0 18px rgba(0,0,0,.6);margin:0}
+.wm em{font-style:normal;color:#d8312a}
+.tagl{font:italic 1.05rem 'IM Fell English',serif;color:#d9d5cc;margin:8px 0 0}
+.cred{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:16px;font:.8rem 'IM Fell English',serif;color:#cfcac0}
+.cred img{width:28px}
+/* book cover */
+.covers{display:flex;gap:14px;align-items:flex-end}
+.cover{position:relative;width:200px;height:270px;border-radius:3px 8px 8px 3px;padding:22px 16px;text-align:center;color:#e8dcc0;
+ background:linear-gradient(90deg,rgba(0,0,0,.6) 0 9px,rgba(255,255,255,.06) 10px,transparent 16px),url(../../assets/th/grain.png),linear-gradient(160deg,#3b1512,#1d0b09);
+ background-blend-mode:normal,soft-light,normal;box-shadow:0 10px 20px rgba(0,0,0,.6),inset 0 0 0 1px rgba(0,0,0,.6)}
+.cover:after{content:'';position:absolute;inset:12px 12px 12px 20px;border:1px solid rgba(213,176,106,.55);outline:1px solid rgba(213,176,106,.25);outline-offset:3px;pointer-events:none}
+.cover .ck{font:.7rem 'IM Fell English SC',serif;letter-spacing:.14em;color:#d5b06a;margin-top:28px}
+.cover .ct{font-weight:var(--w,400);font-family:var(--f);font-size:calc(2.05rem * var(--s));line-height:1.05;margin:10px 0 8px;color:#f0e4c8}
+.cover .cp{font:italic .8rem 'IM Fell English',serif;color:#cdbf9f}
+.cover img{position:absolute;left:50%;bottom:26px;width:44px;transform:translateX(-50%);opacity:.9}
+/* spines */
+.spines{display:flex;gap:5px;align-items:flex-end;height:270px;padding:0 6px 12px;flex:1;
+ background:linear-gradient(to bottom,transparent calc(100% - 12px),#4a3826 calc(100% - 12px),#1d150e calc(100% - 4px),#070504)}
+.sp{display:flex;flex-direction:column;align-items:center;width:46px;border-radius:3px 3px 1px 1px;color:#e6dfcf;
+ background:linear-gradient(90deg,rgba(0,0,0,.55),rgba(255,255,255,.1) 22%,rgba(255,255,255,.03) 50%,rgba(0,0,0,.6)),var(--cl);box-shadow:inset 0 3px 0 rgba(0,0,0,.45),0 0 0 1px rgba(0,0,0,.6)}
+.sp i{display:block;width:100%;height:10px;margin:12px 0 8px;background:var(--c);border-top:1px solid currentColor;border-bottom:1px solid currentColor}
+.sp span{font-weight:var(--w,400);writing-mode:vertical-rl;font-family:var(--f);font-size:calc(1.12rem * var(--s));line-height:1.05;flex:1;text-align:center;white-space:nowrap}
+.sp small{font:.7rem 'Special Elite',monospace;margin:6px 0 8px}
+.sp.gold{color:#d5b06a}
+/* heading + body */
+.hb{background:#e9e5dc;color:#1c1a18;border-radius:3px;padding:14px 16px}
+.hb h2{font-weight:var(--w,400);font-family:var(--f);font-size:calc(1.75rem * var(--s));line-height:1.1;margin:0 0 6px}
+.hb h3{font-weight:var(--w,400);font-family:var(--f);font-size:calc(1.15rem * var(--s));margin:10px 0 4px;color:#60130b}
+.hb p{margin:0;font-size:1rem}
+.dark{padding:12px 4px 0}.dark h2{font-weight:var(--w,400);font-family:var(--f);font-size:calc(1.6rem * var(--s));margin:0 0 4px}.dark p{margin:0;color:#d9d5cc;font-size:.98rem}
+footer{max-width:1500px;margin:0 auto;padding:0 16px 30px;color:#a19d95;font-size:.9rem}
+</style></head><body>
+<header class="top"><h1>Display font candidates · Victorian goth</h1>
+<p>The look stays; only the display face (wordmark, titles, headings, spines) changes. Body text stays IM Fell English. Each sample is shown at phone width. Pick a letter, or mix one (say, A for the wordmark only, B for headings).</p>
+<p style="font:.85rem 'Special Elite',monospace;color:#a19d95">All fonts are free (SIL Open Font License) and self-hosted. Preview only: the live app is unchanged.</p></header>
+<main class="grid"><section class="cand ref" style="--f:'Mystery Quest','IM Fell English',Georgia,serif;--s:1.0;" aria-label="Current: Mystery Quest">
+  <div class="lbl"><b>Current</b><span>Mystery Quest</span></div><p class="note">Today's hand-lettered face: fun, but its bouncing letters read circus/carnival.</p>
+  <div class="k">Title card</div>
+  <div class="card"><img class="v l" src="../../assets/th/vine-corner.png" alt=""><img class="v r" src="../../assets/th/vine-corner.png" alt=""><img class="g" src="../../assets/th/gentleman.webp" alt="">
+    <p class="wm">Twisted <em>Deeds</em></p><p class="tagl">where the past has a presence</p>
+    <div class="cred"><img src="../../assets/th/th-seal.png" alt="">a Twisted History Tours production</div></div>
+  <div class="k">Book cover &amp; spines</div>
+  <div class="covers"><div class="cover"><div class="ck">A Twisted Deed</div><div class="ct">Eloise Complex</div><div class="cp">Westland, Wayne County, MI</div><img src="../../assets/th/th-seal.png" alt=""></div>
+   <div class="spines" aria-hidden="true">
+    <div class="sp" style="--cl:#3b1512;--c:#9d4dff;height:96%"><i></i><span>Paranormal</span><small>12</small></div>
+    <div class="sp gold" style="--cl:#1d2b22;--c:#dc143c;height:88%"><i></i><span>Mayhem</span><small>7</small></div>
+    <div class="sp" style="--cl:#1c2233;--c:#9b6a7a;height:92%"><i></i><span>Abandoned</span><small>0</small></div></div></div>
+  <div class="k">Heading &amp; body (parchment page)</div>
+  <div class="hb"><h2>The poorhouse on the hill</h2><p>Wayne County poorhouse, TB sanatorium and psychiatric asylum, 1839–1980s; about 7,100 patients buried in numbered graves.</p><h3>Sources</h3><p>County records and the press, each one cited.</p></div>
+  <div class="dark"><h2>Houses for sale with a past</h2><p>Every listing has a free preview. The full file is a one-time unlock.</p></div>
+</section><section class="cand" style="--f:'UnifrakturMaguntia','IM Fell English',Georgia,serif;--s:1.0;" aria-label="Candidate A: UnifrakturMaguntia">
+  <div class="lbl"><b>A</b><span>UnifrakturMaguntia</span></div><p class="note">True blackletter (fraktur): the most gothic and Victorian-gravestone; hardest to read small, so best kept to the wordmark and big titles.</p>
+  <div class="k">Title card</div>
+  <div class="card"><img class="v l" src="../../assets/th/vine-corner.png" alt=""><img class="v r" src="../../assets/th/vine-corner.png" alt=""><img class="g" src="../../assets/th/gentleman.webp" alt="">
+    <p class="wm">Twisted <em>Deeds</em></p><p class="tagl">where the past has a presence</p>
+    <div class="cred"><img src="../../assets/th/th-seal.png" alt="">a Twisted History Tours production</div></div>
+  <div class="k">Book cover &amp; spines</div>
+  <div class="covers"><div class="cover"><div class="ck">A Twisted Deed</div><div class="ct">Eloise Complex</div><div class="cp">Westland, Wayne County, MI</div><img src="../../assets/th/th-seal.png" alt=""></div>
+   <div class="spines" aria-hidden="true">
+    <div class="sp" style="--cl:#3b1512;--c:#9d4dff;height:96%"><i></i><span>Paranormal</span><small>12</small></div>
+    <div class="sp gold" style="--cl:#1d2b22;--c:#dc143c;height:88%"><i></i><span>Mayhem</span><small>7</small></div>
+    <div class="sp" style="--cl:#1c2233;--c:#9b6a7a;height:92%"><i></i><span>Abandoned</span><small>0</small></div></div></div>
+  <div class="k">Heading &amp; body (parchment page)</div>
+  <div class="hb"><h2>The poorhouse on the hill</h2><p>Wayne County poorhouse, TB sanatorium and psychiatric asylum, 1839–1980s; about 7,100 patients buried in numbered graves.</p><h3>Sources</h3><p>County records and the press, each one cited.</p></div>
+  <div class="dark"><h2>Houses for sale with a past</h2><p>Every listing has a free preview. The full file is a one-time unlock.</p></div>
+</section><section class="cand" style="--f:'Grenze Gotisch','IM Fell English',Georgia,serif;--s:1.0;--w:600" aria-label="Candidate B: Grenze Gotisch">
+  <div class="lbl"><b>B</b><span>Grenze Gotisch</span></div><p class="note">Gothic letterforms cut cleaner and wider: dark and Victorian but still easy to read on a phone. The best all-rounder.</p>
+  <div class="k">Title card</div>
+  <div class="card"><img class="v l" src="../../assets/th/vine-corner.png" alt=""><img class="v r" src="../../assets/th/vine-corner.png" alt=""><img class="g" src="../../assets/th/gentleman.webp" alt="">
+    <p class="wm">Twisted <em>Deeds</em></p><p class="tagl">where the past has a presence</p>
+    <div class="cred"><img src="../../assets/th/th-seal.png" alt="">a Twisted History Tours production</div></div>
+  <div class="k">Book cover &amp; spines</div>
+  <div class="covers"><div class="cover"><div class="ck">A Twisted Deed</div><div class="ct">Eloise Complex</div><div class="cp">Westland, Wayne County, MI</div><img src="../../assets/th/th-seal.png" alt=""></div>
+   <div class="spines" aria-hidden="true">
+    <div class="sp" style="--cl:#3b1512;--c:#9d4dff;height:96%"><i></i><span>Paranormal</span><small>12</small></div>
+    <div class="sp gold" style="--cl:#1d2b22;--c:#dc143c;height:88%"><i></i><span>Mayhem</span><small>7</small></div>
+    <div class="sp" style="--cl:#1c2233;--c:#9b6a7a;height:92%"><i></i><span>Abandoned</span><small>0</small></div></div></div>
+  <div class="k">Heading &amp; body (parchment page)</div>
+  <div class="hb"><h2>The poorhouse on the hill</h2><p>Wayne County poorhouse, TB sanatorium and psychiatric asylum, 1839–1980s; about 7,100 patients buried in numbered graves.</p><h3>Sources</h3><p>County records and the press, each one cited.</p></div>
+  <div class="dark"><h2>Houses for sale with a past</h2><p>Every listing has a free preview. The full file is a one-time unlock.</p></div>
+</section><section class="cand" style="--f:'Pirata One','IM Fell English',Georgia,serif;--s:1.05;" aria-label="Candidate C: Pirata One">
+  <div class="lbl"><b>C</b><span>Pirata One</span></div><p class="note">Narrow, sharp blackletter-roman hybrid: compact for spines and headers; a slight dark-fairytale or metal edge.</p>
+  <div class="k">Title card</div>
+  <div class="card"><img class="v l" src="../../assets/th/vine-corner.png" alt=""><img class="v r" src="../../assets/th/vine-corner.png" alt=""><img class="g" src="../../assets/th/gentleman.webp" alt="">
+    <p class="wm">Twisted <em>Deeds</em></p><p class="tagl">where the past has a presence</p>
+    <div class="cred"><img src="../../assets/th/th-seal.png" alt="">a Twisted History Tours production</div></div>
+  <div class="k">Book cover &amp; spines</div>
+  <div class="covers"><div class="cover"><div class="ck">A Twisted Deed</div><div class="ct">Eloise Complex</div><div class="cp">Westland, Wayne County, MI</div><img src="../../assets/th/th-seal.png" alt=""></div>
+   <div class="spines" aria-hidden="true">
+    <div class="sp" style="--cl:#3b1512;--c:#9d4dff;height:96%"><i></i><span>Paranormal</span><small>12</small></div>
+    <div class="sp gold" style="--cl:#1d2b22;--c:#dc143c;height:88%"><i></i><span>Mayhem</span><small>7</small></div>
+    <div class="sp" style="--cl:#1c2233;--c:#9b6a7a;height:92%"><i></i><span>Abandoned</span><small>0</small></div></div></div>
+  <div class="k">Heading &amp; body (parchment page)</div>
+  <div class="hb"><h2>The poorhouse on the hill</h2><p>Wayne County poorhouse, TB sanatorium and psychiatric asylum, 1839–1980s; about 7,100 patients buried in numbered graves.</p><h3>Sources</h3><p>County records and the press, each one cited.</p></div>
+  <div class="dark"><h2>Houses for sale with a past</h2><p>Every listing has a free preview. The full file is a one-time unlock.</p></div>
+</section><section class="cand" style="--w:900;--f:'Cinzel Decorative','IM Fell English',Georgia,serif;--s:0.82;" aria-label="Candidate D: Cinzel Decorative">
+  <div class="lbl"><b>D</b><span>Cinzel Decorative</span></div><p class="note">Engraved Victorian capitals with flourished serifs, like a mourning card or a plaque: elegant and very readable, less 'goth' than it is 'grand'.</p>
+  <div class="k">Title card</div>
+  <div class="card"><img class="v l" src="../../assets/th/vine-corner.png" alt=""><img class="v r" src="../../assets/th/vine-corner.png" alt=""><img class="g" src="../../assets/th/gentleman.webp" alt="">
+    <p class="wm">Twisted <em>Deeds</em></p><p class="tagl">where the past has a presence</p>
+    <div class="cred"><img src="../../assets/th/th-seal.png" alt="">a Twisted History Tours production</div></div>
+  <div class="k">Book cover &amp; spines</div>
+  <div class="covers"><div class="cover"><div class="ck">A Twisted Deed</div><div class="ct">Eloise Complex</div><div class="cp">Westland, Wayne County, MI</div><img src="../../assets/th/th-seal.png" alt=""></div>
+   <div class="spines" aria-hidden="true">
+    <div class="sp" style="--cl:#3b1512;--c:#9d4dff;height:96%"><i></i><span>Paranormal</span><small>12</small></div>
+    <div class="sp gold" style="--cl:#1d2b22;--c:#dc143c;height:88%"><i></i><span>Mayhem</span><small>7</small></div>
+    <div class="sp" style="--cl:#1c2233;--c:#9b6a7a;height:92%"><i></i><span>Abandoned</span><small>0</small></div></div></div>
+  <div class="k">Heading &amp; body (parchment page)</div>
+  <div class="hb"><h2>The poorhouse on the hill</h2><p>Wayne County poorhouse, TB sanatorium and psychiatric asylum, 1839–1980s; about 7,100 patients buried in numbered graves.</p><h3>Sources</h3><p>County records and the press, each one cited.</p></div>
+  <div class="dark"><h2>Houses for sale with a past</h2><p>Every listing has a free preview. The full file is a one-time unlock.</p></div>
+</section><section class="cand" style="--f:'IM Fell Double Pica SC','IM Fell English',Georgia,serif;--s:0.95;" aria-label="Candidate E: IM Fell Double Pica SC">
+  <div class="lbl"><b>E</b><span>IM Fell Double Pica SC</span></div><p class="note">Old letterpress small caps (the cousin of our body font): quiet, bookish, antique; restrained rather than spooky.</p>
+  <div class="k">Title card</div>
+  <div class="card"><img class="v l" src="../../assets/th/vine-corner.png" alt=""><img class="v r" src="../../assets/th/vine-corner.png" alt=""><img class="g" src="../../assets/th/gentleman.webp" alt="">
+    <p class="wm">Twisted <em>Deeds</em></p><p class="tagl">where the past has a presence</p>
+    <div class="cred"><img src="../../assets/th/th-seal.png" alt="">a Twisted History Tours production</div></div>
+  <div class="k">Book cover &amp; spines</div>
+  <div class="covers"><div class="cover"><div class="ck">A Twisted Deed</div><div class="ct">Eloise Complex</div><div class="cp">Westland, Wayne County, MI</div><img src="../../assets/th/th-seal.png" alt=""></div>
+   <div class="spines" aria-hidden="true">
+    <div class="sp" style="--cl:#3b1512;--c:#9d4dff;height:96%"><i></i><span>Paranormal</span><small>12</small></div>
+    <div class="sp gold" style="--cl:#1d2b22;--c:#dc143c;height:88%"><i></i><span>Mayhem</span><small>7</small></div>
+    <div class="sp" style="--cl:#1c2233;--c:#9b6a7a;height:92%"><i></i><span>Abandoned</span><small>0</small></div></div></div>
+  <div class="k">Heading &amp; body (parchment page)</div>
+  <div class="hb"><h2>The poorhouse on the hill</h2><p>Wayne County poorhouse, TB sanatorium and psychiatric asylum, 1839–1980s; about 7,100 patients buried in numbered graves.</p><h3>Sources</h3><p>County records and the press, each one cited.</p></div>
+  <div class="dark"><h2>Houses for sale with a past</h2><p>Every listing has a free preview. The full file is a one-time unlock.</p></div>
+</section></main>
+<footer>Design Lab · <a href="../" style="color:#d9d5cc">back to the book &amp; scroll lab</a></footer>
+</body></html>
