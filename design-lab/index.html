@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b0909">
 <title>Twisted Deeds · Design Lab</title>
-<script>(function(){try{var q=new URLSearchParams(location.search).get('t'),t=q==='gilded'||q==='th'?q:(localStorage.getItem('td-lab-theme')||'th');document.documentElement.dataset.theme=t==='gilded'?'gilded':'th';}catch(e){}})();</script>
+<script>(function(){try{var q=new URLSearchParams(location.search).get('t');if(q==='shadow')q='th';var t=q==='gilded'||q==='th'?q:(localStorage.getItem('td-lab-theme')||'th');document.documentElement.dataset.theme=t==='gilded'?'gilded':'th';}catch(e){}})();</script>
 <link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
 <link rel="stylesheet" href="../assets/fonts/fonts.css">
@@ -40,20 +40,20 @@
   <button id="rm" class="rm-btn" aria-pressed="false" title="Reduce motion">Reduce motion</button>
 </header>
 <main>
-  <section class="th-card th-only" aria-label="Twisted History Tours presents Twisted Deeds">
+  <section class="th-card th-only" aria-label="Twisted Deeds">
     <img class="thc-vine l" src="th/vine-corner.png" alt="" aria-hidden="true"><img class="thc-vine r" src="th/vine-corner.png" alt="" aria-hidden="true">
     <div class="thc-gent" aria-hidden="true"><img src="th/gentleman.webp" alt="" width="372" height="410"></div>
     <div class="thc-text">
-      <div class="thc-title">Twisted History Tours</div>
-      <div class="thc-presents">presents&hellip;</div>
-      <div class="thc-td"><img src="../assets/logo-shield-96.png" alt="" width="30" height="31"><span>Twisted <b>Deeds</b></span></div>
+      <div class="thc-td"><img src="../assets/logo-shield-96.png" alt="" width="40" height="41"></div>
+      <h1 class="thc-title">Twisted <span class="thc-deeds">Deeds</span></h1>
       <div class="thc-tag">where the past has a presence</div>
+      <div class="thc-credit">a Twisted History Tours production</div>
     </div>
     <img class="thc-seal" src="th/th-seal.png" alt="Twisted History Tours seal" width="64" height="64">
   </section>
   <div class="theme-sw" role="radiogroup" aria-label="Look">
     <span class="ts-l">Look</span>
-    <button role="radio" data-theme="th" aria-checked="true">Twisted History</button>
+    <button role="radio" data-theme="th" aria-checked="true">Shadow</button>
     <button role="radio" data-theme="gilded" aria-checked="false">Gilded</button>
   </div>
   <p class="lab-intro">Two ways a listing could <em>open</em>. Concept prototype, not the live app. Tap through with real listings.</p>

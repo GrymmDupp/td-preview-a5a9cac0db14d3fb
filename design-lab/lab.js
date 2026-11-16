@@ -18,7 +18,7 @@ const params = new URLSearchParams(location.search);
 const state = {
   id: DATA.some((l) => l.id === params.get('l')) ? params.get('l') : DATA[0]?.id,
   view: ['book', 'scroll', 'both'].includes(params.get('v')) ? params.get('v') : 'book',
-  theme: document.documentElement.dataset.theme === 'gilded' ? 'gilded' : 'th',
+  theme: document.documentElement.dataset.theme === 'gilded' ? 'gilded' : 'th', // 'th' = Shadow look (URL t=shadow; t=th still accepted)
 };
 const TH = () => state.theme === 'th';
 const mq = matchMedia('(prefers-reduced-motion: reduce)');
@@ -71,7 +71,7 @@ function setView(v) {
   $('#view-scroll').hidden = v === 'book';
   syncUrl(); book.layout();
 }
-function syncUrl() { history.replaceState(null, '', `?v=${state.view}&l=${state.id}&t=${state.theme}`); }
+function syncUrl() { history.replaceState(null, '', `?v=${state.view}&l=${state.id}&t=${state.theme === 'th' ? 'shadow' : 'gilded'}`); }
 function setTheme(t, rebuild = true) {
   state.theme = t === 'gilded' ? 'gilded' : 'th';
   document.documentElement.dataset.theme = state.theme;
@@ -113,6 +113,7 @@ const book = (() => {
     switch (i) {
       case 0: return `<div class="pg pg-plate">${plate(l, 0)}${folio('i')}</div>`;
       case 1: return `<div class="pg pg-title">
+          <div class="ink pg-brand th-only">Twisted <span>Deeds</span></div>
           <div class="ink kicker">${esc(l.label)}</div>
           <h2 class="ink">${esc(l.name)}</h2>
           <div class="ink place">${esc(l.place)}</div>
@@ -162,7 +163,7 @@ const book = (() => {
       <img class="cv-th th-only" src="th/th-seal.png" alt="" aria-hidden="true" draggable="false">
       <div class="cv-inner">
         <img class="cv-logo" src="../assets/logo-shield-144.png" alt="" width="64" height="66">
-        <div class="cv-presents th-only">Twisted History Tours presents</div>
+        <div class="cv-brand th-only">Twisted <span>Deeds</span></div>
         <div class="cv-kick">${esc(L.label)}</div>
         <h2 class="cv-title">${esc(L.name)}</h2>
         <div class="cv-rule"></div>
@@ -174,7 +175,7 @@ const book = (() => {
   const endpaper = () => `<div class="endpaper">
       <img class="ep-gent th-only" src="th/gentleman.webp" alt="" aria-hidden="true" draggable="false">
       <img class="ep-vine th-only" src="th/vine-edge.png" alt="" aria-hidden="true" draggable="false">
-      <div class="ep-in"><small class="th-only ep-pre">Twisted History Tours presents</small><img src="../assets/logo-shield-144.png" alt="" width="72" height="74"><span>Twisted Deeds</span><small>A record of houses with a past</small><em class="th-only ep-tag">where the past has a presence</em></div></div>`;
+      <div class="ep-in"><img src="../assets/logo-shield-144.png" alt="" width="72" height="74"><span>Twisted Deeds</span><small>A record of houses with a past</small><em class="th-only ep-tag">where the past has a presence</em><small class="th-only ep-credit">a Twisted History Tours production</small></div></div>`;
   const verso = () => `<div class="verso"></div>`;
 
   function build() {
@@ -186,7 +187,7 @@ const book = (() => {
       <div class="book-body">
         <div class="back-cover"></div>
         <div class="page-block"></div>
-        <div class="spine"><span>${esc(L.name)}</span><img src="../assets/logo-shield-48.png" alt="" width="20" height="21"></div>
+        <div class="spine"><span><b class="th-only">Twisted Deeds · </b>${esc(L.name)}</span><img src="../assets/logo-shield-48.png" alt="" width="20" height="21"></div>
         ${faces.map(([f, b], i) => `<div class="leaf${i === 0 ? ' is-cover' : ''}" data-i="${i}"><div class="face front${i === 0 ? ' cover' : ' paper'}">${f}<i class="shade"></i></div><div class="face back paper">${b}<i class="shade"></i></div></div>`).join('')}
       </div></div>`;
     stage.style.height = (H + 80) + 'px';
@@ -343,6 +344,7 @@ const scroll = (() => {
   function contentHTML(l) {
     const img = l.images[0];
     return `<div class="sc-in">
+      <div class="line sc-brand th-only">Twisted <span>Deeds</span></div>
       <div class="line sc-kick">${esc(l.label)}</div>
       <h2 class="line">${esc(l.name)}</h2>
       <div class="line sc-place">${esc(l.place)}</div>
@@ -375,7 +377,7 @@ const scroll = (() => {
         <button class="seal" aria-label="Break the seal to unroll">
           <span class="half a">${waxSeal()}</span><span class="half b">${waxSeal()}</span>
         </button>
-        <div class="sc-name">${esc(L.name)}</div>
+        <div class="sc-brandroll th-only">Twisted <span>Deeds</span></div><div class="sc-name">${esc(L.name)}</div>
       </div>
       <div class="sc-hint">Tap the seal</div>
     </div>`;

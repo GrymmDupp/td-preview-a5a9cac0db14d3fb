@@ -1,5 +1,6 @@
 /* =====================================================================
-   Twisted Deeds Design Lab: "Twisted History" theme (Twisted History Tours look)
+   Twisted Deeds Design Lab: "Shadow" look = Twisted Deeds in the Twisted History Tours brand style
+   (internal theme key "th"; URL t=shadow, t=th still accepted)
    Everything is scoped to html[data-theme=th]; the Gilded theme in lab.css is untouched.
    Palette sampled from Grymm's brand kit + "The Twisted Death of Abigail" (see brand_kit/STYLE_GUIDE.md).
    ===================================================================== */
@@ -61,15 +62,15 @@
 .thc-gent img{display:block;width:150px;height:auto;position:absolute;bottom:-14px;left:-14px;-webkit-mask-image:radial-gradient(ellipse 62% 70% at 50% 46%,#000 55%,transparent 100%);mask-image:radial-gradient(ellipse 62% 70% at 50% 46%,#000 55%,transparent 100%);animation:kbg 26s ease-in-out infinite alternate;transform-origin:50% 40%}
 @keyframes kbg{from{transform:scale(1) translate3d(0,0,0)}to{transform:scale(1.08) translate3d(4px,-3px,0)}}
 .thc-text{position:relative;z-index:3;text-align:center;display:flex;flex-direction:column;align-items:center;gap:0}
-.thc-title{font:400 clamp(1.7rem,8vw,2.6rem)/.95 var(--th-display);color:#fbfaf6;letter-spacing:.01em;text-shadow:0 2px 0 rgba(0,0,0,.55),0 0 18px rgba(0,0,0,.4);
+.thc-title{margin:0;font:400 clamp(2.4rem,11vw,3.6rem)/.95 var(--th-display);color:#fbfaf6;letter-spacing:.01em;text-shadow:0 2px 0 rgba(0,0,0,.55),0 0 18px rgba(0,0,0,.4);
   -webkit-mask-image:var(--distress);mask-image:var(--distress);-webkit-mask-size:180px;mask-size:180px}
-.thc-presents{font:.86rem var(--th-sc);letter-spacing:.22em;color:#e9e5dc;margin:4px 0 2px}
-.thc-td{display:flex;align-items:center;gap:7px;font:1.15rem var(--th-display);color:var(--bone)}
-.thc-td b{font-weight:400;color:#e2414c;text-shadow:0 0 10px rgba(235,25,68,.35)}
-.thc-td img{width:26px;height:auto;filter:grayscale(.3)}
+.thc-deeds{color:#e2414c;text-shadow:0 2px 0 rgba(0,0,0,.55),0 0 14px rgba(235,25,68,.35)}
+.thc-credit{margin-top:7px;font:.7rem var(--th-sc);letter-spacing:.12em;color:rgba(233,229,220,.62)}
+.thc-td{display:flex;justify-content:center;margin-bottom:2px}
+.thc-td img{width:34px;height:auto;filter:grayscale(.3) drop-shadow(0 2px 2px rgba(0,0,0,.6))}
 .thc-tag{margin-top:6px;padding:2px 14px 4px;background:rgba(18,18,17,.82);font:1.25rem/1.2 var(--th-script);color:#fff;text-shadow:0 0 6px rgba(255,255,255,.55),0 0 16px rgba(255,236,200,.35);border-radius:2px}
 .thc-seal{position:absolute;right:14px;bottom:10px;width:46px;height:46px;z-index:3;transform:rotate(-8deg);filter:drop-shadow(0 2px 3px rgba(0,0,0,.6)) contrast(1.05);opacity:.95}
-@media (max-width:520px){.th-card{grid-template-columns:84px 1fr;min-height:112px;margin-top:8px;padding:8px 10px 8px 4px}.thc-gent img{width:112px}.thc-title{font-size:1.75rem}.thc-presents{font-size:.72rem;margin:2px 0 1px}.thc-td{font-size:1rem}.thc-td img{width:20px}.thc-tag{font-size:1rem;margin-top:4px;padding:1px 10px 3px}.thc-seal{width:34px;height:34px;right:6px;bottom:5px}
+@media (max-width:520px){.th-card{grid-template-columns:84px 1fr;min-height:112px;margin-top:8px;padding:8px 10px 8px 4px}.thc-gent img{width:112px}.thc-title{font-size:2.45rem}.thc-credit{font-size:.62rem;margin-top:5px}.thc-td img{width:26px}.thc-tag{font-size:1rem;margin-top:4px;padding:1px 10px 3px}.thc-seal{width:34px;height:34px;right:6px;bottom:5px}
   [data-theme=th] .lab-intro{display:none}[data-theme=th] .theme-sw{margin:6px auto 8px}[data-theme=th] .theme-sw button{min-height:38px}}
 
 .theme-sw{display:flex;align-items:center;justify-content:center;gap:6px;margin:10px auto 2px}
@@ -124,7 +125,18 @@
 .cv-th{position:absolute;right:calc(var(--pw) * .1);bottom:calc(var(--pw) * .1);width:calc(var(--pw) * .2);height:auto;transform:rotate(-10deg);filter:drop-shadow(0 2px 2px rgba(0,0,0,.7)) saturate(.9);z-index:2}
 [data-theme=th] .cv-inner{gap:6px}
 [data-theme=th] .cv-logo{width:calc(var(--pw) * .13);filter:grayscale(.4) drop-shadow(0 2px 2px rgba(0,0,0,.6))}
-.cv-presents{font:calc(var(--pw) * .033) var(--th-sc);letter-spacing:.16em;color:#cfcac1}
+.cv-brand,.sc-brand,.pg-brand{font:400 calc(var(--pw) * .135)/1 var(--th-display);color:#f7f5ef;text-shadow:0 2px 0 rgba(0,0,0,.6);-webkit-mask-image:var(--distress);mask-image:var(--distress);-webkit-mask-size:160px;mask-size:160px}
+.cv-brand span,.sc-brand span,.pg-brand span{color:#e2414c}
+[data-theme=th] .book .cv-title{font-size:calc(var(--pw) * .082)}
+.pg-brand{font-size:calc(var(--pw) * .07);color:#151413;text-shadow:none;margin-bottom:2px}
+.pg-brand span{color:#8d2012!important}
+.sc-brand{text-align:center;font-size:clamp(1.3rem,6vw,1.7rem);color:#151413;text-shadow:none}
+.sc-brand span{color:#8d2012!important}
+.sc-brandroll{position:absolute;left:30px;right:calc(50% + 50px);top:50%;transform:translateY(-50%);text-align:right;font:400 clamp(1rem,4.6vw,1.3rem)/1 var(--th-display);color:#1c1a18;text-shadow:0 1px 0 rgba(255,255,255,.4);transition:opacity .4s}
+.sc-brandroll span{display:block;color:#8d2012}
+.scroll:not([data-state=sealed]):not([data-state=resealing]) .sc-brandroll{opacity:0}
+[data-theme=th] .spine b{font-weight:400;color:#e2414c}
+.ep-credit{font:.62rem var(--th-sc)!important;letter-spacing:.12em!important;opacity:.65!important;margin-top:4px}
 [data-theme=th] .cv-kick{font:calc(var(--pw) * .036) var(--th-sc);letter-spacing:.12em;color:#ff5468;text-transform:none}
 [data-theme=th] .cv-title{font:400 calc(var(--pw) * .108)/1 var(--th-display);text-transform:none;letter-spacing:0;background:none;color:#f7f5ef;filter:none;
   text-shadow:0 2px 0 rgba(0,0,0,.6);-webkit-mask-image:var(--distress);mask-image:var(--distress);-webkit-mask-size:160px;mask-size:160px}
@@ -137,7 +149,7 @@
 [data-theme=th] .spine{background:linear-gradient(90deg,#0b0b0a,#2a2a28 30%,#353533 50%,#1c1c1b 80%,#080807)}
 [data-theme=th] .spine span{font:400 10px var(--th-display);letter-spacing:.06em;color:#e9e5dc;text-transform:none}
 [data-theme=th] .spine img{filter:grayscale(1) brightness(1.3)}
-/* endpaper: chalkboard + gentleman (TH presents lockup) */
+/* endpaper: chalkboard + gentleman, Twisted Deeds lockup + small parent credit */
 [data-theme=th] .endpaper{background:radial-gradient(ellipse 100% 80% at 60% 35%,#64625e,#4a4a47 45%,#262624);color:#f2efe8;overflow:hidden}
 [data-theme=th] .endpaper::after{content:"";position:absolute;inset:0;background:var(--noise);opacity:.3;pointer-events:none}
 .ep-in{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;padding:0 18px}
