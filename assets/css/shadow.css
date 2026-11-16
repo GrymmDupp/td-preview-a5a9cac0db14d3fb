@@ -10,7 +10,7 @@
   --serif:'IM Fell English',Georgia,serif;--display:'IM Fell English SC','IM Fell English',Georgia,serif;--sans:'Inter',system-ui,-apple-system,sans-serif;
   --chalk:#4a4a47;--chalk2:#605d5d;--char:#1b1b1a;--bar:#2d2d2d;--filmblack:#0a0b04;--smoke:#969694;
   --ox:#60130b;--ox2:#74051b;--blood:#8d2012;--red:#e2414c;--rose:#eb1944;--amber:#cd9d44;
-  --th-display:'Mystery Quest','IM Fell English',Georgia,serif;
+  --th-display:'IM Fell Double Pica SC','IM Fell English SC',Georgia,serif;
   --th-sc:'IM Fell English SC','IM Fell English',Georgia,serif;
   --th-script:'Sacramento','Brush Script MT',cursive;
   --th-type:'Special Elite','Courier New',monospace;
@@ -332,7 +332,7 @@ html.rm *,html.rm *::before,html.rm *::after{scroll-behavior:auto!important}
 .spine .band{display:block;width:100%;height:11px;margin:12px 0 7px;background:var(--c);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 -1px 0 rgba(0,0,0,.45),0 0 0 1px rgba(0,0,0,.35);
   border-top:1px solid currentColor;border-bottom:1px solid currentColor;opacity:.92}
 .spine .band i{display:none}
-.spine .ttl{flex:1;min-height:0;writing-mode:vertical-rl;text-orientation:mixed;font:12.5px/1.08 'IM Fell English SC','IM Fell English',Georgia,serif;letter-spacing:.05em;text-align:center;
+.spine .ttl{flex:1;min-height:0;writing-mode:vertical-rl;text-orientation:mixed;font:13px/1.06 var(--th-display);letter-spacing:.06em;text-align:center;
   overflow:hidden;text-shadow:0 1px 0 rgba(0,0,0,.7);white-space:nowrap}
 .spine .cnt{font:11px 'Special Elite','Courier New',monospace;margin:6px 0 9px;padding-top:4px;border-top:1px solid rgba(230,223,207,.35);min-width:60%;text-align:center}
 .spine:hover .bk{transform:translateY(-4px)}
@@ -352,3 +352,9 @@ html.rm .spine .bk{transition:none}
     filter:drop-shadow(1px 0 0 #5a5852) drop-shadow(0 2px 3px #000)}
   .shelf::after{transform:scaleX(-1)}
 }
+/* Display face: IM Fell Double Pica SC (Grymm's pick, card E, 2026-11-16). Small caps read lighter than the old
+   hand-lettered face, so: slight tracking, a hair of stroke (faux weight) and a hard drop shadow on dark grounds. */
+.brand,.thc-title,h1,.hero-h,.card h3,.card h3 a,.feed-head h2,.page-head h1,.sponsor h4,.map-card h3,.lock-card h2,.modal h2,.install-sheet h2,.full-file-wrap>h2,.scroll-intro h2{letter-spacing:.035em;-webkit-text-stroke:.35px currentColor;paint-order:stroke fill}
+.brand{font-size:1.38rem}
+.thc-title{letter-spacing:.04em;text-shadow:0 2px 0 rgba(0,0,0,.7),0 0 18px rgba(0,0,0,.5);-webkit-text-stroke:.6px currentColor}
+.spine .ttl{-webkit-text-stroke:.2px currentColor}

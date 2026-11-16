@@ -2,7 +2,7 @@
  * Scope is the folder this file is served from ('./'), so it works on a GitHub Pages subpath.
  * Bump VERSION on every deploy (the preview deploy script stamps it automatically); the old
  * caches are deleted when the new worker activates. See _build/PWA_NOTES.md. */
-const VERSION = 'td-pwa-20261116-180000';
+const VERSION = 'td-pwa-20261116-181002';
 const SHELL = `${VERSION}-shell`;      // precached app shell
 const RUNTIME = `${VERSION}-runtime`;  // static assets + data seen while browsing
 const OFFLINE = 'offline.html';
@@ -12,7 +12,7 @@ const PRECACHE = [
   'assets/css/site.css', 'assets/fonts/fonts.css',
   'assets/css/tome.css', 'assets/css/shadow.css', 'assets/fonts/shadow-fonts.css',
   'assets/fonts/IMFellEnglish.woff2', 'assets/fonts/IMFellEnglish-i.woff2', 'assets/fonts/IMFellEnglishSC.woff2',
-  'assets/fonts/MysteryQuest.woff2', 'assets/fonts/Sacramento.woff2', 'assets/fonts/SpecialElite.woff2',
+  'assets/fonts/IMFellDoublePicaSC.woff2', 'assets/fonts/Sacramento.woff2', 'assets/fonts/SpecialElite.woff2',
   'assets/th/fog.webp', 'assets/th/gentleman.webp', 'assets/th/grain.png', 'assets/th/ink-mask.png', 'assets/th/rose.webp',
   'assets/th/th-letters.png', 'assets/th/th-seal.png', 'assets/th/vine-corner.png', 'assets/th/vine-edge.png',
   'js/tome.js', 'js/atmo.js',
