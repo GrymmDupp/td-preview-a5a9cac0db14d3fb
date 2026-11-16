@@ -52,6 +52,7 @@ export const LAYERS = {
   folklore:   { label: 'Folklore & Legend', color: '#6b8e23', tier: 2 },
   attraction: { label: 'Failed Attraction', color: '#cc5500', tier: 2 },
   heritage:   { label: 'Heritage',          color: '#c9a227', tier: 2 },
+  abandoned:  { label: 'Abandoned',         color: '#9b6a7a', tier: 2 },   // 2026-11-16, Grymm: new category (dried-rose); no listings tagged yet
 };
 
 export const STATUSES = {

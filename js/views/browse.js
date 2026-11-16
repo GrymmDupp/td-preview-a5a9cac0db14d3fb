@@ -25,6 +25,20 @@ export function applyFilters(L, q, updates) {
 // Mobile (<= 720px): the dropdowns fold behind a "Filters (n)" button. Open/closed survives the
 // re-render that every filter change triggers; desktop ignores it (the panel is display:contents).
 export const filterPanel = { open: false };
+// Category shelf: each category is a book spine standing on a shelf at the bottom of the filters.
+// Buttons (aria-pressed) toggle the Category filter; the dropdown stays in sync because both read ?layer.
+const CLOTH = ['#3b1512', '#1d2b22', '#1c2233', '#33261a', '#2a2826', '#2d1b2e', '#3a2a14', '#162826'];
+const HEIGHTS = [100, 92, 97, 88, 100, 94, 90, 98, 93, 96, 89, 95];
+function shelf(layers, L, cur) {
+  return html`<div class="shelf-wrap"><p class="shelf-cap" id="shelf-cap">Categories <span class="muted small">· tap a spine to pull it, tap again to put it back</span></p>
+    <div class="shelf" role="group" aria-labelledby="shelf-cap">${layers.map((k, i) => {
+      const inf = layerInfo(k), n = L.filter((l) => l.layer === k).length, on = cur === k;
+      const words = inf.label.split(' '), two = inf.label.length > 11;
+      return html`<button type="button" class="spine ${on ? 'on' : ''} ${n ? '' : 'zero'} ${i % 3 === 1 ? 'gold' : ''} ${two ? 'two' : ''}" name="spine-${k}" data-spine="${k}" aria-pressed="${on ? 'true' : 'false'}"
+        aria-label="${inf.label}, ${n ? n + (n === 1 ? ' listing' : ' listings') : 'none on the shelf yet'}" style="--c:${inf.color};--cloth:${CLOTH[i % CLOTH.length]};--h:${HEIGHTS[i % HEIGHTS.length]}%">
+        <span class="bk" aria-hidden="true"><span class="band"><i></i></span><span class="ttl">${two && words.length > 1 ? html`${words.slice(0, Math.ceil(words.length / 2)).join(' ')}<br>${words.slice(Math.ceil(words.length / 2)).join(' ')}` : inf.label}</span><span class="cnt">${n}</span></span></button>`;
+    })}</div></div>`;
+}
 const FILTER_KEYS = ['state', 'new', 'tier', 'layer', 'price', 'kind', 'status'];
 export const activeFilterCount = (q) => FILTER_KEYS.filter((k) => q.get(k) && !(k === 'status' && q.get(k) === 'open')).length + (q.get('sort') && q.get('sort') !== 'featured' ? 1 : 0);
 
@@ -66,13 +80,14 @@ export async function browse(ctx, q) {
     <label class="f"><span>Sort</span><select name="sort">${[['featured', 'Most twisted first'], ['newest', 'Newest added'], ['priceAsc', 'Price: low to high'], ['priceDesc', 'Price: high to low'], ['name', 'Name']].map(([v, t]) => html`<option value="${v}" ${(q.get('sort') || 'featured') === v ? 'selected' : ''}>${t}</option>`)}</select></label>
     <div class="f-actions"><a class="btn ghost" href="#/browse${q.get('q') ? '?' + new URLSearchParams({ q: q.get('q') }) : ''}" data-filters-clear>Clear${nAct ? ` (${nAct})` : ''}</a><button type="button" class="btn" data-filters-done>Show ${plural(list.length, 'result')}</button></div>
     </div>
+    ${shelf(layers, L, q.get('layer'))}
   </form>
-  <div class="chips-row">${layers.map((k) => { const i = layerInfo(k); const on = q.get('layer') === k; const n = L.filter((l) => l.layer === k).length;
-    return html`<a class="chip ${on ? 'on' : ''} ${n ? '' : 'dim'}" style="--c:${i.color}" href="#/browse?${new URLSearchParams({ ...Object.fromEntries(q), layer: on ? '' : k })}"><span class="dot"></span>${i.label}<small>${n}</small></a>`; })}</div>
   <div class="result-bar" id="results"><strong>${plural(list.length, 'property', 'properties')}</strong>
     ${active.length ? html`<a class="small" href="#/browse">Clear filters</a>` : ''}
     <a class="small" href="#/map?${q}">Show these on the map →</a></div>
   ${list.length ? html`<div class="grid">${list.map((l) => listingCard(l, { ...ctx, compact: false }))}</div>`
-    : html`<div class="empty-state"><p>No properties match. Try fewer filters, or <a href="#/suggest">suggest one</a>.</p></div>`}
+    : q.get('layer') && !L.some((l) => l.layer === q.get('layer'))
+      ? html`<div class="empty-state shelf-empty"><p class="se-h">None on the shelf yet</p><p>No ${layerInfo(q.get('layer')).label} listings have been filed so far. When one is, it will stand here.</p><p><a href="#/browse">See every category</a> or <a href="#/suggest">suggest one</a>.</p></div>`
+      : html`<div class="empty-state"><p>No properties match. Try fewer filters, or <a href="#/suggest">suggest one</a>.</p></div>`}
   <details class="states-all"><summary>All states</summary><div class="state-grid">${stateCounts.map(([s, n]) => html`<a href="#/browse?state=${s}">${STATES[s] || s} <span>${n}</span></a>`)}</div></details>`;
 }

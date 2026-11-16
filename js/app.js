@@ -186,6 +186,8 @@ document.addEventListener('click', async (e) => {
   const t = e.target.closest('button, a'); if (!t) return;
   const ds = t.dataset;
   try {
+    if ('spine' in ds) { const f = t.closest('form'); const p = new URLSearchParams([...new FormData(f)].filter(([, v]) => v)); const on = t.getAttribute('aria-pressed') === 'true';
+      if (on) p.delete('layer'); else p.set('layer', ds.spine); refocusFilter = 'spine-' + ds.spine; location.hash = '#/browse?' + p; return; }
     if ('filtersToggle' in ds) { const f = t.closest('form'); const open = !f.classList.contains('f-open'); f.classList.toggle('f-open', open); filterPanel.open = open; t.setAttribute('aria-expanded', String(open)); if (open) f.querySelector('#f-panel select')?.focus({ preventScroll: true }); }
     else if ('filtersDone' in ds) { const f = t.closest('form'); f.classList.remove('f-open'); filterPanel.open = false; const b = f.querySelector('[data-filters-toggle]'); b?.setAttribute('aria-expanded', 'false'); document.getElementById('results')?.scrollIntoView({ block: 'start' }); b?.focus({ preventScroll: true }); }
     else if ('signin' in ds) { e.preventDefault(); signInModal(); }
