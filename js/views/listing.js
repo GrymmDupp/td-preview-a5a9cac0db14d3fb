@@ -1,7 +1,7 @@
 import { html, raw, esc, fmtDate, ago, plural, safeUrl, host } from '../util.js';
 import { heritageCrossLink } from '../components.js';
 import { newTag, updatedTag, gradeBadge, layerChip, statusPill, plate, photoCredit, imageType, imgAlt, authorName, pendingTag, reportBtn, sourceLinks, listingCard, kindLabel, unlockPrice, membersLine, viewerTier, TIER_LABEL, trialNote, isTrial, unlockBar, publicUrl, findListingUrl } from '../components.js';
-import { STATES, ratingLabel } from '../taxonomy.js';
+import { STATES, ratingLabel, leatherFor, layerInfo } from '../taxonomy.js';
 import { displayableImages, updateLine, isArchived } from '../feed.js';
 import { bookShell, bookCover, pageHead, folio, rule, wordmark, statusSeal, scrollShell } from '../tome.js';
 
@@ -208,7 +208,7 @@ function bookFor(ctx, l, imgs, finis) {
       ${folio(5)}</div>`,
   ];
   const cover = bookCover({ kicker: ratingLabel(l), name, place: [l.city, l.state].filter(Boolean).join(' · '), era: tl.era });
-  return bookShell({ id: l.id, name, pages, cover });
+  return bookShell({ id: l.id, name, pages, cover, leather: leatherFor(l.layer), band: layerInfo(l.layer).color });
 }
 
 export async function listing(ctx, q, id) {

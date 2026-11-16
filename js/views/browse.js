@@ -1,6 +1,6 @@
 import { html, plural } from '../util.js';
 import { listingCard } from '../components.js';
-import { LAYERS, PRICE_BANDS, STATES, STATUSES, layerInfo, statusInfo, kindLabel, ratingLabel } from '../taxonomy.js';
+import { LAYERS, PRICE_BANDS, STATES, STATUSES, layerInfo, statusInfo, kindLabel, ratingLabel, leatherFor } from '../taxonomy.js';
 import { sortListings, isNew, isOpen, feed } from '../feed.js';
 
 // status param: '' (default) = Active + Pending catalog; 'archive' = Sold, Off market, Stale…;
@@ -27,17 +27,16 @@ export function applyFilters(L, q, updates) {
 export const filterPanel = { open: false };
 // Category shelf: each category is a book spine standing on a shelf at the bottom of the filters.
 // Buttons (aria-pressed) toggle the Category filter; the dropdown stays in sync because both read ?layer.
-const CLOTH = ['#3b1512', '#1d2b22', '#1c2233', '#33261a', '#2a2826', '#2d1b2e', '#3a2a14', '#162826'];
 const HEIGHTS = [100, 92, 97, 88, 100, 94, 90, 98, 93, 96, 89, 95];
 function shelf(layers, L, cur) {
   return html`<div class="shelf-wrap"><p class="shelf-cap" id="shelf-cap">Categories <span class="muted small">· tap a spine to pull it, tap again to put it back</span></p>
     <div class="shelf" role="group" aria-labelledby="shelf-cap">${layers.map((k, i) => {
       const inf = layerInfo(k), n = L.filter((l) => l.layer === k).length, on = cur === k;
       const words = inf.label.split(' '), two = inf.label.length > 11;
-      return html`<button type="button" class="spine ${on ? 'on' : ''} ${n ? '' : 'zero'} ${i % 3 === 1 ? 'gold' : ''} ${two ? 'two' : ''}" name="spine-${k}" data-spine="${k}" aria-pressed="${on ? 'true' : 'false'}"
-        aria-label="${inf.label}, ${n ? n + (n === 1 ? ' listing' : ' listings') : 'none on the shelf yet'}" style="--c:${inf.color};--cloth:${CLOTH[i % CLOTH.length]};--h:${HEIGHTS[i % HEIGHTS.length]}%">
+      return html`<button type="button" class="spine ${on ? 'on' : ''} ${n ? '' : 'zero'} ${i % 4 === 2 ? 'paper' : ''} ${two ? 'two' : ''}" name="spine-${k}" data-spine="${k}" aria-pressed="${on ? 'true' : 'false'}"
+        aria-label="${inf.label}, ${n ? n + (n === 1 ? ' listing' : ' listings') : 'none on the shelf yet'}" style="--c:${inf.color};--leather:${leatherFor(k)};--h:${HEIGHTS[i % HEIGHTS.length]}%">
         <span class="bk" aria-hidden="true"><span class="band"><i></i></span><span class="ttl">${two && words.length > 1 ? html`${words.slice(0, Math.ceil(words.length / 2)).join(' ')}<br>${words.slice(Math.ceil(words.length / 2)).join(' ')}` : inf.label}</span><span class="cnt">${n}</span></span></button>`;
-    })}</div></div>`;
+    })}</div><div class="shelf-plate" aria-hidden="true"><span>The Archive</span><small>Categories · Shelf I</small></div></div>`;
 }
 const FILTER_KEYS = ['state', 'new', 'tier', 'layer', 'price', 'kind', 'status'];
 export const activeFilterCount = (q) => FILTER_KEYS.filter((k) => q.get(k) && !(k === 'status' && q.get(k) === 'open')).length + (q.get('sort') && q.get('sort') !== 'featured' ? 1 : 0);

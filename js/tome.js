@@ -33,7 +33,7 @@ const waxSeal = () => `<svg viewBox="0 0 120 120" aria-hidden="true">
 /* ---------------- markup ---------------- */
 // B = { id, name, kicker, place, city, state, era, sealHTML, pages: [plate, title, facts, timeline, sources, finis] (HTML strings) }
 export function bookShell(B) {
-  return `<section class="tome th tome-book" data-book="${esc(B.id)}" aria-label="${esc(B.name)}: the book">
+  return `<section class="tome th tome-book" data-book="${esc(B.id)}" aria-label="${esc(B.name)}: the book"${B.leather ? ` style="--leather:${esc(B.leather)};--band:${esc(B.band || '#8d2012')}"` : ''}>
     <div class="book-stage" data-book-stage></div>
     <div class="ctl">
       <button class="ctl-b" data-act="prev" aria-label="Previous page">‹</button>

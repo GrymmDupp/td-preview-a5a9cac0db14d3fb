@@ -55,6 +55,14 @@ export const LAYERS = {
   abandoned:  { label: 'Abandoned',         color: '#9b6a7a', tier: 2 },   // 2026-11-16, Grymm: new category (dried-rose); no listings tagged yet
 };
 
+// Leather bindings (2026-11-16, dark-academia shelf): each category's book is bound in its own aged leather.
+// The browse-shelf spine and the listing's book cover share it, so opening a listing reads as pulling that book.
+export const LEATHER = {
+  spectral: '#2b1a2c', mortuary: '#1b1715', vice: '#4b2f19', mayhem: '#4d1511', blight: '#1d2531', media: '#553a22',
+  record: '#1c3324', oddity: '#163230', folklore: '#2f3519', attraction: '#572a15', heritage: '#1a2240', abandoned: '#3b3430',
+};
+export const leatherFor = (layer) => LEATHER[layer] || '#2a1d16';
+
 export const STATUSES = {
   Active:  { label: 'Active',  cls: 'ok' },
   Pending: { label: 'Pending', cls: 'warn' },
