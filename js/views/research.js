@@ -2,7 +2,8 @@
 // requests live only in the research_requests table (no link to listings, packs or the feed) and the
 // research itself is done offline in a private archive. Nothing here ever reaches the listings.
 // No price or payment link yet: requests are saved as 'requested' and confirmed by email.
-import { html, ago } from '../util.js';
+import { html, raw, ago, esc, fmtDate } from '../util.js';
+import { scrollShell, wordmark, rule } from '../tome.js';
 
 export const RESEARCH_STATUS = {
   requested: 'Requested', paid: 'Paid', in_progress: 'In progress', delivered: 'Delivered', declined: 'Declined',
@@ -39,11 +40,48 @@ function requestForm(ctx) {
     <button class="btn">Send the request</button></form>`;
 }
 
-function myRequests(rows) {
-  if (!rows?.length) return '';
-  return html`<section class="rf-mine"><h2>Your research requests</h2>
-    ${rows.map((r) => html`<div class="mod-item"><div class="post-meta"><span class="kind rf-st rf-${r.status}">${RESEARCH_STATUS[r.status] || r.status}</span> <code>${r.reference}</code> · ${ago(r.created_at)}</div>
-      <p>${r.address}</p>${r.status === 'delivered' && r.delivered_at ? html`<p class="small muted">Delivered ${ago(r.delivered_at)}.</p>` : ''}</div>`)}</section>`;
+// The customer's commissioned files, each as a scroll. A delivered file's scroll breaks open to its
+// delivery record (reference, address, dates, what the file holds); undelivered ones stay sealed.
+// Nothing here is research data: the dossier itself is a standalone PDF made in the private archive.
+const OPEN = ['requested', 'paid', 'in_progress'];
+function deliveredContent(r) {
+  return `<div class="sc-in">
+    ${wordmark('line sc-brand')}
+    <div class="line sc-kick">A Research File · delivered</div>
+    <h2 class="line">${esc(r.address)}</h2>
+    ${rule('line')}
+    <dl class="sc-kv">
+      <div class="line sc-kvrow"><dt>Reference</dt><dd>${esc(r.reference)}</dd></div>
+      <div class="line sc-kvrow"><dt>Commissioned</dt><dd>${esc(fmtDate(r.created_at))}</dd></div>
+      <div class="line sc-kvrow"><dt>Delivered</dt><dd>${esc(fmtDate(r.delivered_at))}</dd></div>
+    </dl>
+    <p class="line">Your Research File has been delivered as a standalone PDF. Questions about it? Quote the reference above.</p>
+    <h3 class="line">What the file holds</h3>
+    <ol class="sc-ol">${SECTIONS.map(([t, d]) => `<li class="line"><b>${esc(t)}</b>: ${esc(d)}</li>`).join('')}</ol>
+    <h3 class="line">How each finding is marked</h3>
+    <ul class="sc-src">${LABELS.map(([, t, d]) => `<li class="line"><b>${esc(t)}</b>: ${esc(d)}</li>`).join('')}</ul>
+    <p class="line sc-note">About the property, not the people. Not a consumer report: never use it for tenant, employment, credit or insurance screening.</p>
+    <div class="line sc-btns"><button class="bk-btn ghost" type="button" data-reroll>Roll it back up</button></div>
+  </div>`;
+}
+export function researchScrolls(rows, { emptyShell = true } = {}) {
+  const live = (rows || []).filter((r) => r.status !== 'declined');
+  const declined = (rows || []).filter((r) => r.status === 'declined');
+  if (!live.length && !emptyShell) return '';
+  return html`<div class="rf-scrolls">
+    ${live.length ? live.map((r) => html`<div><p class="rf-scroll-meta"><span class="kind rf-st rf-${r.status}">${RESEARCH_STATUS[r.status] || r.status}</span> <code>${r.reference}</code> · requested ${ago(r.created_at)}</p>
+      ${raw(r.status === 'delivered'
+        ? scrollShell({ id: r.id, kind: 'research', name: 'Research File', label: `Research File ${r.reference}: the scroll`, content: deliveredContent(r), hint: 'Tap the seal' })
+        : scrollShell({ id: r.id, kind: 'research', name: 'Research File', label: `Research File ${r.reference}, still sealed`, locked: true,
+            lockedNote: OPEN.includes(r.status) ? `Sealed until your file is delivered · ${RESEARCH_STATUS[r.status]}` : 'Sealed', hint: 'Sealed' }))}</div>`)
+    : html`<div>${raw(scrollShell({ id: 'research-empty', kind: 'research', name: 'Your Research File', label: 'An empty, sealed research scroll', locked: true,
+        lockedNote: 'Your commissioned file will arrive here, sealed', hint: 'Sealed' }))}</div>`}
+    ${declined.map((r) => html`<div class="mod-item"><div class="post-meta"><span class="kind rf-st rf-declined">Declined</span> <code>${r.reference}</code> · ${ago(r.created_at)}</div><p>${r.address}</p></div>`)}
+  </div>`;
+}
+function myRequests(rows, signedIn) {
+  if (!signedIn) return '';
+  return html`<section class="rf-mine"><h2>Your research files</h2>${researchScrolls(rows)}</section>`;
 }
 
 export async function research(ctx) {
@@ -67,7 +105,7 @@ export async function research(ctx) {
     </section>
     <section class="rf-col"><h2>Request a file</h2>
       ${requestForm(ctx)}
-      ${myRequests(mine)}
+      ${myRequests(mine, !!ctx.me)}
     </section>
   </div>
   <section class="prose rf-terms" id="research-terms"><h2>Terms of the research</h2>

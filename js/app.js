@@ -20,6 +20,7 @@ import { heritage } from './views/heritage.js';
 import { research } from './views/research.js';
 import { initPwa, showFirstRun } from './install.js';
 import { standardPrice } from './components.js';
+import { mountTomes, setReduceMotion } from './tome.js';
 
 const ctx = { feed, be: null, me: null, membership: null, unlocks: [], comments: {}, config: CONFIG };
 
@@ -113,6 +114,8 @@ async function route() {
       const l = path.startsWith('/l/') ? feed.byId.get(decodeURIComponent(m[1])) : null;
       document.title = (l ? l.name : title || 'Twisted Deeds') + ' · Twisted Deeds';
       if (view === mapView) await mountMap(ctx, q, main);
+      mountTomes(main, { openScroll: !!(q.get('unlocked') || q.get('at') === 'file') });
+      window.TD_ATMO_SYNC?.();
       if (view === account && hasPending()) checkPayments();
       const at = q.get('at') || (q.get('tab') === 'talk' ? 'comments' : '') || (q.get('unlocked') ? 'file' : '');
       const refocus = (view === browse && refocusFilter && main.querySelector(`form[data-filters] [name="${refocusFilter}"]`)) || null; refocusFilter = null;
@@ -210,6 +213,11 @@ document.addEventListener('click', async (e) => {
     else if (ds.rejectPaid) { const note = prompt('Reject this unlock request? Optional note (not shown publicly):', ''); if (note === null) return;
       t.disabled = true; await ctx.be.rejectUnlockRequest(ds.rejectPaid, note); toast('Request rejected.'); route(); }
     else if (ds.resolve) { const [id, action] = ds.resolve.split(':'); await ctx.be.resolveReport(id, action); toast(action === 'removed' ? 'Content removed' : 'Report dismissed'); route(); }
+    else if (ds.share) { e.preventDefault(); const l = feed.byId.get(ds.share); const url = location.href.split('#')[0] + '#/l/' + encodeURIComponent(ds.share);
+      const title = (l?.name || 'A listing') + ' · Twisted Deeds';
+      if (navigator.share) { try { await navigator.share({ title, url }); } catch { /* dismissed */ } }
+      else { try { await navigator.clipboard.writeText(url); toast('Link copied. It opens this listing’s book.'); } catch { prompt('Copy this link:', url); } } }
+    else if ('reduceMotion' in ds) { const on = !document.documentElement.classList.contains('rm'); setReduceMotion(on); syncRm(); toast(on ? 'Motion reduced: no smoke, grain or page animations.' : 'Motion back on.'); }
     else if ('resetPreview' in ds) { if (confirm('Clear all preview data (test accounts, comments, posts, submissions, unlocks) in this browser?')) { ctx.be.reset(); location.reload(); } }
   } catch (err) { toast(err.message); }
 });
@@ -265,7 +273,10 @@ document.addEventListener('input', (e) => {
 
 // ---------- boot
 initPwa();
+function syncRm() { const on = document.documentElement.classList.contains('rm'); document.querySelectorAll('[data-reduce-motion]').forEach((b) => { b.setAttribute('aria-pressed', String(on)); b.textContent = on ? 'Motion reduced' : 'Reduce motion'; }); window.TD_ATMO_SYNC?.(); }
+matchMedia('(prefers-reduced-motion: reduce)').addEventListener?.('change', (e) => { let saved = null; try { saved = localStorage.getItem('td-rm'); } catch { /* ignore */ } if (saved == null) { setReduceMotion(e.matches, false); syncRm(); } });
 (async function boot() {
+  syncRm();
   $('#disclaimer').textContent = DISCLAIMER;
   try { await loadFeed(); } catch (e) { $('#main').innerHTML = `<div class="empty-state"><h1>Listings unavailable</h1><p>${esc(e.message)}</p></div>`; return; }
   ctx.be = await getBackend();

@@ -62,8 +62,19 @@ export async function home(ctx, q) {
   const act = L.filter((l) => l.status === 'Active');           // hero counts: Active only
   const actT1 = act.filter((l) => l.tier === 1).length, actT2 = act.length - actT1;
   return html`
+  ${page === 1 ? html`<section class="th-card" aria-label="Twisted Deeds">
+    <img class="thc-vine l" src="assets/th/vine-corner.png" alt="" aria-hidden="true"><img class="thc-vine r" src="assets/th/vine-corner.png" alt="" aria-hidden="true">
+    <div class="thc-gent" aria-hidden="true"><img src="assets/th/gentleman.webp" alt="" width="372" height="410"></div>
+    <div class="thc-text">
+      <div class="thc-td"><img src="assets/logo-shield-96.png" alt="" width="40" height="41"></div>
+      <p class="thc-title" role="heading" aria-level="1">Twisted <span class="thc-deeds">Deeds</span></p>
+      <div class="thc-tag">where the past has a presence</div>
+      <div class="thc-credit">a Twisted History Tours production</div>
+    </div>
+    <img class="thc-seal" src="assets/th/th-seal.png" alt="Twisted History Tours seal" width="64" height="64">
+  </section>` : ''}
   ${page === 1 ? html`<section class="hero">
-    <div><h1>Some houses <em>remember</em></h1>
+    <div><h2 class="hero-h">Some houses <em>remember</em></h2>
     <div class="hero-intro"><p>Come in, and mind the threshold.</p>
     <p>Every door here opens on a real house or building for sale today, its dark history researched and sourced from the public record.</p>
     <p>Read any file's preview free, then unlock the full file when one keeps hold of you.</p></div>

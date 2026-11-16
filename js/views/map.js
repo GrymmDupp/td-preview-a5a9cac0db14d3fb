@@ -60,20 +60,23 @@ export async function mountMap(ctx, q, root) {
       'circle-stroke-color': ['case', ['==', ['get', 'approx'], 1], ['get', 'color'], ['case', ['==', ['get', 'tier'], 1], '#ffe9d0', '#0b0909']],
       'circle-stroke-width': ['case', ['==', ['get', 'approx'], 1], 2.5, ['==', ['get', 'tier'], 1], 1.8, 1],
       'circle-radius': ['case', ['==', ['get', 'sov'], 1], 7.5, 6] } });
-    if (!saved) map.fitBounds([[-125, 24], [-66, 49.5]], { padding: 20, duration: 0 });
+    if (!saved && !q.get('focus')) map.fitBounds([[-125, 24], [-66, 49.5]], { padding: 20, duration: 0 });
   };
   map.on('style.load', addLayers);
   map.on('load', addLayers);
   map.on('click', 'cl', (e) => { const f = e.features[0]; map.getSource('l').getClusterExpansionZoom(f.properties.cluster_id).then((z) => map.easeTo({ center: f.geometry.coordinates, zoom: z })); });
   const card = root.querySelector('[data-map-card]');
-  map.on('click', 'pt', (e) => {
-    const l = ctx.feed.byId.get(e.features[0].properties.id); if (!l) return;
+  const showCard = (l) => {
     card.hidden = false;
     card.innerHTML = `<button class="x" aria-label="Close">×</button><div class="mc-badges">${l.tier === 1 ? '<span class="badge ddd" style="--c:#c41e32"><b>Twisted Deed</b></span>' : `<span class="badge story">Strong Story${storyLabel(l) ? `<i>${esc(storyLabel(l))}</i>` : ''}</span>`} <span class="layer" style="--c:${l.layerI.color}"><span class="dot"></span>${esc(l.layerI.label)}</span></div>
       ${(() => { const i = displayableImages(l)[0]; return i ? `<div class="mc-photo" data-ph><img src="${esc(i.src || i.url)}" alt="${esc((i.image_type === 'illustration' ? 'Illustration, not a photo: ' : '') + (i.caption || l.name))}" referrerpolicy="no-referrer" data-ph-img>${i.image_type === 'illustration' ? '<span class="ph-note mc-note"><span class="ph-type illus">Illustration, not a photo</span></span>' : ''}</div>` : ''; })()}
       <h3>${esc(l.name)}</h3><div class="muted">${esc(l.place)}</div><div class="card-price">${esc(l.price)} · ${esc(l.status)}</div><p class="clamp2">${esc(truncate(l.preview?.summary || "", 180))}</p><a class="btn sm" href="#/l/${encodeURIComponent(l.id)}">Open</a>`;
     card.querySelector('.x').onclick = () => { card.hidden = true; };
-  });
+  };
+  map.on('click', 'pt', (e) => { const l = ctx.feed.byId.get(e.features[0].properties.id); if (l) showCard(l); });
+  // #/map?focus=<id>: fly to one listing (from its book) and open its card.
+  const focus = q.get('focus') && ctx.feed.byId.get(q.get('focus'));
+  if (focus && focus.lat != null) { map.jumpTo({ center: [focus.lon, focus.lat], zoom: focus.geo_precision === 'town' ? 11 : 14 }); showCard(focus); }
   for (const id of ['pt', 'cl']) { map.on('mouseenter', id, () => { map.getCanvas().style.cursor = 'pointer'; }); map.on('mouseleave', id, () => { map.getCanvas().style.cursor = ''; }); }
   const refresh = () => map.getSource('l')?.setData(data());
   root.querySelectorAll('[data-layer]').forEach((b) => b.onclick = () => { const k = b.dataset.layer; state.layers.has(k) ? state.layers.delete(k) : state.layers.add(k); b.classList.toggle('on'); b.setAttribute('aria-pressed', state.layers.has(k)); refresh(); });

@@ -46,6 +46,20 @@ export function plate(l, cls = '') {
 <span class="plate-cap">No photo on file · ${l.year ? `c. ${l.year} · ` : ''}${esc(l.city)}${l.state ? ', ' + l.state : ''}</span></div>`);
 }
 
+// Listing-portal pages carry listing / MLS IDs: never link them from public pages (same rule as /jackson/ and /live/).
+// Instead, "Find listing" searches the address. News, archives and Wikipedia are never treated as portals.
+const PORTALS = ['zillow.com', 'redfin.com', 'trulia.com', 'realtor.com', 'coldwellbanker.com', 'coldwellbankerhomes.com', 'howardhanna.com', 'crexi.com', 'loopnet.com', 'landwatch.com', 'realmo.com', 'greenridge.com', 'arterrarealty.com', 'remax.com', 'bhhschicago.com', 'commercialcafe.com', 'commercialsearch.com', 'brevitas.com', 'michiganwhitetailproperties.com', 'homes.com', 'century21.com', 'compass.com', 'movoto.com'];
+const NEWS = ['mlive.com', 'wkar.org', 'npgallery.nps.gov', 'wikipedia.org', 'wikimedia.org', 'wikidata.org', 'loc.gov', 'nps.gov', 'archive.org', 'newspapers.com', 'findagrave.com'];
+export function isPortalUrl(u) {
+  const s = safeUrl(u); if (!s) return false;
+  const h = host(s).toLowerCase(), on = (d) => h === d || h.endsWith('.' + d);
+  if (NEWS.some(on)) return false;
+  if (PORTALS.some(on)) return true;
+  return /property-id|mls|\/\d{6,}|[-_/]\d{6,}|lid-|pid_|id_\d|zpid|\/home\/\d/i.test(s);
+}
+export const publicUrl = (u) => (isPortalUrl(u) ? '' : safeUrl(u));
+export const findListingUrl = (l) => 'https://www.google.com/search?q=' + encodeURIComponent(`${l.address || l.name + ' ' + l.place} for sale`);
+
 export const money = (n) => `$${Number(n).toFixed(Number.isInteger(Number(n)) ? 0 : 2)}`;
 const P = CONFIG.pricing;   // live mode: trial switches overwritten from app_settings at startup
 export const isTrial = () => !!P.trial?.active;
@@ -84,7 +98,7 @@ export const IMAGE_TYPE_LABEL = { listing: 'Listing photo', 'alt-listing': 'Phot
 export const imageType = (i) => i.image_type || (i.rights === 'illustration' ? 'illustration' : '');
 // Credit line + link back to the source page.
 export function photoCredit(i) {
-  const t = imageType(i), src = safeUrl(i.source || i.page || '');
+  const t = imageType(i), src = publicUrl(i.source || i.page || '');
   if (t === 'illustration') return html`<span class="ph-type illus">Illustration, not a photo</span>${i.credit ? html` · ${i.credit}` : ''}`;
   const lic = (t === 'cc' || (t === 'public-domain' && !/^public[\s-]*domain$/i.test(String(i.license || '').trim()))) ? html`${i.license ? html` · ${safeUrl(i.license_url) ? html`<a href="${safeUrl(i.license_url)}" target="_blank" rel="noopener nofollow license">${i.license}</a>` : i.license}` : ''}` : '';
   const free = t === 'cc' || t === 'public-domain';
@@ -139,7 +153,7 @@ export const reportBtn = (type, id) => html`<button class="link small report-btn
 
 export const sourceLinks = (l, full) => {
   const urls = new Map();
-  const add = (u, label) => { const s = safeUrl(u); if (s && !urls.has(s)) urls.set(s, label || host(s)); };
+  const add = (u, label) => { const s = publicUrl(u); if (s && !urls.has(s)) urls.set(s, label || host(s)); };
   add(l.url, 'Original listing');
   (full?.sources || []).forEach((u) => add(typeof u === 'string' ? u : u?.url, u?.label));
   (full?.references || []).forEach((i) => add(i.page, `${i.source}${i.caption ? ': ' + i.caption : ''} (reference photos, on the original page)`));

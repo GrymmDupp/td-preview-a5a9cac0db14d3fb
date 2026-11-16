@@ -1,4 +1,5 @@
 import { html, fmtDate, safeUrl, host } from '../util.js';
+import { researchScrolls } from './research.js';
 import { unlockPrice, standardPrice, monthlyUnlockPrice, lifetimeUnlockPrice, monthlyPrice, lifetimePrice, money, TIER_LABEL, membershipsOn, isTrial, soonChip, soonButton, trialNote } from '../components.js';
 
 // Plan shown as a plain fact. The "Lifetime" badge appears HERE ONLY (the member's own
@@ -29,7 +30,7 @@ const STATUS = { pending: ['Awaiting review', 'pending'], approved: ['Approved',
 export async function account(ctx) {
   if (!ctx.me) return html`<div class="empty-state"><h1>Account</h1><p>Sign in to see your unlocked files and your submissions.</p><button class="btn" data-signin>Sign in</button>
     <p class="small muted install-inline" data-install-entry>Want it on your home screen? <a href="#" data-install-app>Install the app</a></p></div>`;
-  const [unlocks, subs] = await Promise.all([ctx.be.listUnlocks(), ctx.be.listMySubmissions()]);
+  const [unlocks, subs, rf] = await Promise.all([ctx.be.listUnlocks(), ctx.be.listMySubmissions(), ctx.be.myResearchRequests ? ctx.be.myResearchRequests().catch(() => []) : []]);
   const L = (id) => ctx.feed.byId.get(id);
   return html`<div class="page-head"><h1>Account</h1><p class="muted">Signed in as <b>@${ctx.me.handle}</b>. Only you see this page.</p>
     ${ctx.be.isPreview ? html`<p class="small muted">Preview: this is a test account in this browser. In live mode your account is your email sign-in, so unlocks follow you to every device.</p>` : ''}</div>
@@ -37,10 +38,13 @@ export async function account(ctx) {
     <section class="block"><h2>Plan</h2>${planBlock(ctx)}</section>
     <section class="block"><h2>Unlocked files <small class="muted">${unlocks.length}</small></h2>
       ${unlocks.length ? html`<table class="tbl"><thead><tr><th>Property</th><th>Unlocked</th><th>Price paid</th><th>Payment</th></tr></thead><tbody>
-        ${unlocks.map((u) => html`<tr><td>${L(u.listing_id) ? html`<a href="#/l/${u.listing_id}">${L(u.listing_id).name}</a>` : u.listing_id}</td><td>${fmtDate(u.unlocked_at)}</td>
+        ${unlocks.map((u) => html`<tr><td>${L(u.listing_id) ? html`<a href="#/l/${u.listing_id}?at=file">${L(u.listing_id).name}</a> <span class="small muted">· open the scroll</span>` : u.listing_id}</td><td>${fmtDate(u.unlocked_at)}</td>
         <td>${money(u.amount_paid ?? u.amount_cents / 100)} <span class="muted small">${TIER_LABEL[u.price_tier] || 'standard'}</span></td>
         <td>${u.mock ? html`<span class="example">Example checkout</span> ` : ''}<span class="muted small">${u.payment_ref}</span></td></tr>`)}</tbody></table>`
       : html`<p class="muted">No unlocked files yet. Every listing has a free preview; the full file is ${unlockPrice(ctx)} one time.</p>`}</section>
+    <section class="block"><h2>Research files <small class="muted">${rf.length}</small></h2>
+      <p class="small muted">Commissioned Research Files are a separate, private service. Each one arrives here as a sealed scroll. <a href="#/research">Commission a file</a>.</p>
+      ${researchScrolls(rf)}</section>
     <section class="block"><h2>Your submissions <small class="muted">${subs.length}</small></h2>
       ${subs.length ? html`<table class="tbl"><thead><tr><th>Type</th><th>Listing</th><th>What</th><th>Sent</th><th>Status</th></tr></thead><tbody>
         ${subs.map((s) => { const st = STATUS[s.status] || [s.status, '']; const p = s.payload || {};

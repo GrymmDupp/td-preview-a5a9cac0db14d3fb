@@ -86,3 +86,15 @@ textarea{width:100%;min-height:76px;background:#100c0c;color:var(--bone);border:
 #alert.compact .a-name{font-size:1rem;margin:0;padding-right:54px;display:inline}#alert.compact .a-dist{font-size:1rem;display:inline;margin-left:8px}
 #alert.compact::after{content:'tap to open';display:block;font-size:.75rem;color:var(--parch)}
 #stage.has-alert #sheet{max-height:calc(100% - 78px)}
+/* Shadow look (Twisted History): palette, fonts and wordmark only. No smoke, grain or motion here:
+   Live stays plain, fast and high-contrast for driving. The proximity alert keeps its original colors. */
+:root{--bg:#1b1b1a;--panel:#232322;--panel2:#2d2d2d;--line:#4a4a47;--bone:#f2efe8;--parch:#d9d5cc;--muted:#a19d95;--bronze:#6f6a62;--crimson:#b3261e;--ember:#eb1944;--display:'IM Fell English SC','Cinzel',Georgia,serif}
+#alert{--gold:#c9a227;--gold2:#e6c352;--bronze:#9a6a2c;--crimson:#b21226;--display:'Cinzel',Georgia,serif;--line:#3d3033;--parch:#d9c9a8;--bone:#f0e6d0}
+#top,.chips,#dock{background:#141413}
+#top{border-bottom-color:#4a4a47}#dock{border-top-color:#4a4a47}
+.brand{font-family:'Mystery Quest','IM Fell English',Georgia,serif;font-size:1.32rem;letter-spacing:.01em}
+.brand b{font-weight:400}.brand i{color:#d8312a}
+.brand em{font:400 .8rem 'IM Fell English SC',Georgia,serif;letter-spacing:.06em;color:#f2efe8;border-color:#d8312a;background:#60130b;padding:1px 6px;vertical-align:3px}
+.chip{background:#232322}.chip.on{background:#2d2d2d;border-color:#a19d95}
+.mini button,.rad button{background:#232322}
+#toast{background:#2d2d2d;border-color:#6f6a62}

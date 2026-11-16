@@ -22,7 +22,7 @@
 <meta name="twitter:description" content="Some houses remember. Real properties for sale today, their dark histories pulled from deed books, probate files and old newspapers. Read the record, add what you know, follow the ones that haunt you.">
 <meta name="twitter:image" content="https://grymmdupp.github.io/td-preview-a5a9cac0db14d3fb/assets/og-image.jpg">
 <meta name="twitter:image:alt" content="The Twisted Deeds crest: an ornate Victorian shield with a top-hatted skull, gears, keys and scrolls">
-<meta name="theme-color" content="#0b0909">
+<meta name="theme-color" content="#1b1b1a">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -33,10 +33,29 @@
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+<script>(function(){try{var v=localStorage.getItem('td-rm');var on=v?v==='1':matchMedia('(prefers-reduced-motion: reduce)').matches;if(on)document.documentElement.classList.add('rm');}catch(e){}})();</script>
+<link rel="preload" href="assets/fonts/MysteryQuest.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/IMFellEnglish.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/fonts/fonts.css">
+<link rel="stylesheet" href="assets/fonts/shadow-fonts.css">
 <link rel="stylesheet" href="assets/css/site.css">
+<link rel="stylesheet" href="assets/css/tome.css">
+<link rel="stylesheet" href="assets/css/shadow.css">
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <filter id="wax-edge"><feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="2" seed="7"/><feDisplacementMap in="SourceGraphic" scale="9"/></filter>
+    <radialGradient id="wax-th" cx="38%" cy="30%" r="78%"><stop offset="0" stop-color="#a3332a"/><stop offset=".45" stop-color="#60130b"/><stop offset="1" stop-color="#2a0603"/></radialGradient>
+    <radialGradient id="wax-th-in" cx="62%" cy="66%" r="72%"><stop offset="0" stop-color="#4a0d07"/><stop offset="1" stop-color="#74180f"/></radialGradient>
+    <filter id="th-dark"><feColorMatrix values="0 0 0 0 .12 0 0 0 0 .01 0 0 0 0 .0 0 0 0 .9 0"/></filter>
+    <symbol id="fleuron" viewBox="0 0 60 60"><path d="M4 4h22M4 4v22M4 4c10 2 16 8 18 18M10 4c0 8 4 12 12 12M4 10c8 0 12 4 12 12M26 4c3 3 3 6 0 9M4 26c3 3 6 3 9 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="22" cy="22" r="2.6" fill="currentColor"/></symbol>
+    <symbol id="rule" viewBox="0 0 200 14"><path d="M0 7h80M120 7h80" stroke="currentColor" stroke-width="1"/><path d="M100 1l6 6-6 6-6-6z" fill="currentColor"/><circle cx="86" cy="7" r="1.8" fill="currentColor"/><circle cx="114" cy="7" r="1.8" fill="currentColor"/></symbol>
+  </defs>
+</svg>
+<div class="atmo atmo-back" aria-hidden="true"><div class="fog f1"></div><div class="fog f2"></div></div>
+<div class="atmo atmo-front" aria-hidden="true"><canvas id="scratch"></canvas><div class="grain"></div><div class="vig"></div></div>
+<img class="edge-vine l" src="assets/th/vine-edge.png" alt="" aria-hidden="true"><img class="edge-vine r" src="assets/th/vine-edge.png" alt="" aria-hidden="true">
 <a class="skip" href="#main">Skip to content</a>
 <div id="preview-banner" class="preview-banner" hidden>
   <b></b><span class="short"></span><span class="long"></span>
@@ -56,7 +75,9 @@
 <footer class="site-foot">
   <div class="foot-in">
     <div><div class="brand small"><img class="brand-shield" src="assets/logo-shield-96.png" srcset="assets/logo-shield-96.png 2x" alt="Twisted Deeds" width="31" height="32" loading="lazy"><span class="b1" aria-hidden="true">Twisted</span><span class="b2" aria-hidden="true">Deeds</span></div>
-      <p class="muted small">A Twisted History Tours project · Horton, Michigan</p>
+      <p class="foot-tag">where the past has a presence</p>
+      <p class="foot-credit"><img src="assets/th/th-seal.png" alt="Twisted History Tours seal" width="40" height="40" loading="lazy"><span>a Twisted History Tours production · Horton, Michigan</span></p>
+      <p><button class="rm-toggle" type="button" data-reduce-motion aria-pressed="false">Reduce motion</button></p>
       <p class="small" id="feed-meta"></p></div>
     <div><p id="disclaimer" class="small disclaimer"></p></div>
     <div class="foot-links small"><a href="#/packs">Dossier Packs</a><a href="#/archive">Sold &amp; Off market archive</a><a href="#/board">Community board</a><a href="#/contribute">Submit</a><a href="#/account">Account</a><a href="#/rules">Community rules</a><a href="#/about">About</a><a href="#/moderate" id="foot-mod" hidden>Moderation</a><a href="#/research" class="foot-research">Commission a research file</a><a href="#" class="install-link" data-install-app data-install-entry>Install the app</a></div>
@@ -64,5 +85,6 @@
 </footer>
 <nav id="tabbar" class="tabbar" aria-label="Sections"></nav>
 <script type="module" src="js/app.js"></script>
+<script src="js/atmo.js" defer></script>
 </body>
 </html>
