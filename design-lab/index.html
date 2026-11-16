@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="th">
 <head>
 <meta charset="utf-8">
 <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
@@ -7,13 +7,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b0909">
 <title>Twisted Deeds · Design Lab</title>
+<script>(function(){try{var q=new URLSearchParams(location.search).get('t'),t=q==='gilded'||q==='th'?q:(localStorage.getItem('td-lab-theme')||'th');document.documentElement.dataset.theme=t==='gilded'?'gilded':'th';}catch(e){}})();</script>
 <link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
 <link rel="stylesheet" href="../assets/fonts/fonts.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=Mystery+Quest&family=Sacramento&family=Special+Elite&display=swap">
 <link rel="stylesheet" href="lab.css">
+<link rel="stylesheet" href="th.css">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -22,16 +24,38 @@
     <radialGradient id="wax" cx="38%" cy="32%" r="75%"><stop offset="0" stop-color="#e2475a"/><stop offset=".45" stop-color="#9e1426"/><stop offset="1" stop-color="#4a0610"/></radialGradient>
     <radialGradient id="wax-in" cx="60%" cy="65%" r="70%"><stop offset="0" stop-color="#7a0d1b"/><stop offset="1" stop-color="#b8202f"/></radialGradient>
     <linearGradient id="goldg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f7e08a"/><stop offset=".35" stop-color="#c9a227"/><stop offset=".6" stop-color="#8a5f1c"/><stop offset="1" stop-color="#e6c352"/></linearGradient>
+    <radialGradient id="wax-th" cx="38%" cy="30%" r="78%"><stop offset="0" stop-color="#a3332a"/><stop offset=".45" stop-color="#60130b"/><stop offset="1" stop-color="#2a0603"/></radialGradient>
+    <radialGradient id="wax-th-in" cx="62%" cy="66%" r="72%"><stop offset="0" stop-color="#4a0d07"/><stop offset="1" stop-color="#74180f"/></radialGradient>
+    <filter id="th-dark"><feColorMatrix values="0 0 0 0 .12 0 0 0 0 .01 0 0 0 0 .0 0 0 0 .9 0"/></filter>
     <symbol id="fleuron" viewBox="0 0 60 60"><path d="M4 4h22M4 4v22M4 4c10 2 16 8 18 18M10 4c0 8 4 12 12 12M4 10c8 0 12 4 12 12M26 4c3 3 3 6 0 9M4 26c3 3 6 3 9 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="22" cy="22" r="2.6" fill="currentColor"/></symbol>
     <symbol id="rule" viewBox="0 0 200 14"><path d="M0 7h80M120 7h80" stroke="currentColor" stroke-width="1"/><path d="M100 1l6 6-6 6-6-6z" fill="currentColor"/><circle cx="86" cy="7" r="1.8" fill="currentColor"/><circle cx="114" cy="7" r="1.8" fill="currentColor"/></symbol>
   </defs>
 </svg>
+<div class="atmo atmo-back th-only" aria-hidden="true"><div class="fog f1"></div><div class="fog f2"></div></div>
+<div class="atmo atmo-front th-only" aria-hidden="true"><canvas id="scratch"></canvas><div class="grain"></div><div class="vig"></div></div>
+<img class="edge-vine l th-only" src="th/vine-edge.png" alt="" aria-hidden="true"><img class="edge-vine r th-only" src="th/vine-edge.png" alt="" aria-hidden="true">
 <header class="lab-head">
   <a class="brand" href="../" aria-label="Back to the Twisted Deeds app"><img src="../assets/logo-shield-96.png" width="34" height="35" alt=""><span><b>Twisted</b> <i>Deeds</i></span></a>
   <span class="lab-tag">Design Lab</span>
   <button id="rm" class="rm-btn" aria-pressed="false" title="Reduce motion">Reduce motion</button>
 </header>
 <main>
+  <section class="th-card th-only" aria-label="Twisted History Tours presents Twisted Deeds">
+    <img class="thc-vine l" src="th/vine-corner.png" alt="" aria-hidden="true"><img class="thc-vine r" src="th/vine-corner.png" alt="" aria-hidden="true">
+    <div class="thc-gent" aria-hidden="true"><img src="th/gentleman.webp" alt="" width="372" height="410"></div>
+    <div class="thc-text">
+      <div class="thc-title">Twisted History Tours</div>
+      <div class="thc-presents">presents&hellip;</div>
+      <div class="thc-td"><img src="../assets/logo-shield-96.png" alt="" width="30" height="31"><span>Twisted <b>Deeds</b></span></div>
+      <div class="thc-tag">where the past has a presence</div>
+    </div>
+    <img class="thc-seal" src="th/th-seal.png" alt="Twisted History Tours seal" width="64" height="64">
+  </section>
+  <div class="theme-sw" role="radiogroup" aria-label="Look">
+    <span class="ts-l">Look</span>
+    <button role="radio" data-theme="th" aria-checked="true">Twisted History</button>
+    <button role="radio" data-theme="gilded" aria-checked="false">Gilded</button>
+  </div>
   <p class="lab-intro">Two ways a listing could <em>open</em>. Concept prototype, not the live app. Tap through with real listings.</p>
   <div class="tabs" role="tablist" aria-label="Concept">
     <button role="tab" data-view="book" aria-selected="true">The Book</button>
@@ -57,5 +81,6 @@
 </main>
 <script src="lab-data.js"></script>
 <script src="lab.js"></script>
+<script src="th-atmo.js"></script>
 </body>
 </html>

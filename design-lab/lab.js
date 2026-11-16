@@ -18,7 +18,9 @@ const params = new URLSearchParams(location.search);
 const state = {
   id: DATA.some((l) => l.id === params.get('l')) ? params.get('l') : DATA[0]?.id,
   view: ['book', 'scroll', 'both'].includes(params.get('v')) ? params.get('v') : 'book',
+  theme: document.documentElement.dataset.theme === 'gilded' ? 'gilded' : 'th',
 };
+const TH = () => state.theme === 'th';
 const mq = matchMedia('(prefers-reduced-motion: reduce)');
 let reduce = localStorage.getItem('td-lab-rm') ? localStorage.getItem('td-lab-rm') === '1' : mq.matches;
 const listing = () => DATA.find((l) => l.id === state.id);
@@ -69,9 +71,20 @@ function setView(v) {
   $('#view-scroll').hidden = v === 'book';
   syncUrl(); book.layout();
 }
-function syncUrl() { history.replaceState(null, '', `?v=${state.view}&l=${state.id}`); }
+function syncUrl() { history.replaceState(null, '', `?v=${state.view}&l=${state.id}&t=${state.theme}`); }
+function setTheme(t, rebuild = true) {
+  state.theme = t === 'gilded' ? 'gilded' : 'th';
+  document.documentElement.dataset.theme = state.theme;
+  try { localStorage.setItem('td-lab-theme', state.theme); } catch (e) { /* private mode */ }
+  document.querySelectorAll('.theme-sw [role=radio]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.theme === state.theme)));
+  $('meta[name=theme-color]').setAttribute('content', TH() ? '#1b1b1a' : '#0b0909');
+  syncUrl();
+  if (rebuild) { book.load(listing()); scroll.load(listing()); }
+  window.dispatchEvent(new CustomEvent('td-theme', { detail: state.theme }));
+}
+document.querySelectorAll('.theme-sw [role=radio]').forEach((b) => b.addEventListener('click', () => { if (b.dataset.theme !== state.theme) setTheme(b.dataset.theme); }));
 function setReduce(on) {
-  reduce = on; document.documentElement.classList.toggle('rm', on);
+  reduce = on; document.documentElement.classList.toggle('rm', on); window.dispatchEvent(new CustomEvent('td-rm', { detail: on }));
   $('#rm').setAttribute('aria-pressed', String(on)); $('#rm').textContent = on ? 'Motion reduced' : 'Reduce motion';
 }
 $('#rm').addEventListener('click', () => { setReduce(!reduce); localStorage.setItem('td-lab-rm', reduce ? '1' : '0'); });
@@ -132,7 +145,8 @@ const book = (() => {
           <p class="ink note">This is the free preview. The full research file, with every documented source, opens from the listing in the app.</p>
           ${folio('v')}</div>`;
       case 5: return `<div class="pg pg-fin">
-          <div class="ink fin-orn"><svg viewBox="0 0 60 60" width="54"><use href="#fleuron"/></svg></div>
+          <div class="ink fin-orn gd-only"><svg viewBox="0 0 60 60" width="54"><use href="#fleuron"/></svg></div>
+          <div class="ink fin-rose th-only"><img src="th/rose.webp" alt="" width="84" height="84" draggable="false"></div>
           <div class="ink fin">Finis</div>
           <a class="ink bk-btn gold" href="${appUrl(l)}">Open the full file</a>
           <a class="ink bk-btn" href="${findUrl(l)}" target="_blank" rel="noopener">Find listing</a>
@@ -143,9 +157,12 @@ const book = (() => {
   }
   const coverHTML = () => `<div class="cover-front">
       <div class="tool tool1"></div><div class="tool tool2"></div>
-      ${['tl', 'tr', 'bl', 'br'].map((c) => `<svg class="corner ${c}" viewBox="0 0 60 60" aria-hidden="true"><use href="#fleuron"/></svg>`).join('')}
+      ${['tl', 'tr', 'bl', 'br'].map((c) => `<svg class="corner gd-only ${c}" viewBox="0 0 60 60" aria-hidden="true"><use href="#fleuron"/></svg>`).join('')}
+      ${['tl', 'tr', 'bl', 'br'].map((c) => `<img class="cv-vine th-only ${c}" src="th/vine-corner.png" alt="" aria-hidden="true" draggable="false">`).join('')}
+      <img class="cv-th th-only" src="th/th-seal.png" alt="" aria-hidden="true" draggable="false">
       <div class="cv-inner">
         <img class="cv-logo" src="../assets/logo-shield-144.png" alt="" width="64" height="66">
+        <div class="cv-presents th-only">Twisted History Tours presents</div>
         <div class="cv-kick">${esc(L.label)}</div>
         <h2 class="cv-title">${esc(L.name)}</h2>
         <div class="cv-rule"></div>
@@ -154,7 +171,10 @@ const book = (() => {
       </div>
       <div class="cv-tap">Tap to open</div>
     </div>`;
-  const endpaper = () => `<div class="endpaper"><img src="../assets/logo-shield-144.png" alt="" width="72" height="74"><span>Twisted Deeds</span><small>A record of houses with a past</small></div>`;
+  const endpaper = () => `<div class="endpaper">
+      <img class="ep-gent th-only" src="th/gentleman.webp" alt="" aria-hidden="true" draggable="false">
+      <img class="ep-vine th-only" src="th/vine-edge.png" alt="" aria-hidden="true" draggable="false">
+      <div class="ep-in"><small class="th-only ep-pre">Twisted History Tours presents</small><img src="../assets/logo-shield-144.png" alt="" width="72" height="74"><span>Twisted Deeds</span><small>A record of houses with a past</small><em class="th-only ep-tag">where the past has a presence</em></div></div>`;
   const verso = () => `<div class="verso"></div>`;
 
   function build() {
@@ -224,7 +244,11 @@ const book = (() => {
     if (mode === 'single' && dir < 0) el.style.visibility = '';
     preInk(k + dir);
     const b = stage.querySelector('.book');
-    if (dir > 0 && k === 0) b.classList.add('open');
+    if (dir > 0 && k === 0) {
+      b.classList.add('open');
+      const r = stage.getBoundingClientRect();
+      if (r.bottom > innerHeight + 10 || r.top < 0) stage.scrollIntoView({ block: r.height + 70 < innerHeight ? 'center' : 'start', behavior: reduce ? 'auto' : 'smooth' });
+    }
     if (dir < 0 && k === 1) b.classList.remove('open');
     animate(el, dir > 0 ? 0 : -180, dir > 0 ? -180 : 0, k === 0 || (dir < 0 && k === 1) ? 1100 : 850, () => { k += dir; busy = false; place(); });
   }
@@ -304,7 +328,13 @@ const scroll = (() => {
   let L = null, st = 'sealed', timers = [];
   const later = (fn, ms) => timers.push(setTimeout(fn, reduce ? 0 : ms));
   const clear = () => { timers.forEach(clearTimeout); timers = []; };
-  const waxSeal = () => `<svg viewBox="0 0 120 120" aria-hidden="true">
+  const waxSeal = () => TH() ? `<svg viewBox="0 0 120 120" aria-hidden="true">
+      <g filter="url(#wax-edge)"><circle cx="60" cy="60" r="51" fill="url(#wax-th)"/></g>
+      <circle cx="60" cy="60" r="38" fill="url(#wax-th-in)" stroke="#2a0603" stroke-width="2"/>
+      <circle cx="60" cy="60" r="34" fill="none" stroke="#c9584a" stroke-opacity=".45" stroke-width="1.4"/>
+      <image href="th/th-letters.png" x="28" y="28.2" width="66" height="66" filter="url(#th-dark)" opacity=".85"/>
+      <image href="th/th-letters.png" x="27" y="27" width="66" height="66" opacity=".5"/>
+      <ellipse cx="43" cy="37" rx="13" ry="5.5" fill="#fff" opacity=".14" transform="rotate(-30 43 37)"/></svg>` : `<svg viewBox="0 0 120 120" aria-hidden="true">
       <g filter="url(#wax-edge)"><circle cx="60" cy="60" r="50" fill="url(#wax)"/></g>
       <circle cx="60" cy="60" r="36" fill="url(#wax-in)" stroke="#5b0812" stroke-width="2"/>
       <circle cx="60" cy="60" r="31" fill="none" stroke="#e3606e" stroke-opacity=".55" stroke-width="1" stroke-dasharray="2 3"/>
@@ -411,9 +441,10 @@ const scroll = (() => {
 
 /* ---------- boot ---------- */
 setReduce(reduce);
+setTheme(state.theme, false);
 renderPicker();
 book.load(listing());
 scroll.load(listing());
 setView(state.view);
-window.TD_LAB = { book, scroll, setView };
+window.TD_LAB = { book, scroll, setView, setTheme };
 })();
