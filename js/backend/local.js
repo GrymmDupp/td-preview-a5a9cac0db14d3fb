@@ -142,6 +142,11 @@ export class LocalBackend {
     this.db.research.push(r); this.save(); return r;
   }
   async myResearchRequests() { return (this.db.research || []).filter((r) => r.user_id === this.db.session).sort((a, b) => b.created_at.localeCompare(a.created_at)); }
+  // Stories & Corrections (preview: stored in this browser only; Supabase: table correction_requests)
+  async submitCorrection(c) { (this.db.corrections ||= []).unshift({ id: uid('c'), created_at: nowIso(), status: 'new', ...c }); this.save(); }
+  async listCorrections() { return this.isMod() ? [...(this.db.corrections || [])] : []; }
+  async setCorrectionStatus(id, status, note) { const r = (this.db.corrections || []).find((x) => x.id === id); if (r) { r.status = status; r.admin_note = note || null; this.save(); } }
+  async analyticsSummary() { return []; }
   async listResearchRequests() { if (!this.isMod()) return null; return [...(this.db.research || [])].sort((a, b) => b.created_at.localeCompare(a.created_at)); }
   async setResearchStatus(id, status, note) {
     if (!this.isMod()) throw new Error('Moderators only'); const r = (this.db.research || []).find((x) => x.id === id); if (!r) throw new Error('Unknown request');

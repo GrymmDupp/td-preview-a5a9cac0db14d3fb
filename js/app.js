@@ -13,7 +13,10 @@ import { listing } from './views/listing.js';
 import { mapView, mountMap } from './views/map.js';
 import { board } from './views/board.js';
 import { unlock } from './views/unlock.js';
-import { membership } from './views/membership.js';
+import { patronage } from './views/patronage.js';
+import { terms, privacy, refunds, stories } from './views/legal.js';
+import { initAnalytics, track, routeName, analyticsOn, analyticsBlocked, setAnalytics } from './analytics.js';
+import { syncStart } from './sync.js';
 import { account } from './views/account.js';
 import { contribute } from './views/contribute.js';
 import { moderation } from './views/moderation.js';
@@ -31,7 +34,8 @@ const ctx = { feed, be: null, me: null, membership: null, unlocks: [], comments:
 const suggest = (c, q) => { q.set('type', 'link'); q.set('new', '1'); return contribute(c, q); };
 const ROUTES = [
   [/^\/?$/, home, 'Listings'], [/^\/browse$/, browse, 'Browse'], [/^\/l\/(.+)$/, listing, null], [/^\/map$/, mapView, 'Map'],
-  [/^\/board$/, board, 'Community board'], [/^\/unlock\/(.+)$/, unlock, 'Unlock the full file'], [/^\/membership$/, membership, 'Membership'], [/^\/lifetime$/, (c, q) => { q.set('plan', 'lifetime'); return membership(c, q); }, 'Membership'], [/^\/account$/, account, 'Account'],
+  [/^\/board$/, board, 'Community board'], [/^\/unlock\/(.+)$/, unlock, 'Unlock the full file'], [/^\/patronage$/, patronage, 'Patronage'], [/^\/membership$/, patronage, 'Patronage'], [/^\/lifetime$/, patronage, 'Patronage'],
+  [/^\/terms$/, terms, 'Terms of Service'], [/^\/privacy$/, privacy, 'Privacy Policy'], [/^\/refunds$/, refunds, 'Refund Policy'], [/^\/stories$/, stories, 'Stories & Corrections'], [/^\/account$/, account, 'Account'],
   [/^\/contribute$/, contribute, 'Submit'], [/^\/suggest$/, suggest, 'Suggest a property'], [/^\/moderate$/, moderation, 'Moderation'],
   [/^\/packs$/, packs, 'Dossier Packs'], [/^\/archive$/, archive, 'The Archive'],
   [/^\/heritage$/, heritage, 'Heritage Homes'],
@@ -45,6 +49,7 @@ async function refreshCtx() {
   ctx.staff = !!ctx.me && ['moderator', 'admin'].includes(ctx.me.role);
   ctx.visitor = ctx.staff && visitorView();
   if (ctx.visitor) ctx.me = { ...ctx.me, role: 'user' };
+  syncStart(ctx.be, ctx.me, () => { if (/^(#\/?|#\/(account|browse)(\?.*)?)?$/.test(location.hash)) route(); });
   ctx.membership = await ctx.be.getMembership();
   ctx.unlocks = (await ctx.be.listUnlocks()).map((u) => u.listing_id);
   // Own unlock requests (Payment Link mode): listing_id -> latest request
@@ -134,6 +139,7 @@ async function route() {
       mountTomes(main, { openScroll: !!(q.get('unlocked') || q.get('at') === 'file'), paid });
       afterRender(main, { path }); syncRm(); syncFx(); syncSound(); syncRadio(); syncHaptics();
       if (l) keepBook(l);
+      track('view', routeName(path)); if (l) track('listing_open', l.id); if (view === patronage) track('pricing_view', 'patronage'); if (view === unlock) track('pricing_view', 'unlock-page');
       window.TD_ATMO_SYNC?.();
       if (view === account && hasPending()) checkPayments();
       const at = q.get('at') || (q.get('tab') === 'talk' ? 'comments' : '') || (q.get('unlocked') ? 'file' : '');
@@ -204,6 +210,7 @@ document.addEventListener('error', (e) => {
 document.addEventListener('click', async (e) => {
   const t = e.target.closest('button, a'); if (!t) return;
   const ds = t.dataset;
+  if (ds.checkout) track('unlock_click', ds.checkout); else if (t.matches('a[href^="#/unlock/"]')) track('unlock_click', decodeURIComponent(t.getAttribute('href').slice(9))); else if (ds.pricingClick) track('pricing_click', ds.pricingClick); else if (ds.share) track('share_click', ds.share);
   try {
     if ('spine' in ds) { const f = t.closest('form'); const p = new URLSearchParams([...new FormData(f)].filter(([, v]) => v)); const on = t.getAttribute('aria-pressed') === 'true';
       if (on) p.delete('layer'); else p.set('layer', ds.spine); refocusFilter = 'spine-' + ds.spine; location.hash = '#/browse?' + p; return; }
@@ -249,11 +256,12 @@ document.addEventListener('click', async (e) => {
     else if ('haptics' in ds) { const on = !hapticsOn(); setHaptics(on); syncHaptics(); if (on) buzz('ribbon'); toast(on ? 'Haptics on: tiny pulses on seals, pages and ribbons (Android phones).' : 'Haptics off.'); }
     else if (ds.save) { e.preventDefault(); const on = toggleSave(ds.save); toast(on ? 'Saved. A red ribbon marks it; find it on the Saved shelf in Account.' : 'Ribbon removed. No longer saved.'); }
     else if ('visitor' in ds) { const on = !ctx.visitor; setVisitorView(on); await refreshCtx(); await route(); toast(on ? 'Visitor view: the app as a signed-in free user sees it (this device only; your role is unchanged).' : 'Back to your admin view.'); }
-    else if ('radio' in ds) { if (!soundOn()) { setSound(true); syncSound(); } const on = await radioToggle(); syncRadio(); toast(on ? 'The radio in the next room is playing, softly.' : 'Radio off.'); }
+    else if ('radio' in ds) { if (!soundOn()) { setSound(true); syncSound(); } const on = await radioToggle(); track('radio_toggle', on ? 'on' : 'off'); syncRadio(); toast(on ? 'The radio in the next room is playing, softly.' : 'Radio off.'); }
     else if ('caselock' in ds) { e.preventDefault(); t.classList.remove('rattle'); void t.offsetWidth; t.classList.add('rattle'); buzz?.('ribbon'); toast('Locked. The curator is still cataloguing the Archive.'); }
+    else if ('analytics' in ds) { const on = !analyticsOn(); if (analyticsBlocked()) { toast('Your browser sends Do Not Track, so counting is already off.'); return; } setAnalytics(on); document.querySelectorAll('[data-analytics]').forEach((b) => b.setAttribute('aria-pressed', String(on))); toast(on ? 'Anonymous counting on: no cookies, no tracking, just tallies.' : 'Counting off. Nothing about your visits is recorded.'); }
     else if ('candle' in ds) { const on = !document.documentElement.classList.contains('rm'); setReduceMotion(on); syncRm(); toast(on ? 'Candle snuffed: motion reduced.' : 'Candle lit: motion back on.'); }
     else if ('sound' in ds) { const on = !soundOn(); setSound(on); syncSound(); if (!on) { radioOff(false); syncRadio(); } toast(on ? 'Sound on: soft, rare, and only after you tap.' : 'Sound off.'); }
-    else if ('effects' in ds) { const on = !fxOn(); setFx(on); syncFx(); toast(on ? 'Opening effects on.' : 'Opening effects off.'); }
+    else if ('effects' in ds) { const on = !fxOn(); setFx(on); track('effects_toggle', on ? 'on' : 'off'); syncFx(); toast(on ? 'Opening effects on.' : 'Opening effects off.'); }
     else if ('reduceMotion' in ds) { const on = !document.documentElement.classList.contains('rm'); setReduceMotion(on); syncRm(); toast(on ? 'Motion reduced: no smoke, grain or page animations.' : 'Motion back on.'); }
     else if ('resetPreview' in ds) { if (confirm('Clear all preview data (test accounts, comments, posts, submissions, unlocks) in this browser?')) { ctx.be.reset(); location.reload(); } }
   } catch (err) { toast(err.message); }
@@ -270,8 +278,14 @@ document.addEventListener('submit', async (e) => {
     else if ('newBoard' in ds) { e.preventDefault(); if (!needMe()) return; const d = data(); await ctx.be.createBoardPost({ title: d.title, body: d.body }); toast('Post sent for review. Only you can see it until it’s approved.'); route(); }
     else if (ds.boardReply) { e.preventDefault(); if (!needMe()) return; await ctx.be.createBoardPost({ parent_id: ds.boardReply, body: data().body }); toast('Reply sent for review.'); route(); }
     else if ('research' in ds) { e.preventDefault(); if (!needMe()) return; const d = data();
-      const r = await ctx.be.requestResearch({ address: d.address, purpose: d.purpose, ack: !!d.ack });
+      const tierTag = d.tier === 'pack_dossier' ? 'Dossier' : 'Record';
+      const r = await ctx.be.requestResearch({ address: d.address, purpose: `[Pack: ${tierTag}${d.rush ? ' + Rush' : ''}] ${d.purpose || ''}`.trim().slice(0, 1000), ack: !!d.ack });
       toast(`Request ${r?.reference || ''} received. We’ll email you to confirm price and turnaround.`); route(); }
+    else if ('correction' in ds) { e.preventDefault(); const d = data(); if (d.website) { toast('Thank you. Your note has been sent to the curator.'); f.reset(); return; }   // honeypot
+      const hit = ctx.feed.catalog.find((x) => x.name === d.page);
+      await ctx.be.submitCorrection({ kind: d.kind, page: d.page, listing_id: hit ? hit.id : null, message: d.message, reply_to: d.reply_to, relation: d.relation });
+      f.reset(); toast('Thank you. Your note has been sent to the curator.'); }
+    else if (ds.correctionStatus) { e.preventDefault(); const d = data(); await ctx.be.setCorrectionStatus(ds.correctionStatus, d.status, d.note || ''); toast('Updated.'); route(); }
     else if (ds.researchStatus) { e.preventDefault(); const d = data(); await ctx.be.setResearchStatus(ds.researchStatus, d.status, d.note || ''); toast('Research request updated.'); route(); }
     else if (ds.moderate) { e.preventDefault(); const [table, id] = ds.moderate.split(':'); const decision = e.submitter?.value; await ctx.be.moderate(table, id, decision, data().note || '', { is_sample: !!data().is_sample }); toast(decision === 'approved' ? (table === 'submissions' ? 'Approved. It’s now part of the full file.' : 'Approved. It’s public now.') : 'Rejected.'); await refreshCtx(); route(); }
     else if (ds.submit) {
@@ -333,6 +347,7 @@ matchMedia('(prefers-reduced-motion: reduce)').addEventListener?.('change', (e) 
   // Live with Stripe (payment_link): no banner; accounts, comments, submissions and unlocks are real.
   else if (ctx.be.mockCheckout) { banner.querySelector('b').textContent = 'Note'; banner.querySelector('.short').innerHTML = 'Checkout isn’t live yet: <b>no payment is taken</b>.'; banner.querySelector('.long').innerHTML = 'Accounts, comments and submissions are saved and moderated. Checkout isn’t live yet: <b>no payment is taken</b>, and unlocks made now are saved to your account as examples.'; banner.querySelector('[data-reset-preview]')?.remove(); banner.hidden = false; }
   $('#feed-meta').textContent = `Feed v${feed.meta.version} · ${feed.meta.count} listings · ${feed.source === 'live' ? 'live' : 'offline snapshot'}`;
+  initAnalytics(ctx.be);
   await refreshCtx();
   window.addEventListener('hashchange', route);
   await route();

@@ -1,0 +1,64 @@
+/* Twisted Deeds launch-readiness styles: small-phone header fix, Patronage, legal pages, corrections form, admin panels. */
+
+/* ---------- 360px header: brand + Live + Sign in fit one row (was ~31px too wide; "Sign in" spilled off the edge) ---------- */
+@media (max-width:400px){
+  .site-head .head-in{gap:6px;padding-left:10px;padding-right:10px}
+  .site-head .brand{font-size:1.18rem;gap:5px}
+  .site-head .brand .b2{margin-left:.15em}
+  .site-head .live-head{padding-left:9px;padding-right:9px;gap:4px}
+  .site-head .who{gap:6px}
+  .site-head .who .btn.sm{padding-left:10px;padding-right:10px}
+}
+@media (max-width:339px){ .site-head .live-head em{display:none} }
+
+/* ---------- Patronage: the patron's ledger ---------- */
+.pt-hero{text-align:center;padding:26px 8px 6px;max-width:68ch;margin:0 auto}
+.pt-hero h1{margin:.1em 0 .25em}
+.pt-lede{color:var(--parch);font-size:1.05rem}
+.orn-rule.pt-rule{display:block;width:min(260px,70%);height:14px;margin:14px auto;color:#8f6a33;opacity:.85}
+.pt-sec{margin:30px auto;max-width:980px}
+.pt-sec>h2{text-align:center;font:400 1.5rem var(--th-display);letter-spacing:.06em;margin-bottom:.2em}
+.pt-sec>h2::before,.pt-sec>h2::after{content:"❦";color:#8f6a33;font-size:.9rem;margin:0 .6em;vertical-align:.1em}
+.pt-sec>p.muted{text-align:center;max-width:62ch;margin:.2em auto 1em}
+.pt-grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+.pt-grid.one{grid-template-columns:minmax(230px,360px);justify-content:center}
+.pt-card{position:relative;display:flex;flex-direction:column;gap:6px;padding:20px 16px 16px;text-align:center;
+  background:linear-gradient(180deg,rgba(60,42,28,.5),rgba(22,15,10,.88)),var(--panel);border:1px solid #4a3a28;border-radius:4px;
+  box-shadow:inset 0 0 0 3px #120d09,inset 0 0 0 4px rgba(201,164,92,.38),0 6px 18px rgba(0,0,0,.45)}
+.pt-card.lead{border-color:#8f6a33;box-shadow:inset 0 0 0 3px #120d09,inset 0 0 0 4px rgba(217,179,108,.7),0 0 22px rgba(201,164,92,.18),0 6px 18px rgba(0,0,0,.45)}
+.pt-card h3{margin:0;font:400 1.15rem var(--th-display);letter-spacing:.05em;color:#ecdcb6}
+.pt-ribbon{position:absolute;top:-10px;left:50%;transform:translateX(-50%);margin:0;padding:3px 12px;font:400 .7rem var(--th-sc);letter-spacing:.14em;text-transform:uppercase;color:#1a1200;background:linear-gradient(180deg,#e6c98a,#b88d45);border-radius:2px;white-space:nowrap}
+.pt-price{margin:2px 0 0;display:flex;flex-wrap:wrap;justify-content:center;align-items:baseline;gap:6px}
+.pt-price b{font:400 2rem/1 var(--th-display);background:linear-gradient(180deg,#f0d9a0,#b88d45);-webkit-background-clip:text;background-clip:text;color:transparent}
+.pt-price s{color:var(--dim)}
+.pt-per{flex-basis:100%;font-size:.85rem;color:var(--muted)}
+.pt-founder{margin:0;font-size:.82rem;color:#d9a34e}
+.pt-card .small{margin:0;color:var(--parch)}
+.pt-card .btn{align-self:center;margin-top:auto;min-width:11em}
+.pt-soon{margin:auto 0 0}
+.pt-soon .soon,.soon-block .soon{display:inline-block;margin:0;font:400 .72rem var(--th-sc);letter-spacing:.16em;color:#d9c9a0;border:1px solid #8f6a33;border-radius:2px;padding:6px 14px;background:rgba(143,106,51,.12)}
+.pt-perks{list-style:none;display:flex;flex-wrap:wrap;gap:6px 18px;justify-content:center;margin:16px auto 0;padding:0;max-width:760px;color:var(--parch);font-size:.95rem}
+.pt-perks li::before{content:"✦";color:#8f6a33;margin-right:.45em;font-size:.75rem}
+.pt-foot{text-align:center;max-width:70ch;margin:24px auto}
+.soon-block{text-align:center;padding:14px 10px;border:1px dashed #6b5636;border-radius:4px;margin:10px 0}
+.rf-tier{border:1px solid var(--line2);border-radius:4px;padding:8px 12px;margin:0 0 12px}.rf-tier legend{padding:0 6px;font:400 .85rem var(--th-sc);letter-spacing:.1em;color:var(--parch)}
+.rf-tier .check{display:flex;gap:8px;margin:4px 0}
+
+/* ---------- Legal pages and the corrections form ---------- */
+.legal{max-width:72ch;margin:0 auto;padding:10px 4px 30px}
+.legal h1{margin:.1em 0 .15em}
+.legal h2{font:400 1.2rem var(--th-display);letter-spacing:.05em;color:#ecdcb6;margin:1.5em 0 .35em}
+.legal ul{padding-left:1.2em}.legal li{margin:.35em 0}
+.lg-draft{margin:22px 0 0;text-align:center;font:400 .72rem var(--th-sc);letter-spacing:.12em;color:var(--dim)}
+.lg-links{text-align:center}
+.lg-form{margin-top:12px;padding:14px;background:rgba(18,13,9,.6);border:1px solid #4a3a28;border-radius:4px}
+.lg-form label{display:block;margin:0 0 12px}
+.lg-form input,.lg-form select,.lg-form textarea{display:block;width:100%;margin-top:4px}
+.lg-hp{position:absolute!important;left:-9999px;width:1px;height:1px;overflow:hidden}
+.desk-fine{margin:10px 0 0;text-align:center}
+.sync-box .small{margin:0}
+
+/* ---------- Admin panels ---------- */
+.an-tbl td:not(:first-child),.an-tbl th:not(:first-child){text-align:right}
+.an-chip{display:inline-block;margin:2px 4px 2px 0;padding:2px 8px;border:1px solid var(--line2);border-radius:3px;font-size:.85rem}
+.an-chip b{color:#ecdcb6}

@@ -1,5 +1,6 @@
 // Shared UI pieces: grade labels, listing cards, the archival "plate" image, price, lock.
 import { html, raw, esc, fmtDate, truncate, plural, safeUrl, host } from './util.js';
+import { PRICING, founderOn, priceNow, isOpen as productOpen } from './pricing.js';
 import { CONFIG } from './config.js';
 import { statusInfo, kindLabel, tierInfo, storyLabel, PUBLIC_TIER1, PUBLIC_TIER2, PUBLIC_HERITAGE, heritageTierInfo } from './taxonomy.js';
 import { displayableImages } from './feed.js';
@@ -95,37 +96,27 @@ export const publicUrl = (u) => (isPortalUrl(u) ? '' : safeUrl(u));
 export const findListingUrl = (l) => 'https://www.google.com/search?q=' + encodeURIComponent(`${l.address || l.name + ' ' + l.place} for sale`);
 
 export const money = (n) => `$${Number(n).toFixed(Number.isInteger(Number(n)) ? 0 : 2)}`;
-const P = CONFIG.pricing;   // live mode: trial switches overwritten from app_settings at startup
-export const isTrial = () => !!P.trial?.active;
-export const membershipsOn = () => !!P.membershipsEnabled;
-// Price tier for an (effective) membership: 'standard' | 'monthly' | 'lifetime'.
+// Prices come from js/pricing.js (one config file). The server decides the recorded amount; this is display.
+export const isTrial = () => founderOn('unlock');   // kept name: true while the founder price is on offer
+export const membershipsOn = () => productOpen('member_year') || productOpen('member_month') || productOpen('lifetime');
 export const priceTier = (m) => (m?.plan === 'lifetime' ? 'lifetime' : m?.plan === 'monthly' ? 'monthly' : 'standard');
-// The tier that actually prices this viewer's unlocks: 'trial' while the trial runs.
-export const viewerTier = (m) => (isTrial() ? 'trial' : priceTier(m));
-export const tierAmount = (tier) => ({ trial: P.trial?.unlockPrice, standard: P.unlockPrice, monthly: P.monthlyUnlockPrice, lifetime: P.lifetimeUnlockPrice })[tier];
-// The unlock price for the current viewer: trial price for everyone; planned standard / Monthly / Lifetime prices.
-export const unlockPrice = (ctx) => money(tierAmount(viewerTier(ctx?.membership)));
-// The price everyone without a membership pays right now (trial price during the trial).
-export const standardPrice = () => money(isTrial() ? P.trial.unlockPrice : P.unlockPrice);
-export const monthlyUnlockPrice = () => money(P.monthlyUnlockPrice);
-export const lifetimeUnlockPrice = () => money(P.lifetimeUnlockPrice);
-export const monthlyPrice = () => money(P.monthlyPrice);
-export const lifetimePrice = () => money(P.lifetimePrice);
-export const TIER_LABEL = { standard: 'standard', trial: 'Trial price', monthly: 'Monthly member price', lifetime: 'Lifetime member price' };
-// Small, quiet note next to the $5 while the trial runs. No urgency.
+export const viewerTier = (m) => (founderOn('unlock') ? 'founder' : priceTier(m));
+export const tierAmount = () => priceNow('unlock');
+export const unlockPrice = () => money(priceNow('unlock'));
+export const standardPrice = () => money(priceNow('unlock'));
+export const monthlyUnlockPrice = () => money(priceNow('unlock'));
+export const lifetimeUnlockPrice = () => money(priceNow('unlock'));
+export const monthlyPrice = () => money(PRICING.products.member_month.price);
+export const lifetimePrice = () => money(PRICING.products.lifetime.price);
+export const TIER_LABEL = { standard: 'standard', trial: 'Founder price', founder: 'Founder price', monthly: 'Member', lifetime: 'Member' };
 // Mobile sticky unlock bar (shown below 960px, above the tab bar): price + the page's primary action.
-// `action` is the same button/link markup the page's own call to action uses.
-export const unlockBar = (ctx, action) => html`<div class="ubar" role="region" aria-label="Unlock the full file"><div class="ubar-price"><b>${unlockPrice(ctx)}</b><span>${isTrial() ? 'Trial price · one time' : 'One time · yours for good'}</span></div>${action}</div>`;
-export const trialNote = () => (isTrial() ? html` <span class="trial-note">Trial price</span>` : '');
+export const unlockBar = (ctx, action) => html`<div class="ubar" role="region" aria-label="Unlock the full file"><div class="ubar-price"><b>${unlockPrice(ctx)}</b><span>${founderOn('unlock') ? 'Founder price · one time' : 'One time · yours for good'}</span></div>${action}</div>`;
+export const trialNote = () => (founderOn('unlock') ? html` <span class="trial-note">Founder price</span>` : '');
 // "Coming soon" chip + a non-clickable button stand-in for memberships while they're off.
 export const soonChip = () => html`<span class="soon">Coming soon</span>`;
 export const soonButton = (label) => html`<button class="btn sm ghost soon-btn" type="button" disabled aria-disabled="true">${label} · Coming soon</button>`;
 // Quiet line under unlock buttons for non-members.
-export const membersLine = (from = '') => {
-  if (!membershipsOn()) return raw(`Memberships (Monthly and Lifetime) are coming soon.`);
-  const q = from ? `&from=${encodeURIComponent(from)}` : '';
-  return raw(`Members unlock for less: <a href="#/membership?plan=monthly${q}">Monthly ${monthlyPrice()}/mo</a> (unlocks ${monthlyUnlockPrice()}) or <a href="#/membership?plan=lifetime${q}">Lifetime ${lifetimePrice()} one-time</a> (unlocks ${lifetimeUnlockPrice()})`);
-};
+export const membersLine = () => raw(`Or become a patron: <a href="#/patronage">see membership and research packs</a>.`);
 
 // Photo label per image_type. Listing photos are hotlinked from the source page, never rehosted.
 export const IMAGE_TYPE_LABEL = { listing: 'Listing photo', 'alt-listing': 'Photo from another listing', 'public-domain': 'Public domain', cc: 'Creative Commons', illustration: 'Illustration, not a photo' };

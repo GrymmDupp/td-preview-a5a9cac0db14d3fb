@@ -1,9 +1,10 @@
 // Commission a Research File (#/research): the Paid Research Pack intake. A SEPARATE service:
 // requests live only in the research_requests table (no link to listings, packs or the feed) and the
 // research itself is done offline in a private archive. Nothing here ever reaches the listings.
-// No price or payment link yet: requests are saved as 'requested' and confirmed by email.
+// Prices come from js/pricing.js. Until a pack's Payment Link exists, requests are saved as 'requested' and confirmed by email.
 import { html, raw, ago, esc, fmtDate } from '../util.js';
 import { scrollShell, wordmark, rule } from '../tome.js';
+import { PRICING, money, isOpen, product } from '../pricing.js';
 
 export const RESEARCH_STATUS = {
   requested: 'Requested', paid: 'Paid', in_progress: 'In progress', delivered: 'Delivered', declined: 'Declined',
@@ -33,10 +34,14 @@ function requestForm(ctx) {
   return html`<form class="form rf-form" data-research>
     <label>Property address<input name="address" required minlength="5" maxlength="300" autocomplete="off"
       placeholder="Street, city, state and ZIP of the property"></label>
+    <fieldset class="rf-tier"><legend>Choose a pack</legend>
+      ${['pack_record', 'pack_dossier'].map((id, i) => html`<label class="check"><input type="radio" name="tier" value="${id}" ${i === 0 ? 'checked' : ''}> <span><b>${product(id).name.replace('Research pack: ', '')}</b> · ${money(product(id).price)} · ${product(id).days} business days</span></label>`)}
+      <label class="check"><input type="checkbox" name="rush" value="1"> <span>Rush it: +${money(product('rush').price)}, 72 hours</span></label>
+    </fieldset>
     <label>What would you like to know? <span class="muted">(optional)</span><textarea name="purpose" rows="4" maxlength="1000"
       placeholder="Your interest in the property and anything you would like the file to look at closely"></textarea></label>
     <label class="check"><input type="checkbox" name="ack" required> <span>I have read the terms below. This file is about a <b>property</b>, not a person; it is not a consumer report, and I will not use it for tenant, employment, credit or insurance screening.</span></label>
-    <p class="small muted">No payment is taken now. We will email you to confirm the price and turnaround before any work begins.${ctx.be.isPreview ? ' Preview: requests are stored only in this browser.' : ''}</p>
+    <p class="small muted">${isOpen('pack_record') ? '' : html`Online payment <span class="soon">Opening soon</span>. `}No payment is taken now. We will email you to confirm the price and turnaround, and send the payment link, before any work begins.${ctx.be.isPreview ? ' Preview: requests are stored only in this browser.' : ''}</p>
     <button class="btn">Send the request</button></form>`;
 }
 
@@ -94,7 +99,7 @@ export async function research(ctx) {
       <p>Name any address and we will go into the public record for you: the deed books and the assessor's roll, the permit counters, the newspaper morgue, the old fire-insurance maps. What we find is bound into a single <b>Research File</b>, a standalone PDF where every finding carries its source and an honest label.</p>
       <p>Quiet work, done from the archive. We never knock on the door, never call the owner or the neighbors, and never go looking for the people who live there.</p>
     </div>
-    <div class="hero-stats"><span><b>Price:</b> quote / price coming soon</span><span><b>Turnaround:</b> turnaround confirmed by email</span><span><b>Delivered as</b> a standalone PDF</span></div></div>
+    <div class="hero-stats"><span><b>Record</b> ${money(product('pack_record').price)} · ${product('pack_record').days} business days</span><span><b>Dossier</b> ${money(product('pack_dossier').price)} · ${product('pack_dossier').days} business days</span><span><b>Rush</b> +${money(product('rush').price)} · 72 hours</span><span><b>Delivered as</b> a standalone PDF</span></div></div>
   </section>
   <div class="rf-grid">
     <section class="rf-col"><h2>What the file holds</h2>
@@ -104,6 +109,7 @@ export async function research(ctx) {
       <p class="small muted">Each item cites the record or publication it came from, with a link or archive reference, so you can walk the trail yourself.</p>
     </section>
     <section class="rf-col"><h2>Request a file</h2>
+      <p class="small muted">Members take ${Math.round(PRICING.packDiscount * 100)}% off: Record ${money(product('pack_record_member').price)}, Dossier ${money(product('pack_dossier_member').price)}. <a href="#/patronage">See Patronage</a>.</p>
       ${requestForm(ctx)}
       ${myRequests(mine, !!ctx.me)}
     </section>

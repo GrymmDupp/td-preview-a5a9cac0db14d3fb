@@ -35,21 +35,9 @@ export const CONFIG = {
     fallbackAttribution: 'Tiles © Esri — Esri, HERE, Garmin, © OpenStreetMap contributors',
   },
 
-  // Pricing. TRIAL PERIOD (owner request 2026-10-31): every full-file unlock is
-  // trial.unlockPrice ($5) for everyone, and Monthly / Lifetime memberships are shown as
-  // "Coming soon" with no purchase buttons. In live (Supabase) mode these switches are read
-  // from app_settings at startup (rpc pricing_settings: pricing_mode, trial_unlock_price,
-  // memberships_enabled) and override the defaults below; the server records the price, the
-  // page never sends one. The preview checkout is still a mock (no real payment).
-  //
-  // PLANNED post-trial model (unchanged, not offered while the trial runs; set
-  // pricing_mode = 'planned' and memberships_enabled = 'true' in app_settings to return to it):
-  //  - unlockPrice: one-time unlock of ONE listing's full file, permanent, every device.
-  //  - Monthly membership: monthlyPrice per month; while active, unlocks cost
-  //    monthlyUnlockPrice. Files unlocked stay unlocked forever after it lapses.
-  //  - Lifetime membership: lifetimePrice one time, never expires; unlocks cost
-  //    lifetimeUnlockPrice forever. The one badge ("Lifetime") is shown ONLY on the
-  //    member's own account page, never next to comments, posts or listings.
+  // Pricing: ALL prices, founder rates and Stripe Payment Link URLs live in js/pricing.js (one file).
+  // The server decides the amount actually recorded for an unlock; the page only displays it.
+  // (The old memberships pages are replaced by #/patronage; the fields below are legacy values for the local preview store.)
   // Sidebar ad slots on the home page, below House rules. Temporary samples Grymm asked for:
   // replace with real sponsors later. Only add a url/text you actually have (no invented details).
   // { name, place?, line?, url? } — url (optional) makes the name a link; `sample: true` shows a "Sample ad" tag.
@@ -57,21 +45,7 @@ export const CONFIG = {
     { name: 'The Old Church With the Purple Door', place: 'Horton, Michigan', line: 'A spiritual sanctuary · Events · Weddings · Community hub', sample: true },
     { name: 'Luminarium Obscura', line: 'Ad space reserved', sample: true },
   ],
-  pricing: {
-    // unlockPaymentLink: public Stripe Payment Link for the $5 trial unlock (not a secret). Live, it is
-    // read from app_settings unlock_payment_link and used while checkout_mode = 'payment_link':
-    // the page records a PENDING request and the verify-unlock Edge Function unlocks it the instant
-    // Stripe shows the payment as paid (moderators can still confirm by hand in #/moderate as a backup).
-    trial: { active: true, unlockPrice: 5, unlockPaymentLink: 'https://buy.stripe.com/4gM8wO5M56i76Wj5WK1Jm06' },   // live: app_settings pricing_mode / trial_unlock_price / unlock_payment_link
-    membershipsEnabled: false,                 // live: app_settings memberships_enabled
-    // planned (post-trial) values, coming soon:
-    unlockPrice: 9,
-    monthlyUnlockPrice: 7,
-    lifetimeUnlockPrice: 5,
-    monthlyPrice: 7,
-    lifetimePrice: 49,
-    currency: 'USD',
-  },
+  pricing: { currency: 'USD', membershipsEnabled: false, monthlyPrice: 5.99, lifetimePrice: 99 },
 
   // "New this week": a listing counts as New for this many days after it first appeared
   // in the feed (its addedAt). Also the window for the quieter "Updated" marker

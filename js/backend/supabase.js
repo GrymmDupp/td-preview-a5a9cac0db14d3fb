@@ -6,6 +6,7 @@
 // Stripe is set up (app_settings.checkout_mode = 'mock') the server-side functions
 // preview_mock_unlock / preview_mock_membership record EXAMPLE purchases (no payment).
 import { fullFromRow, feed } from '../feed.js';
+import { setServerPricing, linkForAmount, withReference, isOpen } from '../pricing.js';
 import { CONFIG } from '../config.js';
 const SDK = 'https://esm.sh/@supabase/supabase-js@2.118.0';
 const BUCKET = 'contributions';
@@ -37,10 +38,8 @@ export class SupabaseBackend {
     // Display only: the server decides the recorded price and refuses memberships while off.
     const ps = await this.sb.rpc('pricing_settings');
     if (!ps.error && ps.data) {
-      const P = CONFIG.pricing;
-      P.trial = { active: !!ps.data.trial, unlockPrice: Number(ps.data.trial_unlock_price) || P.trial.unlockPrice,
-        unlockPaymentLink: ps.data.unlock_payment_link || P.trial.unlockPaymentLink };
-      P.membershipsEnabled = ps.data.memberships_enabled !== false;
+      this.features = ps.data.features || {};   // set by migration 20261116: which new tables exist (analytics, sync, corrections)
+      setServerPricing(ps.data);   // js/pricing.js is the one pricing config; the server's public switches only update the display
     } else console.warn('pricing_settings unavailable; using js/config.js defaults', ps.error?.message);
     const { data } = await this.sb.auth.getSession();
     this.uid = data.session?.user?.id || null;
@@ -101,7 +100,7 @@ export class SupabaseBackend {
     const rows = this.ok(await this.sb.from('memberships').select('*').eq('user_id', this.uid));
     const now = new Date().toISOString();
     return rows.find((x) => x.plan === 'lifetime' && x.status === 'active')
-      || rows.find((x) => x.plan === 'monthly' && ['active', 'canceled', 'past_due'].includes(x.status) && x.current_period_end > now) || null;
+      || rows.find((x) => (x.plan === 'monthly' || x.plan === 'annual') && ['active', 'canceled', 'past_due'].includes(x.status) && x.current_period_end > now) || null;
   }
   async startMembershipCheckout(plan, returnListingId) {
     if (!CONFIG.pricing.membershipsEnabled) throw new Error('Memberships are coming soon.');   // the server refuses too
@@ -119,6 +118,7 @@ export class SupabaseBackend {
   // The price is resolved server-side (trial: app_settings trial_unlock_price; planned: by membership).
   async startCheckout(listingId) {
     if (this.paymentLinkCheckout) {
+      if (!isOpen('unlock')) throw new Error('Unlocks at this price open soon.');   // no link yet: never create a request that cannot be paid
       // Payment Link mode: no fake unlock. Record a PENDING request server-side (amount and
       // reference decided by the server), then hand back the Stripe Payment Link carrying the
       // reference. The Edge Function verify-unlock grants the unlock the moment Stripe shows the
@@ -131,14 +131,12 @@ export class SupabaseBackend {
     return this._checkout({ product: 'unlock', listing_id: listingId });
   }
   async paymentUrl(req) {
-    const base = CONFIG.pricing.trial?.unlockPaymentLink;
-    if (!base || !req) return null;
-    const u = new URL(base);
-    u.searchParams.set('client_reference_id', req.client_reference_id);   // letters, digits, - and _ only (server-built)
+    if (!req) return null;
+    // The link must match the amount the server recorded ($5 founder link or $7 standard link), or the payment would not auto-confirm.
+    const base = linkForAmount('unlock', req.amount);
+    if (!base) return null;
     const { data } = await this.sb.auth.getSession();
-    const email = data.session?.user?.email;
-    if (email) u.searchParams.set('prefilled_email', email);
-    return u.toString();
+    return withReference(base, req.client_reference_id, data.session?.user?.email);   // client_reference_id: letters, digits, - and _ only (server-built)
   }
   // The caller's own unlock requests (RLS: own rows only; moderators use listUnlockRequests).
   async myUnlockRequests() {
@@ -161,6 +159,23 @@ export class SupabaseBackend {
   }
   async listResearchRequests() { this.need(); return this.ok(await this.sb.from('research_requests').select('*').order('created_at', { ascending: false }).limit(200)) || []; }
   async setResearchStatus(id, status, note) { return this.ok(await this.sb.rpc('set_research_status', { rid: id, p_status: status, p_note: note || null })); }
+  // ---- Stories & Corrections form (insert: anyone; read/update: admins only, RLS)
+  async submitCorrection({ kind, page, message, reply_to, relation, listing_id }) {
+    const row = { kind: kind || 'correction', message: String(message || '').trim(), page: (page || '').slice(0, 300) || null, listing_id: listing_id || null,
+      reply_to: (reply_to || '').trim() || null, relation: (relation || '').trim().slice(0, 80) || null };
+    const { error } = await this.sb.from('correction_requests').insert(row);
+    if (error) throw new Error(/relation|schema cache|not exist|404/i.test(error.message) ? 'The corrections inbox is being set up. Please try again in a little while.' : error.message);
+  }
+  async listCorrections() { return this.ok(await this.sb.from('correction_requests').select('*').order('created_at', { ascending: false }).limit(200)) || []; }
+  async setCorrectionStatus(id, status, note) {
+    this.ok(await this.sb.from('correction_requests').update({ status, admin_note: note || null, handled_by: this.uid, handled_at: new Date().toISOString() }).eq('id', id));
+  }
+  // ---- analytics (first-party counts; no user id) and the admin summary
+  async logEvent(event, ref) { const { error } = await this.sb.from('analytics_events').insert({ event, ref: ref || '' }); if (error) throw new Error(error.message); }
+  async analyticsSummary(days) { return this.ok(await this.sb.rpc('analytics_summary', { p_days: days })) || []; }
+  // ---- synced saves / reading log / finds (one JSON document per account, RLS owner-only)
+  async getUserState() { if (!this.uid) return null; const r = await this.sb.from('user_state').select('data,updated_at').eq('user_id', this.uid).maybeSingle(); if (r.error) throw new Error(r.error.message); return r.data; }
+  async putUserState(data) { if (!this.uid) return; const r = await this.sb.from('user_state').upsert({ user_id: this.uid, data, updated_at: new Date().toISOString() }); if (r.error) throw new Error(r.error.message); }
   async listUnlockRequests(status = 'pending') { return this.ok(await this.sb.rpc('list_unlock_requests', { p_status: status })) || []; }
   async confirmUnlockRequest(id) { return this.ok(await this.sb.rpc('confirm_unlock_request', { rid: id })); }
   async rejectUnlockRequest(id, note) { this.ok(await this.sb.rpc('reject_unlock_request', { rid: id, p_note: note || null })); }

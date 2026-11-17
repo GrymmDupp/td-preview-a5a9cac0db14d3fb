@@ -5,6 +5,8 @@ import { fxOn } from '../effects.js';
 import { state as radioState, playlist } from '../radio.js';
 import { leatherFor, layerInfo } from '../taxonomy.js';
 import { researchScrolls } from './research.js';
+import { analyticsOn, analyticsBlocked } from '../analytics.js';
+import { syncState } from '../sync.js';
 import { unlockPrice, standardPrice, monthlyUnlockPrice, lifetimeUnlockPrice, monthlyPrice, lifetimePrice, money, TIER_LABEL, membershipsOn, isTrial, soonChip, soonButton, trialNote } from '../components.js';
 
 // Plan shown as a plain fact. The "Lifetime" badge appears HERE ONLY (the member's own
@@ -12,20 +14,20 @@ import { unlockPrice, standardPrice, monthlyUnlockPrice, lifetimeUnlockPrice, mo
 function planBlock(ctx) {
   const m = ctx.membership, mock = m?.mock ? ' (example checkout, no real payment)' : '';
   if (m?.plan === 'lifetime') return html`<p><span class="plan-badge">Lifetime</span> since ${fmtDate(m.purchased_at)}</p>
-    <p class="small muted">Paid ${money(m.amount)} one time${mock} · ${m.payment_ref}. Every unlock is ${lifetimeUnlockPrice()}. It never expires.</p>`;
+    <p class="small muted">Paid ${money(m.amount)} one time${mock} · ${m.payment_ref}. It never expires.</p>`;
+  if (m?.plan === 'annual') return html`<p><b>Annual membership</b>, active until ${fmtDate(m.current_period_end)}</p><p class="small muted">Every full file is included while it lasts. Files you unlocked on their own stay yours.</p>`;
   if (m?.plan === 'monthly') return html`${m.status === 'active'
       ? html`<p><b>Monthly membership: active, renews ${fmtDate(m.current_period_end)}</b></p>`
       : html`<p><b>Monthly membership: canceled, active until ${fmtDate(m.current_period_end)}</b></p>`}
-    <p class="small muted">${money(m.amount)}/month${mock} · ${m.payment_ref}. Unlocks are ${monthlyUnlockPrice()} while it’s active. Files you unlock stay unlocked forever, even after it ends.</p>
+    <p class="small muted">${money(m.amount)}/month${mock} · ${m.payment_ref}. Files you unlock stay unlocked forever, even after it ends.</p>
     <div class="row-btns">${m.status === 'active' ? html`<button class="btn sm ghost" data-cancel-membership>Cancel membership</button>` : (membershipsOn() ? html`<button class="btn sm ghost" data-membership-checkout="monthly">Resume renewal</button>` : '')}
       ${membershipsOn() ? html`<a class="btn sm ghost" href="#/membership?plan=lifetime">Switch to Lifetime (${lifetimePrice()})</a>` : soonButton('Lifetime')}
       ${ctx.be.isPreview || ctx.be.mockCheckout ? html`<button class="link small" data-preview-lapse>Preview: end the period now</button>` : ''}</div>`;
-  if (!membershipsOn()) return html`<p>No membership. Unlocks are ${standardPrice()} each${trialNote()}.</p>
-    <p class="small muted">Monthly and Lifetime memberships are coming soon.</p>
-    <div class="row-btns">${soonButton('Monthly')} ${soonButton('Lifetime')}</div>`;
-  return html`<p>No membership. Unlocks are ${standardPrice()} each.</p>
-    <p class="small muted">Optional: <a href="#/membership?plan=monthly">Monthly ${monthlyPrice()}/mo</a> (unlocks ${monthlyUnlockPrice()} while active) or <a href="#/membership?plan=lifetime">Lifetime ${lifetimePrice()} one-time</a> (unlocks ${lifetimeUnlockPrice()} forever).</p>`;
+  return html`<p>No membership. A single unlock is ${standardPrice()}${trialNote()}.</p>
+    <p class="small muted">${membershipsOn() ? '' : html`Memberships ${soonChip()} are not on sale yet. `}<a href="#/patronage">See Patronage: membership, research packs and gifts</a>.</p>`;
 }
+
+const syncLine = () => ({ synced: 'Last synced just now.', syncing: 'Syncing…', unavailable: 'Sync is not available right now; everything is kept on this device meanwhile.', local: '' })[syncState.status] || '';
 
 // Saved shelf: this browser's saved listings as leather spines (they link to the book).
 const H = [100, 93, 97, 89, 95, 91, 99, 94];
@@ -132,8 +134,10 @@ function writingDesk(ctx) {
         ${sw('data-reduce-motion', rm, 'Reduce motion', 'Also the candle')}
         ${sw('data-haptics', hapticsOn(), 'Haptics', 'Tiny pulses: seals, pages, ribbons (Android)')}
         <button type="button" class="brass radio-dial" data-radio aria-pressed="${r.on ? 'true' : 'false'}"><span class="dial" aria-hidden="true"></span><span class="bl rd-l">${r.on ? 'Radio: on' : 'Radio: off'}</span><small>An old radio in the next room · ${playlist().name}</small></button>
+        ${sw('data-analytics', analyticsOn(), 'Anonymous counting', analyticsBlocked() ? 'Off: your browser sends Do Not Track' : 'Tallies of visits. No cookies, no tracking')}
         ${ctx.staff ? sw('data-visitor', ctx.visitor, 'View as visitor', ctx.visitor ? 'On: staff tools hidden on this device' : 'Hide staff tools on this device') : ''}
-      </div></div></section>`;
+      </div></div>
+    <p class="small muted desk-fine">The fine print: <a href="#/terms">Terms of Service</a> · <a href="#/privacy">Privacy Policy</a> · <a href="#/refunds">Refund Policy</a> · <a href="#/stories">Stories &amp; Corrections</a></p></section>`;
 }
 
 const KIND = { info: 'Info / correction', photo: 'Photo or document', lore: 'Lore or story', link: 'Link' };
@@ -180,9 +184,8 @@ export async function account(ctx) {
     <section class="box notify-box"><h4>Notifications <span class="soon">Coming soon</span></h4>
       <label class="check"><input type="checkbox" data-notify-pref ${ctx.notifyPref?.opted_in ? 'checked' : ''}> <span>Get notified about new Twisted Deeds</span></label>
       <p class="small muted">At most one short email a day, only when a new Twisted Deed is added, with a one-click unsubscribe. Nothing is sent yet; ${ctx.be.mode === 'local' ? 'this choice is saved in this browser only' : 'this choice is saved to your account'}.</p></section>
-    ${pendingBox(ctx)}<section class="box"><h4>How unlocks work</h4>${isTrial() || !membershipsOn()
-      ? html`<p class="small">Each listing’s full file is a one-time unlock: ${standardPrice()}${trialNote()} for everyone. Unlocked files never expire. Memberships (Monthly and Lifetime) are ${soonChip()}.</p>`
-      : html`<p class="small">Each listing’s full file is a one-time unlock: ${standardPrice()}, ${monthlyUnlockPrice()} while a Monthly membership is active, or ${lifetimeUnlockPrice()} with Lifetime. Unlocked files never expire.</p>`}</section>
+    <section class="box sync-box"><h4>Saved with your account</h4><p class="small">${ctx.be.mode === 'supabase' ? html`Your saves, reading log and the spiders you have found follow you to every device you sign in on. ${syncLine()}` : 'Preview mode: kept in this browser only.'}</p></section>
+    ${pendingBox(ctx)}<section class="box"><h4>How unlocks work</h4><p class="small">Each listing’s full file is a one-time unlock: ${standardPrice()}${trialNote()}. Unlocked files never expire and open on every device you sign in on. <a href="#/patronage">Membership and research packs</a>.</p></section>
     ${ctx.be.isPreview && !ctx.visitor ? html`<section class="box"><h4>Preview tools</h4><p class="small">Try the moderation queue with this test account.</p>
       ${['moderator', 'admin'].includes(ctx.me.role) ? html`<button class="btn sm ghost" data-preview-mod="0">Stop acting as moderator</button>` : html`<button class="btn sm ghost" data-preview-mod="1">Act as moderator (preview)</button>`}</section>` : ''}
   </aside></div>`;

@@ -1,5 +1,6 @@
 import { html, fmtDate } from '../util.js';
 import { isArchived, isArchiveShelf } from '../feed.js';
+import { unlockOpen, founderRemaining, founderOn, PRICING } from '../pricing.js';
 import { gradeBadge, plate, unlockPrice, membersLine, viewerTier, TIER_LABEL, trialNote, isTrial, unlockBar } from '../components.js';
 
 // Checkout. Local preview: a MOCK that records a test unlock, no card, no payment.
@@ -28,7 +29,7 @@ export async function unlock(ctx, q, id) {
       ${ctx.membership && !isTrial() ? '' : html`<p class="small muted">${membersLine(l.id)}</p>`}
       ${!ctx.me ? html`<p>Sign in first so the unlock is saved to your account.</p><button class="btn big" data-signin>Sign in to continue</button>`
         : html`<p class="small">Account: <b>@${ctx.me.handle}</b></p>
-        ${plink ? html`${pend ? html`<p class="pay-pending small"><b>Waiting for your payment to clear</b> (reference <code>${req.reference}</code>). The file unseals the instant Stripe shows it paid. <button class="link small" data-check-payment="${req.id}">Check payment</button> If you didn’t finish paying, continue below; it reuses the same reference.</p>` : ''}
+        ${plink && !unlockOpen() ? soonBlock() : plink ? html`${pend ? html`<p class="pay-pending small"><b>Waiting for your payment to clear</b> (reference <code>${req.reference}</code>). The file unseals the instant Stripe shows it paid. <button class="link small" data-check-payment="${req.id}">Check payment</button> If you didn’t finish paying, continue below; it reuses the same reference.</p>` : ''}
           <button class="btn big" data-checkout="${l.id}">${pend ? 'Open the payment page again' : 'Continue to payment'} · ${unlockPrice(ctx)}</button>
           <p class="small muted">Opens Stripe’s secure payment page in a new tab. We never see or store your card. The file unseals on your account the instant your payment clears. Keep this tab open, or come back to it.</p>`
         : mock ? html`<div class="mock-card" aria-hidden="true"><span>Card details would be entered on Stripe’s secure page.</span><span class="muted">Not collected in this example.</span></div>
@@ -39,5 +40,14 @@ export async function unlock(ctx, q, id) {
     </section>
   </div>
   ${unlockBar(ctx, !ctx.me ? html`<button class="btn" data-signin>Sign in to continue</button>`
+    : plink && !unlockOpen() ? html`<a class="btn ghost" href="#/patronage">Opening soon</a>`
     : html`<button class="btn" data-checkout="${l.id}">${pend ? 'Open payment page again' : plink ? 'Continue to payment' : mock ? 'Complete example checkout' : 'Continue to checkout'}</button>`)}`;
+}
+
+// No Payment Link exists for the price now in force (for example after the founder unlocks sell out, before the $7 link is made):
+// a quiet state instead of a broken button.
+function soonBlock() {
+  return html`<div class="soon-block" role="status"><span class="soon">Opening soon</span>
+    <p>Unlocking opens again shortly at ${unlockPrice()}. Nothing is charged until then.</p>
+    <p class="small muted"><a href="#/patronage">See everything on offer</a></p></div>`;
 }
