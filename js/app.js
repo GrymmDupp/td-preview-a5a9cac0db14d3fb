@@ -1,5 +1,7 @@
 // Twisted Deeds public site: shell, router and global event handling.
 import { fxOn, setFx } from './effects.js';
+import { initReveals, afterRender, candle, torn, toggleSave, sealBook, soundOn, setSound, visitorView, setVisitorView } from './reveals.js';
+import { initRadio, radioToggle, radioOff, onRadio, state as radioState } from './radio.js';
 import { CONFIG } from './config.js';
 import { loadFeed, feed, updatesMap } from './feed.js';
 import { getBackend } from './backend/adapter.js';
@@ -38,6 +40,10 @@ const ROUTES = [
 
 async function refreshCtx() {
   ctx.me = await ctx.be.getSession();
+  // View as visitor (staff only, this device): the app renders as a signed-in free user sees it. Client-side only.
+  ctx.staff = !!ctx.me && ['moderator', 'admin'].includes(ctx.me.role);
+  ctx.visitor = ctx.staff && visitorView();
+  if (ctx.visitor) ctx.me = { ...ctx.me, role: 'user' };
   ctx.membership = await ctx.be.getMembership();
   ctx.unlocks = (await ctx.be.listUnlocks()).map((u) => u.listing_id);
   // Own unlock requests (Payment Link mode): listing_id -> latest request
@@ -65,6 +71,7 @@ async function checkPayments({ manual = false, requestId = null } = {}) {
       stopPoll(); await refreshCtx();
       const name = ctx.feed.byId.get(got[0].listing_id)?.name || 'the file';
       toast(got.length > 1 ? `Payment received. ${got.length} files are unsealed and yours for good.` : `Payment received. The full file for ${name} is unsealed and yours for good.`);
+      if (got.length === 1) try { sessionStorage.setItem('td-paid', got[0].listing_id); } catch { /* ignore */ }
       if (got.length === 1 && !/^#\/account/.test(location.hash)) location.hash = `#/l/${encodeURIComponent(got[0].listing_id)}?at=file`; else route();
       return true;
     }
@@ -87,6 +94,7 @@ function renderChrome(path) {
   $('#nav').innerHTML = nav.map(([h, t, re]) => `<a href="${h}" class="${re.test(path) ? 'on' : ''}">${t}</a>`).join('') + `<a href="#/contribute" class="nav-cta ${/contribute|suggest/.test(path) ? 'on' : ''}">Submit</a>`;
   $('#who').innerHTML = (ctx.me
     ? `${['moderator', 'admin'].includes(ctx.me.role) ? '<a class="modlink" href="#/moderate" title="Moderation queue">⚖</a>' : ''}
+       ${ctx.staff ? `<button class="vis-toggle" data-visitor aria-pressed="${ctx.visitor}" title="${ctx.visitor ? 'Visitor view is on. Tap for your admin view' : 'View the app as a visitor sees it'}" aria-label="${ctx.visitor ? 'Back to admin view' : 'View as visitor'}">◐</button>` : ''}
        <a class="me" href="#/account">@${esc(ctx.me.handle)}</a>
        <button class="link small" data-signout>Sign out</button>`
     : `<button class="btn sm" data-signin>Sign in</button>`);
@@ -106,8 +114,11 @@ async function route() {
   renderChrome(path);
   for (const [re, view, title] of ROUTES) {
     const m = path.match(re); if (!m) continue;
+    // a slow view (network) shows a candle burning down instead of a spinner
+    const slow = setTimeout(() => { main.innerHTML = candle('Fetching the record…'); }, 320);
     try {
       const out = await view(ctx, q, ...m.slice(1).map(decodeURIComponent));
+      clearTimeout(slow);
       main.innerHTML = String(out);
       // Mobile sticky unlock bar (CSS shows it below 960px only): reserve room for it at the page foot.
       document.body.classList.toggle('has-ubar', !!main.querySelector('.ubar'));
@@ -115,22 +126,24 @@ async function route() {
       const l = path.startsWith('/l/') ? feed.byId.get(decodeURIComponent(m[1])) : null;
       document.title = (l ? l.name : title || 'Twisted Deeds') + ' · Twisted Deeds';
       if (view === mapView) await mountMap(ctx, q, main);
-      mountTomes(main, { openScroll: !!(q.get('unlocked') || q.get('at') === 'file') });
+      let paid = false; try { paid = !!l && sessionStorage.getItem('td-paid') === l.id; if (paid) sessionStorage.removeItem('td-paid'); } catch { /* ignore */ }
+      mountTomes(main, { openScroll: !!(q.get('unlocked') || q.get('at') === 'file'), paid });
+      afterRender(main, { path }); syncRm(); syncFx(); syncSound(); syncRadio();
       window.TD_ATMO_SYNC?.();
       if (view === account && hasPending()) checkPayments();
       const at = q.get('at') || (q.get('tab') === 'talk' ? 'comments' : '') || (q.get('unlocked') ? 'file' : '');
       const refocus = (view === browse && refocusFilter && main.querySelector(`form[data-filters] [name="${refocusFilter}"]`)) || null; refocusFilter = null;
       if (at && document.getElementById(at)) document.getElementById(at).scrollIntoView({ block: 'start' }); else { window.scrollTo(0, 0); refocus?.focus({ preventScroll: true }); }
       if (q.get('unlocked') && l && ctx.unlocks.includes(l.id)) toast('Full file unlocked on your account.');
-    } catch (e) { console.error(e); main.innerHTML = `<div class="empty-state"><h1>Something went wrong</h1><p>${esc(e.message)}</p></div>`; }
+    } catch (e) { clearTimeout(slow); console.error(e); main.innerHTML = torn({ detail: `Something went wrong: ${esc(e.message)}` }); afterRender(main, { path }); }
     return;
   }
-  main.innerHTML = '<div class="empty-state"><h1>Page not found</h1><a href="#/">Back to listings</a></div>';
+  main.innerHTML = torn({ detail: 'Page not found. The page you asked for isn’t in the archive.', backText: 'Back to listings' }); afterRender(main, { path });
 }
 
 // ---------- modals
-function modal(inner) {
-  const d = document.createElement('dialog'); d.className = 'modal'; d.innerHTML = inner;
+function modal(inner, cls = '') {
+  const d = document.createElement('dialog'); d.className = 'modal' + (cls ? ' ' + cls : ''); d.innerHTML = inner;
   document.body.appendChild(d); d.showModal();
   d.addEventListener('close', () => d.remove());
   d.addEventListener('click', (e) => { if (e.target === d) d.close(); });
@@ -138,7 +151,7 @@ function modal(inner) {
 }
 function signInModal() {
   const local = ctx.be.mode === 'local';
-  const d = modal(`<form method="dialog" class="form" data-signin-form><h2>${local ? 'Sign in (preview)' : 'Sign in'}</h2>
+  const d = modal(`<form method="dialog" class="form" data-signin-form><div class="lc-head" aria-hidden="true"><span>Twisted Deeds Reading Room</span><small>Reader’s card · No. ${String(Math.floor(Date.now() / 1000) % 100000).padStart(5, '0')}</small></div><h2>${local ? 'Sign in (preview)' : 'Sign in'}</h2>
     ${local ? `<p class="notice">Preview mode: this creates a <b>test account in this browser only</b>. No email, nothing is sent anywhere.</p>
       <label>Handle<input name="handle" required maxlength="24" pattern="[A-Za-z0-9 _\\-]+" placeholder="e.g. grymm"></label>`
     : `<p>Sign in with your email and password, or create an account. Your email is never shown or shared. Sign in with the same email on any device to see your unlocked files.</p>
@@ -146,7 +159,7 @@ function signInModal() {
       <label>Password<input name="password" type="password" required minlength="8" autocomplete="current-password"></label>
       <label class="check"><input type="checkbox" name="create" value="1"> <span>I’m new: create my account (we’ll email you a link to confirm it)</span></label>`}
     <label class="check"><input type="checkbox" required> <span>I’ve read the <a href="#/rules" target="_blank">community rules</a></span></label>
-    <div class="row"><button class="btn ghost" value="cancel" formnovalidate>Cancel</button><button class="btn" value="ok">Sign in</button></div></form>`);
+    <div class="row"><button class="btn ghost" value="cancel" formnovalidate>Cancel</button><button class="btn" value="ok">Sign in</button></div></form>`, 'libcard');
   d.querySelector('form').addEventListener('submit', async (e) => {
     if (e.submitter?.value === 'cancel') return;
     e.preventDefault();
@@ -199,7 +212,7 @@ document.addEventListener('click', async (e) => {
       let r; try { r = await ctx.be.startCheckout(ds.checkout); } catch (err) { w?.close(); t.disabled = false; throw err; }
       if (r?.pending) { if (w && r.paymentUrl) { w.opener = null; w.location.href = r.paymentUrl; } else if (!w && r.paymentUrl) toast('Your browser blocked the new tab. Use “Open the payment page” on the listing.');
         await refreshCtx(); location.hash = `#/l/${encodeURIComponent(ds.checkout)}?at=file`; startPoll(); return; }
-      if (r?.redirect) { location.href = r.redirect; return; } await refreshCtx(); location.hash = `#/l/${encodeURIComponent(ds.checkout)}?unlocked=1`; }
+      if (r?.redirect) { location.href = r.redirect; return; } await refreshCtx(); try { sessionStorage.setItem('td-paid', ds.checkout); } catch { /* ignore */ } location.hash = `#/l/${encodeURIComponent(ds.checkout)}?unlocked=1`; }
     else if (ds.membershipCheckout) { e.preventDefault(); if (!CONFIG.pricing.membershipsEnabled) { toast('Memberships are coming soon.'); return; } if (!needMe()) return; t.disabled = true; const plan = ds.membershipCheckout, from = ds.from || '';
       const r = await ctx.be.startMembershipCheckout(plan, from); if (r?.redirect) { location.href = r.redirect; return; }
       await refreshCtx(); toast(`${plan === 'monthly' ? 'Monthly' : 'Lifetime'} membership active.`);
@@ -218,8 +231,14 @@ document.addEventListener('click', async (e) => {
     else if (ds.resolve) { const [id, action] = ds.resolve.split(':'); await ctx.be.resolveReport(id, action); toast(action === 'removed' ? 'Content removed' : 'Report dismissed'); route(); }
     else if (ds.share) { e.preventDefault(); const l = feed.byId.get(ds.share); const url = location.href.split('#')[0] + '#/l/' + encodeURIComponent(ds.share);
       const title = (l?.name || 'A listing') + ' · Twisted Deeds';
+      await sealBook(document.querySelector(`[data-book="${CSS.escape(ds.share)}"]`));
       if (navigator.share) { try { await navigator.share({ title, url }); } catch { /* dismissed */ } }
-      else { try { await navigator.clipboard.writeText(url); toast('Link copied. It opens this listing’s book.'); } catch { prompt('Copy this link:', url); } } }
+      else { try { await navigator.clipboard.writeText(url); toast('Sealed and copied. The link opens this listing’s book.'); } catch { prompt('Copy this link:', url); } } }
+    else if (ds.save) { e.preventDefault(); const on = toggleSave(ds.save); toast(on ? 'Saved. A red ribbon marks it; find it on the Saved shelf in Account.' : 'Ribbon removed. No longer saved.'); }
+    else if ('visitor' in ds) { const on = !ctx.visitor; setVisitorView(on); await refreshCtx(); await route(); toast(on ? 'Visitor view: the app as a signed-in free user sees it (this device only; your role is unchanged).' : 'Back to your admin view.'); }
+    else if ('radio' in ds) { if (!soundOn()) { setSound(true); syncSound(); } const on = await radioToggle(); syncRadio(); toast(on ? 'The radio in the next room is playing, softly.' : 'Radio off.'); }
+    else if ('candle' in ds) { const on = !document.documentElement.classList.contains('rm'); setReduceMotion(on); syncRm(); toast(on ? 'Candle snuffed: motion reduced.' : 'Candle lit: motion back on.'); }
+    else if ('sound' in ds) { const on = !soundOn(); setSound(on); syncSound(); if (!on) { radioOff(false); syncRadio(); } toast(on ? 'Sound on: soft, rare, and only after you tap.' : 'Sound off.'); }
     else if ('effects' in ds) { const on = !fxOn(); setFx(on); syncFx(); toast(on ? 'Opening effects on.' : 'Opening effects off.'); }
     else if ('reduceMotion' in ds) { const on = !document.documentElement.classList.contains('rm'); setReduceMotion(on); syncRm(); toast(on ? 'Motion reduced: no smoke, grain or page animations.' : 'Motion back on.'); }
     else if ('resetPreview' in ds) { if (confirm('Clear all preview data (test accounts, comments, posts, submissions, unlocks) in this browser?')) { ctx.be.reset(); location.reload(); } }
@@ -277,13 +296,17 @@ document.addEventListener('input', (e) => {
 
 // ---------- boot
 initPwa();
-function syncFx() { const on = fxOn(); document.querySelectorAll('[data-effects]').forEach((b) => { b.setAttribute('aria-pressed', String(on)); b.textContent = on ? 'Effects: on' : 'Effects: off'; }); }
-function syncRm() { const on = document.documentElement.classList.contains('rm'); document.querySelectorAll('[data-reduce-motion]').forEach((b) => { b.setAttribute('aria-pressed', String(on)); b.textContent = on ? 'Motion reduced' : 'Reduce motion'; }); window.TD_ATMO_SYNC?.(); }
+function syncRadio() { const s = radioState(); document.querySelectorAll('[data-radio]').forEach((b) => { b.setAttribute('aria-pressed', String(s.on)); const l = b.querySelector('.rd-l'); if (l) l.textContent = s.on ? 'Radio: on' : 'Radio: off'; b.title = s.on ? s.track : 'An old radio in the next room (public-domain records)'; }); }
+function syncSound() { const on = soundOn(); document.querySelectorAll('[data-sound]').forEach((b) => { b.setAttribute('aria-pressed', String(on)); if (!b.classList.contains('brass')) b.textContent = on ? 'Sound: on' : 'Sound: off'; }); }
+function syncFx() { const on = fxOn(); document.querySelectorAll('[data-effects]').forEach((b) => { b.setAttribute('aria-pressed', String(on)); if (!b.classList.contains('brass')) b.textContent = on ? 'Effects: on' : 'Effects: off'; }); }
+function syncRm() { const on = document.documentElement.classList.contains('rm'); document.querySelectorAll('[data-reduce-motion]').forEach((b) => { b.setAttribute('aria-pressed', String(on)); if (!b.classList.contains('brass')) b.textContent = on ? 'Motion reduced' : 'Reduce motion'; }); document.querySelectorAll('[data-candle]').forEach((c) => { c.classList.toggle('out', on); c.setAttribute('aria-pressed', String(on)); const t = c.querySelector('small'); if (t) t.textContent = on ? 'Snuffed: motion reduced' : 'Snuff to reduce motion'; }); window.TD_ATMO_SYNC?.(); }
 matchMedia('(prefers-reduced-motion: reduce)').addEventListener?.('change', (e) => { let saved = null; try { saved = localStorage.getItem('td-rm'); } catch { /* ignore */ } if (saved == null) { setReduceMotion(e.matches, false); syncRm(); } });
 (async function boot() {
-  syncRm(); syncFx();
+  syncRm(); syncFx(); syncSound(); syncRadio(); onRadio(syncRadio);
+  initRadio({ soundOn });
+  initReveals({ toast, refresh: async () => { await refreshCtx(); await route(); } });
   $('#disclaimer').textContent = DISCLAIMER;
-  try { await loadFeed(); } catch (e) { $('#main').innerHTML = `<div class="empty-state"><h1>Listings unavailable</h1><p>${esc(e.message)}</p></div>`; return; }
+  try { await loadFeed(); } catch (e) { $('#main').innerHTML = torn({ detail: `Listings unavailable: ${esc(e.message)}`, back: '#/', backText: 'Try again' }); return; }
   ctx.be = await getBackend();
   // Banner: preview store (or Supabase unreachable) = test data in this browser; live with
   // mock checkout = purchases are examples, no real payment.

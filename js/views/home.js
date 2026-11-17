@@ -1,4 +1,5 @@
-import { html, plural, ago, fmtDate, safeUrl } from '../util.js';
+import { web, nyx } from '../reveals.js';
+import { html, raw, plural, ago, fmtDate, safeUrl } from '../util.js';
 import { listingCard, gradeBadge, unlockPrice, standardPrice, monthlyUnlockPrice, lifetimeUnlockPrice, monthlyPrice, lifetimePrice, membershipsOn, trialNote, soonChip, isTrial } from '../components.js';
 import { LAYERS, PRICE_BANDS, STATES, layerInfo } from '../taxonomy.js';
 import { newThisWeek } from '../feed.js';
@@ -65,6 +66,7 @@ export async function home(ctx, q) {
   ${page === 1 ? html`<section class="th-card" aria-label="Twisted Deeds">
     <img class="thc-vine l" src="assets/th/vine-corner.png" alt="" aria-hidden="true"><img class="thc-vine r" src="assets/th/vine-corner.png" alt="" aria-hidden="true">
     <div class="thc-gent" aria-hidden="true"><img src="assets/th/gentleman.webp" alt="" width="372" height="410"></div>
+    <div class="thc-nyx">${raw(web('tr', 'thc-web'))}<span class="nyx-home"><i class="silk"></i>${raw(nyx('home', 'nyx-h'))}</span></div>
     <div class="thc-text">
       <div class="thc-td"><img src="assets/logo-shield-96.png" alt="" width="40" height="41"></div>
       <p class="thc-title" role="heading" aria-level="1">Twisted <span class="thc-deeds">Deeds</span></p>

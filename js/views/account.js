@@ -1,4 +1,8 @@
-import { html, fmtDate, safeUrl, host } from '../util.js';
+import { html, raw, fmtDate, ago, safeUrl, host } from '../util.js';
+import { savedList, nyxFriend, nyxFound, friendSeal, NYX_GOAL, nyx, openedList, nightOwl, fieldLeads, soundOn, visitorView } from '../reveals.js';
+import { fxOn } from '../effects.js';
+import { state as radioState, playlist } from '../radio.js';
+import { leatherFor, layerInfo } from '../taxonomy.js';
 import { researchScrolls } from './research.js';
 import { unlockPrice, standardPrice, monthlyUnlockPrice, lifetimeUnlockPrice, monthlyPrice, lifetimePrice, money, TIER_LABEL, membershipsOn, isTrial, soonChip, soonButton, trialNote } from '../components.js';
 
@@ -22,26 +26,141 @@ function planBlock(ctx) {
     <p class="small muted">Optional: <a href="#/membership?plan=monthly">Monthly ${monthlyPrice()}/mo</a> (unlocks ${monthlyUnlockPrice()} while active) or <a href="#/membership?plan=lifetime">Lifetime ${lifetimePrice()} one-time</a> (unlocks ${lifetimeUnlockPrice()} forever).</p>`;
 }
 
+// Saved shelf: this browser's saved listings as leather spines (they link to the book).
+const H = [100, 93, 97, 89, 95, 91, 99, 94];
+function savedShelf(ctx) {
+  const items = savedList().map((x) => ctx.feed.byId.get(x.id)).filter(Boolean);
+  return html`<section class="block saved-block"><h2>Saved <small class="muted">${items.length}</small></h2>
+    ${items.length ? html`<div class="shelf-wrap saved-wrap"><div class="shelf saved-shelf">${items.map((l, i) => { const t = l.name.replace(/\s*\(.*?\)\s*$/, ''); const short = t.length > 26 ? t.slice(0, 25) + '…' : t;
+      return html`<a class="spine ${i % 4 === 2 ? 'paper' : ''} two" href="#/l/${encodeURIComponent(l.id)}" aria-label="${l.name} (saved)" style="--c:${layerInfo(l.layer).color};--leather:${leatherFor(l.layer)};--h:${H[i % H.length]}%">
+        <span class="bk" aria-hidden="true"><span class="band"><i></i></span><span class="ttl">${short}</span><span class="cnt">❦</span></span></a>`; })}</div>
+      <div class="shelf-plate" aria-hidden="true"><span>Saved</span><small>marked with a red ribbon · this browser</small></div></div>`
+    : html`<p class="muted">Nothing saved yet. Open any listing and tap <b>Save</b>: a red ribbon slips into the book and it lands on this shelf.</p>`}
+    <p class="small muted">Saved listings are kept in this browser.</p></section>`;
+}
+function nyxBlock() {
+  const n = nyxFound().length;
+  if (nyxFriend()) return html`<section class="box nyx-box"><h4>Friend of Nyx</h4>${raw(friendSeal())}<p class="small">You found Nyx in ${n} places. She remembers.</p></section>`;
+  return n ? html`<section class="box nyx-box"><h4>A small spider</h4><p class="small muted">Found ${n} of ${NYX_GOAL}. She hides all over the archive.</p></section>` : '';
+}
+// Unlocked files as rolled scrolls in pigeonhole cubbies (receipts kept below).
+function cubbies(ctx, unlocks) {
+  const L = (id) => ctx.feed.byId.get(id);
+  return html`<div class="cubbies">${unlocks.map((u) => { const l = L(u.listing_id);
+    return html`<a class="cubby" href="#/l/${encodeURIComponent(u.listing_id)}?at=file" style="--leather:${leatherFor(l?.layer)}"><span class="rolled" aria-hidden="true"><i class="rk l"></i><i class="rk r"></i><i class="rs"></i></span>
+      <span class="cb-tag">${l ? l.name : u.listing_id}</span><small>${fmtDate(u.unlocked_at)} · open the scroll</small></a>`; })}</div>`;
+}
+
+// ---------- the immersive account (library card, seals cabinet, journal, map, reading log, writing desk)
+const cardNo = (id) => { let h = 2166136261; for (const c of String(id || '')) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } h >>>= 0; return `TD-${String(h % 10000).padStart(4, '0')}-${String((h >>> 13) % 1000).padStart(3, '0')}`; };
+function libraryCard(ctx) {
+  const me = ctx.me, since = me.created_at ? fmtDate(me.created_at) : 'this year';
+  return html`<section class="lib-card" aria-label="Your reader’s card">${raw(nyx('card', 'nyx-peek'))}
+    <div class="lc-top"><span>Twisted Deeds Reading Room</span><span class="lc-no">No. ${cardNo(me.id)}</span></div>
+    <div class="lc-row"><span class="lc-k">Reader</span><span class="lc-ink">@${me.handle}</span></div>
+    <div class="lc-row"><span class="lc-k">Privileges</span><span class="lc-v">${ctx.membership?.plan === 'lifetime' ? 'Lifetime' : ctx.membership?.plan === 'monthly' ? 'Monthly' : 'Reading room · free previews'}</span></div>
+    <div class="lc-stamp" aria-label="Member since ${since}"><small>Member since</small><b>${since}</b></div>
+    <p class="lc-fine">Only you see this page. The card number is drawn from your account, nothing more.</p></section>`;
+}
+function invitation() {
+  return html`<section class="lib-card invite" aria-label="An invitation">${raw(nyx('card', 'nyx-peek'))}
+    <div class="lc-top"><span>Twisted Deeds Reading Room</span><span class="lc-no">By invitation</span></div>
+    <p class="inv-h">You are cordially invited<br>to take a reader’s card.</p>
+    <p class="inv-b">A card keeps the files you unlock on every device, lets you add to the record, and remembers you here. Free to hold.</p>
+    <p><button class="btn" data-signin>Sign in or take a card</button></p></section>`;
+}
+// Seals: real criteria, tracked in this browser (plus your account’s own unlocks / requests).
+function seals(ctx, { unlocks = [], rf = [], subs = [] } = {}) {
+  const opened = openedList().length, saved = savedList().length, leads = fieldLeads().length;
+  const S = [
+    ['nyx', 'Friend of Nyx', nyxFriend(), `Find Nyx in ${NYX_GOAL} places (${nyxFound().length} so far)`],
+    ['unlock', 'First Unlock', unlocks.length > 0, 'Unlock your first full file'],
+    ['ten', 'Ten Books Opened', opened >= 10, `Open ten different books (${Math.min(opened, 10)}/10)`],
+    ['owl', 'Night Owl', !!nightOwl(), 'Visit between midnight and 4 a.m.'],
+    ['ribbon', 'Ribbon Keeper', saved >= 5, `Save five listings (${Math.min(saved, 5)}/5)`],
+    ['field', 'Field Hand', leads > 0, 'Save a field lead in the Live navigator'],
+    ['quill', 'Contributor', subs.some((x) => x.status === 'approved'), 'Have a submission approved'],
+    ['commission', 'Commissioner', rf.length > 0, 'Commission a research file'],
+  ];
+  const got = S.filter((x) => x[2]).length;
+  return html`<section class="block seals-cab"><h2>Cabinet of seals <small class="muted">${got} of ${S.length}</small></h2>
+    <div class="cabinet">${S.map(([k, t, on, how]) => html`<div class="wseal ${on ? 'on' : 'off'} ws-${k}" title="${on ? t : how}"><span class="ws-wax" aria-hidden="true">${k === 'nyx' ? raw('<img src="assets/th/nyx.svg" alt="" width="26" height="29">') : raw(GLYPH[k] || '')}</span><b>${t}</b><small>${on ? 'Earned' : how}</small></div>`)}</div>
+    <p class="small muted">Seals are earned for real things you did, remembered in this browser.</p></section>`;
+}
+const GLYPH = { unlock: '🗝', ten: '❦', owl: '☾', ribbon: '❧', field: '✦', quill: '✒', commission: '⚜' };
+function journal() {
+  const L = fieldLeads();
+  return html`<section class="block journal"><h2>Field journal <small class="muted">${L.length}</small></h2>
+    ${L.length ? html`<div class="jr-page">${L.slice(0, 20).map((l) => html`<article class="jr-entry"><time datetime="${l.ts}">${l.ts ? new Date(l.ts).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : ''}</time>
+      <h3>${l.name || l.addr || 'A place'}</h3>${l.name && l.addr ? html`<p class="jr-addr">${l.addr}</p>` : ''}${l.note ? html`<p>${l.note}</p>` : ''}<p class="jr-coord">${Number(l.lat).toFixed(4)}, ${Number(l.lon).toFixed(4)}</p></article>`)}</div>`
+    : html`<div class="jr-page empty"><p>No entries yet. Field leads you save in the <a href="live/">Live navigator</a> on this phone are written up here, dated.</p></div>`}
+    <p class="small muted">Kept on this device only.</p></section>`;
+}
+function placesMap() {
+  const L = fieldLeads(), W = 320, H = 200;
+  let pins = '';
+  if (L.length) {
+    let [a, b, c, d] = [Math.min(...L.map((l) => l.lat)), Math.max(...L.map((l) => l.lat)), Math.min(...L.map((l) => l.lon)), Math.max(...L.map((l) => l.lon))];
+    const pad = Math.max(0.01, (b - a) * 0.25, (d - c) * 0.25); a -= pad; b += pad; c -= pad; d += pad;
+    pins = L.map((l) => { const x = 20 + ((l.lon - c) / (d - c || 1)) * (W - 40), y = 20 + (1 - (l.lat - a) / (b - a || 1)) * (H - 40); return `<g class="mp-pin" transform="translate(${x.toFixed(1)},${y.toFixed(1)})"><circle r="5"/><circle r="2" class="mp-in"/><title>${String(l.name || l.addr || '').replace(/[<&>"]/g, '')}</title></g>`; }).join('');
+  }
+  const rose = `<g class="mp-rose" transform="translate(${W - 34},${H - 36})"><circle r="16"/><path d="M0-15L3 0 0 15-3 0Z M-15 0L0 3 15 0 0-3Z"/><text y="-19" text-anchor="middle">N</text></g>`;
+  return html`<section class="block places"><h2>Places visited <small class="muted">${L.length}</small></h2>
+    <figure class="antique-map">${raw(`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${L.length ? L.length + ' places from your field journal' : 'An empty chart'}"><rect class="mp-bg" x="0" y="0" width="${W}" height="${H}"/>
+      ${Array.from({ length: 7 }, (_, i) => `<line class="mp-grid" x1="${(i + 1) * W / 8}" y1="0" x2="${(i + 1) * W / 8}" y2="${H}"/>`).join('')}${Array.from({ length: 4 }, (_, i) => `<line class="mp-grid" x1="0" y1="${(i + 1) * H / 5}" x2="${W}" y2="${(i + 1) * H / 5}"/>`).join('')}
+      <path class="mp-coast" d="M0 ${H * 0.7} C${W * 0.2} ${H * 0.62} ${W * 0.3} ${H * 0.8} ${W * 0.5} ${H * 0.74} S${W * 0.8} ${H * 0.6} ${W} ${H * 0.68}"/>${pins}${rose}
+      <text class="mp-title" x="14" y="20">${L.length ? 'Places of record' : 'Terra incognita'}</text></svg>`)}
+      <figcaption class="small muted">${L.length ? 'Drawn from the field leads saved on this device.' : 'Save field leads in the Live navigator and they are charted here.'}</figcaption></figure></section>`;
+}
+function readingLog(ctx) {
+  const L = openedList().map((x) => ({ ...x, l: ctx.feed.byId.get(x.id) })).filter((x) => x.l).slice(0, 8);
+  return html`<section class="block reading"><h2>Reading log <small class="muted">${L.length}</small></h2>
+    ${L.length ? html`<div class="desk"><div class="stack">${L.map((x, i) => html`<a class="sbook" href="#/l/${encodeURIComponent(x.id)}" style="--leather:${leatherFor(x.l.layer)};--c:${layerInfo(x.l.layer).color};--tilt:${[-1.5, 1, -0.5, 1.6, -1.2, 0.6, -1.8, 0.9][i % 8]}deg;--w:${[92, 86, 96, 82, 90, 88, 94, 84][i % 8]}%">
+      <span class="sb-t">${x.l.name.replace(/\s*\(.*?\)\s*$/, '')}</span><small>${ago(x.at)}</small></a>`)}</div><span class="desk-top" aria-hidden="true"></span></div>`
+    : html`<p class="muted">Books you open are stacked here, most recent on top.</p>`}</section>`;
+}
+function writingDesk(ctx) {
+  const rm = document.documentElement.classList.contains('rm'), r = radioState();
+  const sw = (attr, on, label, note) => html`<button type="button" class="brass" ${raw(attr)} aria-pressed="${on ? 'true' : 'false'}"><span class="lever" aria-hidden="true"><i></i></span><span class="bl">${label}</span><small>${note}</small></button>`;
+  return html`<section class="block desk-set" aria-label="Settings"><h2>The writing desk</h2>
+    <div class="wdesk">
+      <button type="button" class="snuff ${rm ? 'out' : ''}" data-candle aria-pressed="${rm ? 'true' : 'false'}" aria-label="${rm ? 'Candle snuffed: motion reduced. Tap to light it' : 'Snuff the candle to reduce motion'}"><span class="candle" aria-hidden="true"><i class="flame"></i><i class="wick"></i><i class="wax"></i><i class="dish"></i></span><small>${rm ? 'Snuffed: motion reduced' : 'Snuff to reduce motion'}</small></button>
+      <div class="switches">
+        ${sw('data-sound', soundOn(), 'Sound', 'Off by default; only after a tap')}
+        ${sw('data-effects', fxOn(), 'Effects', 'Opening effects and reveals')}
+        ${sw('data-reduce-motion', rm, 'Reduce motion', 'Also the candle')}
+        <button type="button" class="brass radio-dial" data-radio aria-pressed="${r.on ? 'true' : 'false'}"><span class="dial" aria-hidden="true"></span><span class="bl rd-l">${r.on ? 'Radio: on' : 'Radio: off'}</span><small>An old radio in the next room · ${playlist().name}</small></button>
+        ${ctx.staff ? sw('data-visitor', ctx.visitor, 'View as visitor', ctx.visitor ? 'On: staff tools hidden on this device' : 'Hide staff tools on this device') : ''}
+      </div></div></section>`;
+}
+
 const KIND = { info: 'Info / correction', photo: 'Photo or document', lore: 'Lore or story', link: 'Link' };
 const STATUS = { pending: ['Awaiting review', 'pending'], approved: ['Approved', 'ok'], rejected: ['Not approved', 'no'], removed: ['Removed', 'no'] };
 
 // Plain account page: the user's own submissions with moderation status, and their
 // unlocked files. Nothing here is public; there are no profiles.
 export async function account(ctx) {
-  if (!ctx.me) return html`<div class="empty-state"><h1>Account</h1><p>Sign in to see your unlocked files and your submissions.</p><button class="btn" data-signin>Sign in</button>
-    <p class="small muted install-inline" data-install-entry>Want it on your home screen? <a href="#" data-install-app>Install the app</a></p></div>`;
+  if (!ctx.me) return html`<div class="page-head"><h1>Account</h1></div><div class="acct-world acct-out">${invitation()}
+    <p class="small muted install-inline" data-install-entry>Want it on your home screen? <a href="#" data-install-app>Install the app</a></p>
+    ${savedShelf(ctx)}${readingLog(ctx)}${seals(ctx)}${writingDesk(ctx)}</div>`;
   const [unlocks, subs, rf] = await Promise.all([ctx.be.listUnlocks(), ctx.be.listMySubmissions(), ctx.be.myResearchRequests ? ctx.be.myResearchRequests().catch(() => []) : []]);
   const L = (id) => ctx.feed.byId.get(id);
   return html`<div class="page-head"><h1>Account</h1><p class="muted">Signed in as <b>@${ctx.me.handle}</b>. Only you see this page.</p>
     ${ctx.be.isPreview ? html`<p class="small muted">Preview: this is a test account in this browser. In live mode your account is your email sign-in, so unlocks follow you to every device.</p>` : ''}</div>
-  <div class="with-side"><div>
+  <div class="with-side acct-world"><div>
+    ${libraryCard(ctx)}
     <section class="block"><h2>Plan</h2>${planBlock(ctx)}</section>
     <section class="block"><h2>Unlocked files <small class="muted">${unlocks.length}</small></h2>
-      ${unlocks.length ? html`<table class="tbl"><thead><tr><th>Property</th><th>Unlocked</th><th>Price paid</th><th>Payment</th></tr></thead><tbody>
+      ${unlocks.length ? html`${cubbies(ctx, unlocks)}<details class="receipts"><summary>Receipts</summary><table class="tbl"><thead><tr><th>Property</th><th>Unlocked</th><th>Price paid</th><th>Payment</th></tr></thead><tbody>
         ${unlocks.map((u) => html`<tr><td>${L(u.listing_id) ? html`<a href="#/l/${u.listing_id}?at=file">${L(u.listing_id).name}</a> <span class="small muted">· open the scroll</span>` : u.listing_id}</td><td>${fmtDate(u.unlocked_at)}</td>
         <td>${money(u.amount_paid ?? u.amount_cents / 100)} <span class="muted small">${TIER_LABEL[u.price_tier] || 'standard'}</span></td>
-        <td>${u.mock ? html`<span class="example">Example checkout</span> ` : ''}<span class="muted small">${u.payment_ref}</span></td></tr>`)}</tbody></table>`
+        <td>${u.mock ? html`<span class="example">Example checkout</span> ` : ''}<span class="muted small">${u.payment_ref}</span></td></tr>`)}</tbody></table></details>`
       : html`<p class="muted">No unlocked files yet. Every listing has a free preview; the full file is ${unlockPrice(ctx)} one time.</p>`}</section>
+    ${savedShelf(ctx)}
+    ${seals(ctx, { unlocks, rf, subs })}
+    ${readingLog(ctx)}
+    ${journal()}
+    ${placesMap()}
     <section class="block"><h2>Research files <small class="muted">${rf.length}</small></h2>
       <p class="small muted">Commissioned Research Files are a separate, private service. Each one arrives here as a sealed scroll. <a href="#/research">Commission a file</a>.</p>
       ${researchScrolls(rf)}</section>
@@ -52,8 +171,9 @@ export async function account(ctx) {
           <td>${p.title || p.label || (p.text || '').slice(0, 60) || (safeUrl(p.url) ? host(p.url) : '')}</td><td>${fmtDate(s.created_at)}</td>
           <td><span class="st ${st[1]}">${st[0]}</span>${s.mod_note ? html`<div class="small muted">Moderator: ${s.mod_note}</div>` : ''}</td></tr>`; })}</tbody></table>`
       : html`<p class="muted">You haven’t submitted anything yet. <a href="#/contribute">Submit info, a photo, lore or a link</a>.</p>`}</section>
+    ${writingDesk(ctx)}
   </div><aside class="sidebar">
-    <section class="box"><h4>Your account</h4><p class="small">Handle: <b>@${ctx.me.handle}</b></p><button class="btn sm ghost" data-signout>Sign out</button></section>
+    ${nyxBlock()}<section class="box"><h4>Your account</h4><p class="small">Handle: <b>@${ctx.me.handle}</b></p><button class="btn sm ghost" data-signout>Sign out</button></section>
     <section class="box install-box" data-install-entry><h4>The app</h4><p class="small">Install Twisted Deeds on your phone or computer. It opens full screen like an app, and you stay signed in.</p><button class="btn sm ghost" data-install-app>Install the app</button></section>
     <section class="box notify-box"><h4>Notifications <span class="soon">Coming soon</span></h4>
       <label class="check"><input type="checkbox" data-notify-pref ${ctx.notifyPref?.opted_in ? 'checked' : ''}> <span>Get notified about new Twisted Deeds</span></label>
@@ -61,7 +181,7 @@ export async function account(ctx) {
     ${pendingBox(ctx)}<section class="box"><h4>How unlocks work</h4>${isTrial() || !membershipsOn()
       ? html`<p class="small">Each listing’s full file is a one-time unlock: ${standardPrice()}${trialNote()} for everyone. Unlocked files never expire. Memberships (Monthly and Lifetime) are ${soonChip()}.</p>`
       : html`<p class="small">Each listing’s full file is a one-time unlock: ${standardPrice()}, ${monthlyUnlockPrice()} while a Monthly membership is active, or ${lifetimeUnlockPrice()} with Lifetime. Unlocked files never expire.</p>`}</section>
-    ${ctx.be.isPreview ? html`<section class="box"><h4>Preview tools</h4><p class="small">Try the moderation queue with this test account.</p>
+    ${ctx.be.isPreview && !ctx.visitor ? html`<section class="box"><h4>Preview tools</h4><p class="small">Try the moderation queue with this test account.</p>
       ${['moderator', 'admin'].includes(ctx.me.role) ? html`<button class="btn sm ghost" data-preview-mod="0">Stop acting as moderator</button>` : html`<button class="btn sm ghost" data-preview-mod="1">Act as moderator (preview)</button>`}</section>` : ''}
   </aside></div>`;
 }

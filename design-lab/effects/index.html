@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="assets/css/tome.css">
 <link rel="stylesheet" href="assets/css/shadow.css">
 <link rel="stylesheet" href="assets/css/effects.css">
+<link rel="stylesheet" href="assets/css/reveals.css">
 <style>
 .fxlab{max-width:1100px;margin:0 auto;padding:16px 14px 40px}
 .fxlab h1{margin:.2em 0 .1em}
@@ -24,6 +25,19 @@
 .fx-now{font:.95rem 'IM Fell English',serif;font-style:italic;color:#cfcac0;min-height:1.5em;margin:6px 0 10px}
 .fx-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:4px 0 8px}
 .fx-row .small{color:#a19d95}
+.rv h2{margin:28px 0 4px}
+.rv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.rv-card{position:relative;background:#141312;border:1px solid #3a3734;border-radius:4px;padding:10px;min-height:150px;overflow:hidden}
+.rv-card h3{font:400 1.05rem var(--th-display);margin:0 0 2px}.rv-card p.d{font-size:.8rem;color:#a19d95;margin:0 0 8px}
+.rv-card .stage{position:relative;min-height:120px;display:grid;place-items:center}
+.rv-card .play{position:absolute;right:8px;top:8px}
+.mock-alert{position:relative;width:100%;max-width:280px;background:linear-gradient(180deg,#3a1015,#210a0e);border:3px solid #e0b04a;border-radius:18px;padding:10px 12px;color:#fff}
+.mock-alert.lantern::after{content:'';position:absolute;inset:-4px;border-radius:20px;pointer-events:none;animation:lantern 1.3s linear 1}
+@keyframes lantern{0%{box-shadow:0 0 18px 4px rgba(255,176,80,.55)}12%{box-shadow:0 0 6px 1px rgba(255,176,80,.2)}22%{box-shadow:0 0 22px 6px rgba(255,186,90,.6)}34%{box-shadow:0 0 10px 2px rgba(255,176,80,.3)}48%{box-shadow:0 0 20px 5px rgba(255,186,90,.5)}100%{box-shadow:0 0 0 0 rgba(255,176,80,0)}}
+.fogbox{position:relative;width:100%;height:110px;background:#111;overflow:hidden;border-radius:3px}
+.fogbox i{position:absolute;inset:0;background:url(assets/th/fog.webp) repeat-x 0 100%/100% 70%;opacity:.4}.fogbox.heavy i{opacity:.62}.fogbox.heavy b{position:absolute;inset:0;background:url(assets/th/fog.webp) repeat-x 0 0/100% 60%;transform:scaleY(-1);opacity:.34}
+.seal-row{display:flex;gap:14px}.seal-row canvas{width:22px;height:22px}.seal-row.go canvas{animation:sdrop .7s cubic-bezier(.3,.7,.3,1.2) both}
+@keyframes sdrop{from{transform:translateY(-34px);opacity:0}}
 </style></head><body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <defs>
@@ -43,6 +57,9 @@
 <div class="fx-row"><button class="btn sm ghost" type="button" data-replay>Replay</button><span class="small" data-fx-state></span></div>
 <p class="fx-now" data-fx-now aria-live="polite"></p>
 <div data-fx-book></div>
+<section class="rv"><h2>Reveals, Nyx and the radio</h2>
+<p class="intro">Tap <b>Play</b> on any card. Everything here also runs in the app; all of it is still (but usable) under Reduce motion or with Effects off. Sounds need the app's Sound toggle on.</p>
+<div class="rv-grid" data-rv></div></section>
 </main>
 <script type="module">
 import { bookShell, bookCover, pageHead, folio, mountTomes, reduced } from './js/tome.js';
@@ -69,6 +86,40 @@ function show(k) {
 btns.addEventListener('click', (e) => { const b = e.target.closest('[data-k]'); if (b) show(b.dataset.k); });
 document.querySelector('[data-replay]').addEventListener('click', () => cur && show(cur));
 window.TD_FXLAB = { show, keys };
+// ---------------- reveals gallery
+import('./js/reveals.js').then(async (R) => {
+  const { scrollShell } = await import('./js/tome.js');
+  const radio = await import('./js/radio.js');
+  const grid = document.querySelector('[data-rv]');
+  const spines = (n = 5) => `<div class="shelf" style="--row:150px">${['spectral', 'mayhem', 'abandoned', 'mortuary', 'vice'].slice(0, n).map((k, i) => `<button type="button" class="spine ${i === 2 ? 'paper' : ''}" data-spine-demo="${k}" style="--c:${LAYERS[k].color};--leather:${leatherFor(k)};--h:${[100, 92, 97, 88, 95][i]}%"><span class="bk"><span class="band"><i></i></span><span class="ttl">${LAYERS[k].label}</span><span class="cnt">${i + 3}</span></span></button>`).join('')}</div>`;
+  const C = [
+    ['Shelf: lean + dust', 'Spines lean as a finger or cursor passes, shaking off a few motes.', () => spines(), (st) => { st.querySelectorAll('.spine').forEach((sp, i) => setTimeout(() => { sp.style.setProperty('--lean', '3.2deg'); sp.classList.remove('lean'); void sp.offsetWidth; sp.classList.add('lean'); const bk = sp.querySelector('.bk'); for (let j = 0; j < 3; j++) { const m = document.createElement('i'); m.className = 'mote'; m.style.cssText = `left:${20 + Math.random() * 60}%;--x:${Math.random() * 28 - 14}px;--y:${-16 - Math.random() * 24}px`; m.onanimationend = () => m.remove(); bk.appendChild(m); } }, i * 160)); }],
+    ['Shelf: pulled book leaves a gap', 'Selecting a category pulls its book out; deselecting slides it back in.', () => spines(4), (st) => { const sp = st.querySelectorAll('.spine')[1]; if (sp.classList.contains('on')) { sp.classList.remove('on', 'pulling'); sp.classList.add('returning'); } else { sp.classList.remove('returning'); sp.classList.add('on', 'pulling'); } }],
+    ['Empty search: Nyx’s web', 'No results = a bare shelf with one cobweb. Nyx keeps it (tap her).', () => `<div class="empty-bay"><span class="eb-board"></span>${R.web('full', 'eb-web')}${R.nyx('shelf', 'eb-nyx')}</div>`, null],
+    ['Nyx on the title card', 'Every 20-40 s she lowers on a silk thread and climbs back up.', () => `<div class="th-card" style="width:100%;min-height:120px;margin:0"><div class="thc-nyx">${R.web('tr', 'thc-web')}<span class="nyx-home"><i class="silk"></i>${R.nyx('home', 'nyx-h')}</span></div><p style="margin:0;padding:40px 10px;font:400 1.4rem var(--th-display)">Twisted <span style="color:#c42430">Deeds</span></p></div>`, (st) => R.nyxDrop(st.querySelector('.nyx-home'))],
+    ['Pull to refresh: pocket watch', 'In the installed app on a phone, pulling down at the top winds a pocket watch.', () => '', (st) => R.demoWatch(st)],
+    ['Save: red ribbon', 'Save slips a red silk ribbon into the book (book above).', () => '<p class="small muted">Plays on the sample book above.</p>', () => { const r = document.querySelector('[data-fx-book] .bookmark'); if (!r) return; r.classList.toggle('in'); if (r.classList.contains('in')) { r.classList.remove('slip'); void r.offsetWidth; r.classList.add('slip'); } }],
+    ['Price by quill, ledger dates', 'The asking price is written in by a quill; timeline dates are stamped like a ledger.', () => `<div class="tome th" style="width:100%"><div class="face paper" style="position:relative;padding:12px 14px;min-height:110px"><dl class="tfacts"><div class="ink quill"><dt>Asking</dt><dd><span class="qw">$189,000</span></dd></div></dl><ol class="tl ledger" style="margin:6px 0 0;padding-left:18px"><li class="ink"><b>1887</b> <span>Built</span></li><li class="ink"><b>1931</b> <span>Sold at auction</span></li></ol></div></div>`, (st) => { const f = st.querySelector('.face'); f.classList.remove('inked'); f.querySelectorAll('.ink').forEach((e, i) => e.style.setProperty('--d', i * 120 + 'ms')); void f.offsetWidth; requestAnimationFrame(() => f.classList.add('inked')); }],
+    ['Share: wax seal', 'Share snaps the book shut and lays a wax seal on it before the share sheet.', () => '<p class="small muted">Plays on the sample book above.</p>', () => R.sealBook(document.querySelector('[data-fx-book] [data-book]'))],
+    ['Map: wax-seal pins', 'Pins are small wax seals that drop in; a tapped pin glows like a lantern.', () => '<div class="seal-row"></div>', async (st) => { const { sealImage } = await import('./js/views/map.js'); const row = st.querySelector('.seal-row'); row.classList.remove('go'); row.innerHTML = ''; ['#7b4a9c', '#b3261e', '#9b6a7a', '#c9a24a'].forEach((c, i) => { const cv = document.createElement('canvas'); cv.width = cv.height = 44; cv.getContext('2d').putImageData(sealImage(c, i === 3, i === 1), 0, 0); cv.style.animationDelay = i * 90 + 'ms'; row.appendChild(cv); }); void row.offsetWidth; row.classList.add('go'); }],
+    ['Payment: wax drips, seal presses, ribbon unties', 'On payment, red wax drips onto the scroll, the TH seal presses in, then the ribbon unties and it unrolls.', () => '<div data-sc style="width:100%"></div>', async (st) => { const h = st.querySelector('[data-sc]'); h.innerHTML = scrollShell({ id: 'demo', name: 'A sample file', kind: 'file', content: '<p class="line">Sample scroll. No listing data.</p><p class="line">The full file would be here.</p>' }); mountTomes(h, { openScroll: true, paid: true }); }],
+    ['Account: pigeonhole cubbies', 'Unlocked files rest as rolled scrolls in pigeonholes.', () => `<div class="cubbies" style="width:100%"><a class="cubby" href="#" style="--leather:#2b1a2c"><span class="rolled"><i class="rk l"></i><i class="rk r"></i><i class="rs"></i></span><span class="cb-tag">A sample file</span><small>Nov 16, 2026 · open the scroll</small></a><a class="cubby" href="#" style="--leather:#1b2a22"><span class="rolled"><i class="rk l"></i><i class="rk r"></i><i class="rs"></i></span><span class="cb-tag">Another file</span><small>Oct 31, 2026</small></a></div>`, null],
+    ['Live: lantern flicker + gravestones', 'A nearby alert gets a brief lantern glow outside the card (text untouched); passed pins become small crossed-out gravestones.', () => `<div style="display:flex;gap:12px;align-items:center;width:100%"><div class="mock-alert"><b style="color:#e0b04a;font-size:.8rem">NEARBY</b><div style="font-size:1.2rem">Sample House</div><div style="font-size:1.6rem;font-weight:800;color:#e0b04a">420 ft NE</div></div><svg viewBox="0 0 20 24" width="20" height="24"><path d="M3 23V9a7 7 0 0 1 14 0v14z" fill="#4a4744" stroke="#cfc8bb" stroke-width="1.4"/><path d="M6.5 11.5l7 7M13.5 11.5l-7 7" stroke="#e8dcc4" stroke-width="1.6" stroke-linecap="round"/><path d="M1 23h18" stroke="#cfc8bb" stroke-width="1.4"/></svg></div>`, (st) => { const a = st.querySelector('.mock-alert'); a.classList.remove('lantern'); void a.offsetWidth; a.classList.add('lantern'); }],
+    ['Witching hour', 'From midnight to 1 a.m. (local) the gentleman’s glasses glow red.', () => `<img src="assets/th/gentleman.webp" alt="" width="140" height="154" style="-webkit-mask-image:radial-gradient(ellipse 62% 70% at 50% 46%,#000 55%,transparent 100%);mask-image:radial-gradient(ellipse 62% 70% at 50% 46%,#000 55%,transparent 100%)">`, (st) => { const i = st.querySelector('img'); i.src = /glow/.test(i.src) ? 'assets/th/gentleman.webp' : 'assets/th/gentleman-glow.webp'; }],
+    ['Five taps on the TH seal', 'A soft whisper (only with Sound on).', () => '<img src="assets/th/th-seal.png" alt="" width="64" height="64">', (st) => { const ok = R.whisper(); const i = st.querySelector('img'); i.classList.remove('seal-shiver'); void i.offsetWidth; i.classList.add('seal-shiver'); if (!ok) st.insertAdjacentHTML('beforeend', '<p class="small muted">Sound is off in this browser.</p>'); }],
+    ['Friday the 13th / Oct 31 fog', 'Heavier fog on those dates.', () => '<div class="fogbox"><i></i><b></b></div>', (st) => st.querySelector('.fogbox').classList.toggle('heavy')],
+    ['Loading: candle', 'A candle burning down instead of a spinner.', () => R.candle('Fetching the record…'), null],
+    ['Errors: torn page', '“This record has been lost.”, with Nyx’s web across it.', () => R.torn({ detail: 'Sample error.' }), null],
+    ['Update: telegram slip', 'A new version arrives as a telegram.', () => '<div class="update-bar telegram" style="position:relative;left:auto;top:auto;transform:none;animation:none"><span class="tg-h">Telegram · Twisted Deeds Archive</span><span class="tg-b">A new version of the archive is ready. <b>STOP</b></span><span class="tg-a"><button class="btn sm" type="button">Refresh</button></span></div>', null],
+    ['Sign in: library card', 'Signing in opens a reader’s card.', () => '<div class="modal libcard" style="position:relative;display:block;animation:none;width:100%"><div class="lc-head"><span>Twisted Deeds Reading Room</span><small>Reader’s card · No. 00000</small></div><h2 style="margin:4px 0">Sign in</h2><p class="small">Sample card.</p></div>', null],
+    ['Friend of Nyx', 'Find Nyx in five places (tap her) to earn this seal on your Account.', () => R.friendSeal() + `<p class="small muted">Found so far in this browser: ${R.nyxFound().length} of ${R.NYX_GOAL}.</p>`, null],
+    ['Radio in the next room', 'Off by default. Public-domain records, muffled through a wall, low and warm. Season: ' + radio.playlist().name + '.', () => '<p class="small" data-radio-now>Off</p>', async (st) => { if (!R.soundOn()) R.setSound(true); const on = await radio.radioToggle(); const s = radio.state(); st.querySelector('[data-radio-now]').textContent = on ? 'Playing (softly): ' + s.track : 'Off'; }],
+  ];
+  grid.innerHTML = C.map(([t, d, m, play], i) => `<div class="rv-card" data-rv-i="${i}"><h3>${t}</h3><p class="d">${d}</p>${play ? '<button class="btn sm ghost play" type="button" data-rv-play>Play</button>' : ''}<div class="stage">${m()}</div></div>`).join('');
+  grid.addEventListener('click', (e) => { const b = e.target.closest('[data-rv-play]'); if (!b) return; const card = b.closest('[data-rv-i]'); C[+card.dataset.rvI][3](card.querySelector('.stage')); });
+  R.initReveals({ toast: (m) => { document.querySelector('[data-fx-now]').textContent = m; } });
+  window.TD_RVLAB = { cards: C.map((c) => c[0]), play: (i) => C[i][3]?.(grid.querySelector(`[data-rv-i="${i}"] .stage`)) };
+});
 show(new URLSearchParams(location.search).get('fx') || 'spectral');
 </script>
 </body></html>

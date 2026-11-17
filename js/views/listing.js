@@ -3,6 +3,7 @@ import { heritageCrossLink } from '../components.js';
 import { newTag, updatedTag, gradeBadge, layerChip, statusPill, plate, photoCredit, imageType, imgAlt, authorName, pendingTag, reportBtn, sourceLinks, listingCard, kindLabel, unlockPrice, membersLine, viewerTier, TIER_LABEL, trialNote, isTrial, unlockBar, publicUrl, findListingUrl } from '../components.js';
 import { STATES, ratingLabel, leatherFor, layerInfo } from '../taxonomy.js';
 import { displayableImages, updateLine, isArchived } from '../feed.js';
+import { isSaved } from '../reveals.js';
 import { bookShell, bookCover, pageHead, folio, rule, wordmark, statusSeal, scrollShell } from '../tome.js';
 
 const SIG = { landmark: 'National Historic Landmark', register: 'National Register of Historic Places', district: 'Historic district', local: 'Local record' };
@@ -177,7 +178,7 @@ function bookFor(ctx, l, imgs, finis) {
       <h3 class="ink">Particulars</h3>
       <dl class="tfacts">
         <div class="ink"><dt>Address</dt><dd>${esc(l.address || l.place)}${l.geo_precision === 'town' ? ' <small>(map point: town only)</small>' : ''}</dd></div>
-        <div class="ink"><dt>${arch ? 'Last asking' : 'Asking'}</dt><dd>${esc(l.price || 'Price not listed')}</dd></div>
+        <div class="ink quill"><dt>${arch ? 'Last asking' : 'Asking'}</dt><dd><span class="qw">${esc(l.price || 'Price not listed')}</span></dd></div>
         <div class="ink"><dt>Status</dt><dd>${esc(l.status)}${l.lastChecked ? ` <small>(checked ${esc(fmtDate(l.lastChecked))})</small>` : ''}</dd></div>
         <div class="ink"><dt>Rating</dt><dd>${esc(ratingLabel(l))}</dd></div>
         <div class="ink"><dt>Category</dt><dd>${esc(l.layerI.label)} · ${esc(kindLabel(l.kind))}</dd></div>
@@ -187,7 +188,7 @@ function bookFor(ctx, l, imgs, finis) {
       ${folio(2)}</div>`,
     `<div class="pg pg-time">${pageHead(name, 'Timeline')}
       <h3 class="ink">The Record</h3>
-      <ol class="tl">${tl.hist.map((h) => `<li class="ink"><b>${esc(h.d)}</b><span>${esc(h.t)}</span></li>`).join('')}
+      <ol class="tl ledger">${tl.hist.map((h) => `<li class="ink"><b>${esc(h.d)}</b><span>${esc(h.t)}</span></li>`).join('')}
         ${tl.arch.map((h) => `<li class="ink arch"><b>${esc(h.d)}</b><span>${esc(h.t)}</span></li>`).join('')}</ol>
       ${tl.hist.length ? '' : '<p class="ink note">The dated history lives in the full file.</p>'}
       ${folio(3)}</div>`,
@@ -208,13 +209,14 @@ function bookFor(ctx, l, imgs, finis) {
       ${folio(5)}</div>`,
   ];
   const cover = bookCover({ kicker: ratingLabel(l), name, place: [l.city, l.state].filter(Boolean).join(' · '), era: tl.era });
-  return bookShell({ id: l.id, name, pages, cover, leather: leatherFor(l.layer), band: layerInfo(l.layer).color, fx: l.layer });
+  return bookShell({ id: l.id, name, pages, cover, leather: leatherFor(l.layer), band: layerInfo(l.layer).color, fx: l.layer, saved: isSaved(l.id) });
 }
 
 export async function listing(ctx, q, id) {
   const l = ctx.feed.byId.get(id);
   if (!l) return html`<div class="empty-state"><h1>Not in the archive</h1><p>This listing isn’t in the current feed. It may have sold and been retired. <a href="#/browse">Browse the archive</a>.</p></div>`;
-  const [comments, samples, full, counts] = await Promise.all([ctx.be.listComments(l.id), ctx.be.samplePhotos(l.id), ctx.be.getFullFile(l.id), ctx.be.fileCounts(l.id)]);
+  const [comments, samples, fullRaw, counts] = await Promise.all([ctx.be.listComments(l.id), ctx.be.samplePhotos(l.id), ctx.be.getFullFile(l.id), ctx.be.fileCounts(l.id)]);
+  const full = ctx.visitor && !ctx.unlocks.includes(l.id) ? null : fullRaw;   // View as visitor: no staff access to sealed files
   const top = comments.filter((c) => !c.parent_id), kids = (c) => comments.filter((r) => r.parent_id === c.id);
   const imgs = displayableImages(l);
   const nearby = ctx.feed.catalog.filter((x) => x.state === l.state && x.id !== l.id).slice(0, 3);
@@ -229,7 +231,7 @@ export async function listing(ctx, q, id) {
     : `<a class="ink bk-btn gold" href="#/unlock/${enc}" data-unlock-link>Unlock the full file · ${esc(unlockPrice(ctx))}</a>`;
   const finis = `${fileBtn}
     <a class="ink bk-btn" href="${esc(findListingUrl(l))}" target="_blank" rel="noopener">Find listing</a>
-    <div class="ink fin-row">${mapLink ? `<a class="bk-btn sm" href="${mapLink}">Map</a>` : ''}<button class="bk-btn sm" type="button" data-share="${esc(l.id)}">Share</button><a class="bk-btn sm" href="#/l/${enc}?at=comments">Comments</a></div>`;
+    <div class="ink fin-row">${mapLink ? `<a class="bk-btn sm" href="${mapLink}">Map</a>` : ''}<button class="bk-btn sm" type="button" data-share="${esc(l.id)}">Share</button><button class="bk-btn sm" type="button" data-save="${esc(l.id)}" aria-pressed="${isSaved(l.id)}"><span class="sv-t">${isSaved(l.id) ? 'Saved' : 'Save'}</span></button><a class="bk-btn sm" href="#/l/${enc}?at=comments">Comments</a></div>`;
   const extra = [...imgs.slice(1), ...samples];
   return html`<nav class="crumbs">${arch ? html`<a href="#/archive">Sold & Off market archive</a> › ` : html`<a href="#/">Listings</a> › `}${l.state ? html`<a href="#/browse?state=${l.state}">${STATES[l.state] || l.state}</a> › ` : ''}<span>${l.name}</span></nav>
   <div class="detail-shell">
@@ -246,6 +248,7 @@ export async function listing(ctx, q, id) {
     ${orig ? html`<a class="btn ghost" href="${orig}" target="_blank" rel="noopener nofollow">Original listing ↗</a>` : ''}
     ${mapLink ? html`<a class="btn ghost" href="${mapLink}">Map</a>` : ''}
     <button class="btn ghost" type="button" data-share="${l.id}">Share</button>
+    <button class="btn ghost save-btn" type="button" data-save="${l.id}" aria-pressed="${isSaved(l.id) ? 'true' : 'false'}"><span class="rib" aria-hidden="true"></span><span class="sv-t">${isSaved(l.id) ? 'Saved' : 'Save'}</span></button>
   </div>
   <details class="book-alt"><summary>Read the preview as plain text</summary><div class="alt-body">
     <p class="summary">${l.preview.summary || 'Summary not written yet.'}</p>

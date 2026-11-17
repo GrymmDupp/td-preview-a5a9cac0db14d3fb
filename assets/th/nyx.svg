@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 44" width="40" height="44">
+<!-- Nyx: the Twisted Deeds sigil. Single swappable file: replace this SVG with their art (keep the viewBox roughly square, spider facing up). -->
+<defs><radialGradient id="ab" cx="42%" cy="35%" r="70%"><stop offset="0" stop-color="#3a3234"/><stop offset=".55" stop-color="#151213"/><stop offset="1" stop-color="#050404"/></radialGradient>
+<radialGradient id="ce" cx="45%" cy="35%" r="70%"><stop offset="0" stop-color="#332c2d"/><stop offset="1" stop-color="#070606"/></radialGradient></defs>
+<g fill="none" stroke="#0d0b0b" stroke-width=".95" stroke-linecap="round" stroke-linejoin="round">
+<path d="M18 15 L12 9 L9 2"/><path d="M22 15 L28 9 L31 2"/>
+<path d="M17.6 16.5 L10 13 L4 9.5"/><path d="M22.4 16.5 L30 13 L36 9.5"/>
+<path d="M17.6 18 L9.5 19.5 L3.5 23.5"/><path d="M22.4 18 L30.5 19.5 L36.5 23.5"/>
+<path d="M18 19.5 L12 25 L8.5 33"/><path d="M22 19.5 L28 25 L31.5 33"/>
+</g>
+<g fill="none" stroke="#5a4f50" stroke-width=".35" stroke-linecap="round" opacity=".7">
+<path d="M12 9 L9 2"/><path d="M28 9 L31 2"/><path d="M10 13 L4 9.5"/><path d="M30 13 L36 9.5"/></g>
+<ellipse cx="20" cy="27.5" rx="5.6" ry="7.6" fill="url(#ab)"/>
+<path d="M18.3 24.6 L21.7 24.6 L20 27.4 Z M18.3 30.4 L21.7 30.4 L20 27.6 Z" fill="#a3121b"/>
+<ellipse cx="20" cy="17.2" rx="3.3" ry="3.7" fill="url(#ce)"/>
+<circle cx="20" cy="12.8" r="1.9" fill="#0b0909"/>
+<circle cx="19.2" cy="12.3" r=".42" fill="#d2242c"/><circle cx="20.8" cy="12.3" r=".42" fill="#d2242c"/>
+<ellipse cx="18.4" cy="24" rx="1.4" ry="2.2" fill="#fff" opacity=".07"/>
+</svg>

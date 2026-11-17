@@ -1,4 +1,5 @@
-import { html, plural } from '../util.js';
+import { html, raw, plural } from '../util.js';
+import { web, nyx } from '../reveals.js';
 import { listingCard } from '../components.js';
 import { LAYERS, PRICE_BANDS, STATES, STATUSES, layerInfo, statusInfo, kindLabel, ratingLabel, leatherFor } from '../taxonomy.js';
 import { sortListings, isNew, isOpen, feed } from '../feed.js';
@@ -38,6 +39,8 @@ function shelf(layers, L, cur) {
         <span class="bk" aria-hidden="true"><span class="band"><i></i></span><span class="ttl">${two && words.length > 1 ? html`${words.slice(0, Math.ceil(words.length / 2)).join(' ')}<br>${words.slice(Math.ceil(words.length / 2)).join(' ')}` : inf.label}</span><span class="cnt">${n}</span></span></button>`;
     })}</div><div class="shelf-plate" aria-hidden="true"><span>The Archive</span><small>Categories · Shelf I</small></div></div>`;
 }
+// Empty results: a bare shelf bay with a single cobweb; Nyx keeps it.
+const emptyBay = () => raw(`<div class="empty-bay" aria-hidden="false"><span class="eb-board"></span>${web('full', 'eb-web')}<span class="eb-thread"></span>${nyx('shelf', 'eb-nyx')}</div>`);
 const FILTER_KEYS = ['state', 'new', 'tier', 'layer', 'price', 'kind', 'status'];
 export const activeFilterCount = (q) => FILTER_KEYS.filter((k) => q.get(k) && !(k === 'status' && q.get(k) === 'open')).length + (q.get('sort') && q.get('sort') !== 'featured' ? 1 : 0);
 
@@ -86,7 +89,7 @@ export async function browse(ctx, q) {
     <a class="small" href="#/map?${q}">Show these on the map →</a></div>
   ${list.length ? html`<div class="grid">${list.map((l) => listingCard(l, { ...ctx, compact: false }))}</div>`
     : q.get('layer') && !L.some((l) => l.layer === q.get('layer'))
-      ? html`<div class="empty-state shelf-empty"><p class="se-h">None on the shelf yet</p><p>No ${layerInfo(q.get('layer')).label} listings have been filed so far. When one is, it will stand here.</p><p><a href="#/browse">See every category</a> or <a href="#/suggest">suggest one</a>.</p></div>`
-      : html`<div class="empty-state"><p>No properties match. Try fewer filters, or <a href="#/suggest">suggest one</a>.</p></div>`}
+      ? html`<div class="empty-state shelf-empty">${emptyBay()}<p class="se-h">None on the shelf yet</p><p>No ${layerInfo(q.get('layer')).label} listings have been filed so far. When one is, it will stand here.</p><p><a href="#/browse">See every category</a> or <a href="#/suggest">suggest one</a>.</p></div>`
+      : html`<div class="empty-state shelf-empty">${emptyBay()}<p class="se-h">An empty shelf</p><p>No properties match. Try fewer filters, or <a href="#/suggest">suggest one</a>.</p></div>`}
   <details class="states-all"><summary>All states</summary><div class="state-grid">${stateCounts.map(([s, n]) => html`<a href="#/browse?state=${s}">${STATES[s] || s} <span>${n}</span></a>`)}</div></details>`;
 }

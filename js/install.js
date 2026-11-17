@@ -121,8 +121,9 @@ export function showFirstRun(price = '$5') {
 // ---------- update notice
 function updateNotice() {
   if (document.querySelector('.update-bar')) return;
-  const bar = document.createElement('div'); bar.className = 'update-bar'; bar.setAttribute('role', 'status');
-  bar.innerHTML = '<span>A new version of the archive is ready.</span><button class="btn sm" data-sw-refresh>Refresh</button><button class="link small" data-sw-later aria-label="Dismiss">Later</button>';
+  // A telegram slip: same text and buttons, dressed as a Western Union-style form.
+  const bar = document.createElement('div'); bar.className = 'update-bar telegram'; bar.setAttribute('role', 'status');
+  bar.innerHTML = '<span class="tg-h" aria-hidden="true">Telegram · Twisted Deeds Archive</span><span class="tg-b">A new version of the archive is ready. <b aria-hidden="true">STOP</b></span><span class="tg-a"><button class="btn sm" data-sw-refresh>Refresh</button><button class="link small" data-sw-later aria-label="Dismiss">Later</button></span>';
   document.body.appendChild(bar);
 }
 

@@ -42,6 +42,7 @@
 <link rel="stylesheet" href="assets/css/tome.css">
 <link rel="stylesheet" href="assets/css/shadow.css">
 <link rel="stylesheet" href="assets/css/effects.css">
+<link rel="stylesheet" href="assets/css/reveals.css">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
@@ -72,13 +73,13 @@
   </div>
   <nav id="nav" class="nav" aria-label="Main"></nav>
 </header>
-<main id="main" tabindex="-1"><div class="loading">Opening the archive…</div></main>
+<main id="main" tabindex="-1"><div class="loading candle-load" role="status"><span class="candle" aria-hidden="true"><i class="flame"></i><i class="wick"></i><i class="wax"><i class="drip"></i></i><i class="dish"></i></span><span class="cl-t">Opening the archive…</span></div></main>
 <footer class="site-foot">
   <div class="foot-in">
     <div><div class="brand small"><img class="brand-shield" src="assets/logo-shield-96.png" srcset="assets/logo-shield-96.png 2x" alt="Twisted Deeds" width="31" height="32" loading="lazy"><span class="b1" aria-hidden="true">Twisted</span><span class="b2" aria-hidden="true">Deeds</span></div>
       <p class="foot-tag">where the past has a presence</p>
-      <p class="foot-credit"><img src="assets/th/th-seal.png" alt="Twisted History Tours seal" width="40" height="40" loading="lazy"><span>a Twisted History Tours production · Horton, Michigan</span></p>
-      <p><button class="rm-toggle" type="button" data-reduce-motion aria-pressed="false">Reduce motion</button> <button class="rm-toggle" type="button" data-effects aria-pressed="true">Effects: on</button></p>
+      <p class="foot-credit"><img src="assets/th/th-seal.png" alt="Twisted History Tours seal" width="40" height="40" loading="lazy"><span>a Twisted History Tours production · Horton, Michigan</span><small class="audio-credit">Radio: public-domain recordings (Wikimedia Commons) · <a href="AUDIO_LICENSES.md" target="_blank" rel="noopener">credits</a></small></p>
+      <p><button class="rm-toggle" type="button" data-reduce-motion aria-pressed="false">Reduce motion</button> <button class="rm-toggle" type="button" data-effects aria-pressed="true">Effects: on</button> <button class="rm-toggle" type="button" data-sound aria-pressed="false">Sound: off</button> <button class="rm-toggle radio-toggle" type="button" data-radio aria-pressed="false"><span class="dial" aria-hidden="true"></span><span class="rd-l">Radio: off</span></button></p>
       <p class="small" id="feed-meta"></p></div>
     <div><p id="disclaimer" class="small disclaimer"></p></div>
     <div class="foot-links small"><a href="#/packs">Dossier Packs</a><a href="#/archive">Sold &amp; Off market archive</a><a href="#/board">Community board</a><a href="#/contribute">Submit</a><a href="#/account">Account</a><a href="#/rules">Community rules</a><a href="#/about">About</a><a href="#/moderate" id="foot-mod" hidden>Moderation</a><a href="#/research" class="foot-research">Commission a research file</a><a href="#" class="install-link" data-install-app data-install-entry>Install the app</a></div>

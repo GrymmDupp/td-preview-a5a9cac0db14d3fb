@@ -1,3 +1,4 @@
+import { calm } from '../reveals.js';
 import { html, esc, truncate } from '../util.js';
 import { CONFIG } from '../config.js';
 import { LAYERS, layerInfo, storyLabel } from '../taxonomy.js';
@@ -25,6 +26,27 @@ export async function mapView(ctx, q) {
     <div class="map-note muted small">Hollow pins are approximate (town centre). Showing properties for sale; sold and off-market ones are in the <a href="#/archive">archive</a>.</div>
   </div>`;
 }
+
+// Pins as small wax seals (drawn once per colour on a canvas, then cached by the map).
+// id: seal|<colour>|<approx 0/1>|<tier>. Approximate (town-centre) seals are hollow rings, as before.
+export function sealImage(color, approx, tier1) {
+  const S = 44, c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d');
+  const cx = S / 2, cy = S / 2 + 1, R = 15.5;
+  g.beginPath();
+  for (let i = 0; i <= 28; i++) { const a = (i / 28) * Math.PI * 2, r = R + Math.sin(i * 2.7) * 1.1 + Math.cos(i * 1.3) * 0.8; g[i ? 'lineTo' : 'moveTo'](cx + Math.cos(a) * r, cy + Math.sin(a) * r); }
+  g.closePath();
+  g.shadowColor = 'rgba(0,0,0,.65)'; g.shadowBlur = 4; g.shadowOffsetY = 2;
+  if (approx) { g.lineWidth = 5; g.strokeStyle = color; g.stroke(); g.shadowColor = 'transparent'; g.lineWidth = 1; g.strokeStyle = 'rgba(0,0,0,.5)'; g.stroke(); }
+  else {
+    const gr = g.createRadialGradient(cx - 5, cy - 6, 2, cx, cy, R + 2); gr.addColorStop(0, 'rgba(255,255,255,.35)'); gr.addColorStop(0.25, color); gr.addColorStop(1, 'rgba(0,0,0,.55)');
+    g.fillStyle = color; g.fill(); g.shadowColor = 'transparent'; g.fillStyle = gr; g.fill();
+    g.beginPath(); g.arc(cx, cy, R - 5.5, 0, Math.PI * 2); g.lineWidth = 1.4; g.strokeStyle = 'rgba(0,0,0,.35)'; g.stroke();
+    g.beginPath(); g.arc(cx - 0.6, cy - 0.8, R - 5.5, Math.PI * 1.1, Math.PI * 1.7); g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 1; g.stroke();
+  }
+  if (tier1) { g.beginPath(); g.arc(cx, cy, R + 2.2, 0, Math.PI * 2); g.lineWidth = 1.6; g.strokeStyle = '#ffe9d0'; g.stroke(); }
+  return g.getImageData(0, 0, S, S);
+}
+const sealId = ['concat', 'seal|', ['get', 'color'], '|', ['to-string', ['get', 'approx']], '|', ['to-string', ['get', 'tier']]];
 
 export async function mountMap(ctx, q, root) {
   const el = root.querySelector('#map');
@@ -55,12 +77,26 @@ export async function mountMap(ctx, q, root) {
     map.addLayer({ id: 'cl', type: 'circle', source: 'l', filter: ['has', 'point_count'], paint: { 'circle-color': '#1f1819', 'circle-stroke-color': '#e8dcc4', 'circle-stroke-width': 1.2, 'circle-radius': ['step', ['get', 'point_count'], 14, 10, 19, 30, 25] } });
     map.addLayer({ id: 'cl-n', type: 'symbol', source: 'l', filter: ['has', 'point_count'], layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 12, 'text-font': ['Noto Sans Bold'] }, paint: { 'text-color': '#e8dcc4' } });
     map.addLayer({ id: 'glow', type: 'circle', source: 'l', filter: ['!', ['has', 'point_count']], paint: { 'circle-color': ['get', 'color'], 'circle-radius': ['case', ['==', ['get', 'sov'], 1], 16, 12], 'circle-blur': 1, 'circle-opacity': 0.55 } });
-    map.addLayer({ id: 'pt', type: 'circle', source: 'l', filter: ['!', ['has', 'point_count']], paint: {
-      'circle-color': ['case', ['==', ['get', 'approx'], 1], 'rgba(0,0,0,0)', ['get', 'color']],
-      'circle-stroke-color': ['case', ['==', ['get', 'approx'], 1], ['get', 'color'], ['case', ['==', ['get', 'tier'], 1], '#ffe9d0', '#0b0909']],
-      'circle-stroke-width': ['case', ['==', ['get', 'approx'], 1], 2.5, ['==', ['get', 'tier'], 1], 1.8, 1],
-      'circle-radius': ['case', ['==', ['get', 'sov'], 1], 7.5, 6] } });
+    // the tapped pin glows like a lantern (under the seal)
+    map.addLayer({ id: 'lantern', type: 'circle', source: 'l', filter: ['==', ['get', 'id'], ''], paint: { 'circle-color': '#ffb24a', 'circle-radius': 22, 'circle-blur': 1, 'circle-opacity': 0.6 } });
+    const drop = !calm();
+    map.addLayer({ id: 'pt', type: 'symbol', source: 'l', filter: ['!', ['has', 'point_count']],
+      layout: { 'icon-image': sealId, 'icon-size': ['case', ['==', ['get', 'sov'], 1], 1.12, 0.95], 'icon-allow-overlap': true, 'icon-ignore-placement': true },
+      paint: { 'icon-opacity': drop ? 0 : 1, 'icon-translate': drop ? [0, -34] : [0, 0], 'icon-opacity-transition': { duration: 450, delay: 0 }, 'icon-translate-transition': { duration: 700, delay: 0 } } });
+    // wax seals drop in
+    if (drop) setTimeout(() => { if (!map.getLayer('pt')) return; map.setPaintProperty('pt', 'icon-translate', [0, 0]); map.setPaintProperty('pt', 'icon-opacity', 1); }, 160);
     if (!saved && !q.get('focus')) map.fitBounds([[-125, 24], [-66, 49.5]], { padding: 20, duration: 0 });
+  };
+  map.on('styleimagemissing', (e) => { const id = e.id || ''; if (!id.startsWith('seal|') || map.hasImage(id)) return; const [, color, approx, tier] = id.split('|'); map.addImage(id, sealImage(color, approx === '1', tier === '1'), { pixelRatio: 2 }); });
+  let glowT = 0;
+  const lantern = (id) => {
+    if (!map.getLayer('lantern')) return; cancelAnimationFrame(glowT);
+    map.setFilter('lantern', ['==', ['get', 'id'], id || '']);
+    if (!id || calm()) { map.setPaintProperty('lantern', 'circle-opacity', 0.6); return; }
+    const t0 = performance.now();
+    const tick = (t) => { const k = (t - t0) / 1000; if (k > 1.6) { map.setPaintProperty('lantern', 'circle-opacity', 0.6); return; }
+      map.setPaintProperty('lantern', 'circle-opacity', 0.35 + 0.3 * Math.abs(Math.sin(k * 9) * Math.sin(k * 3.7))); map.setPaintProperty('lantern', 'circle-radius', 18 + k * 4); glowT = requestAnimationFrame(tick); };
+    glowT = requestAnimationFrame(tick);
   };
   map.on('style.load', addLayers);
   map.on('load', addLayers);
@@ -71,12 +107,13 @@ export async function mountMap(ctx, q, root) {
     card.innerHTML = `<button class="x" aria-label="Close">×</button><div class="mc-badges">${l.tier === 1 ? '<span class="badge ddd" style="--c:#c41e32"><b>Twisted Deed</b></span>' : `<span class="badge story">Strong Story${storyLabel(l) ? `<i>${esc(storyLabel(l))}</i>` : ''}</span>`} <span class="layer" style="--c:${l.layerI.color}"><span class="dot"></span>${esc(l.layerI.label)}</span></div>
       ${(() => { const i = displayableImages(l)[0]; return i ? `<div class="mc-photo" data-ph><img src="${esc(i.src || i.url)}" alt="${esc((i.image_type === 'illustration' ? 'Illustration, not a photo: ' : '') + (i.caption || l.name))}" referrerpolicy="no-referrer" data-ph-img>${i.image_type === 'illustration' ? '<span class="ph-note mc-note"><span class="ph-type illus">Illustration, not a photo</span></span>' : ''}</div>` : ''; })()}
       <h3>${esc(l.name)}</h3><div class="muted">${esc(l.place)}</div><div class="card-price">${esc(l.price)} · ${esc(l.status)}</div><p class="clamp2">${esc(truncate(l.preview?.summary || "", 180))}</p><a class="btn sm" href="#/l/${encodeURIComponent(l.id)}">Open</a>`;
-    card.querySelector('.x').onclick = () => { card.hidden = true; };
+    card.querySelector('.x').onclick = () => { card.hidden = true; lantern(''); };
+    lantern(l.id);
   };
   map.on('click', 'pt', (e) => { const l = ctx.feed.byId.get(e.features[0].properties.id); if (l) showCard(l); });
   // #/map?focus=<id>: fly to one listing (from its book) and open its card.
   const focus = q.get('focus') && ctx.feed.byId.get(q.get('focus'));
-  if (focus && focus.lat != null) { map.jumpTo({ center: [focus.lon, focus.lat], zoom: focus.geo_precision === 'town' ? 11 : 14 }); showCard(focus); }
+  if (focus && focus.lat != null) { map.jumpTo({ center: [focus.lon, focus.lat], zoom: focus.geo_precision === 'town' ? 11 : 14 }); showCard(focus); map.once('idle', () => lantern(focus.id)); }
   for (const id of ['pt', 'cl']) { map.on('mouseenter', id, () => { map.getCanvas().style.cursor = 'pointer'; }); map.on('mouseleave', id, () => { map.getCanvas().style.cursor = ''; }); }
   const refresh = () => map.getSource('l')?.setData(data());
   root.querySelectorAll('[data-layer]').forEach((b) => b.onclick = () => { const k = b.dataset.layer; state.layers.has(k) ? state.layers.delete(k) : state.layers.add(k); b.classList.toggle('on'); b.setAttribute('aria-pressed', state.layers.has(k)); refresh(); });

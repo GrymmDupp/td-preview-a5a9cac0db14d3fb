@@ -4,6 +4,7 @@
 import { esc } from './util.js';
 
 import { playOpenFx } from './effects.js';
+import { calm, nyx, web, logOpened } from './reveals.js';
 export const reduced = () => document.documentElement.classList.contains('rm');
 const ROMAN = ['i', 'ii', 'iii', 'iv', 'v', 'vi'];
 export const rule = (cls = '') => `<svg class="orn-rule ${cls}" viewBox="0 0 200 14" aria-hidden="true"><use href="#rule"/></svg>`;
@@ -34,7 +35,7 @@ const waxSeal = () => `<svg viewBox="0 0 120 120" aria-hidden="true">
 /* ---------------- markup ---------------- */
 // B = { id, name, kicker, place, city, state, era, sealHTML, pages: [plate, title, facts, timeline, sources, finis] (HTML strings) }
 export function bookShell(B) {
-  return `<section class="tome th tome-book" data-book="${esc(B.id)}" aria-label="${esc(B.name)}: the book"${B.fx ? ` data-fx="${esc(B.fx)}"` : ''}${B.leather ? ` style="--leather:${esc(B.leather)};--band:${esc(B.band || '#8d2012')}"` : ''}>
+  return `<section class="tome th tome-book" data-book="${esc(B.id)}" aria-label="${esc(B.name)}: the book"${B.fx ? ` data-fx="${esc(B.fx)}"` : ''}${B.saved ? ' data-saved' : ''}${B.leather ? ` style="--leather:${esc(B.leather)};--band:${esc(B.band || '#8d2012')}"` : ''}>
     <div class="book-stage" data-book-stage></div>
     <div class="ctl">
       <button class="ctl-b" data-act="prev" aria-label="Previous page">‹</button>
@@ -52,6 +53,7 @@ export function bookCover({ kicker, name, place, era }) {
       <div class="tool tool1"></div><div class="tool tool2"></div>
       ${['tl', 'tr', 'bl', 'br'].map((c) => `<img class="cv-vine ${c}" src="assets/th/vine-corner.png" alt="" aria-hidden="true" draggable="false">`).join('')}
       <img class="cv-th" src="assets/th/th-seal.png" alt="" aria-hidden="true" draggable="false">
+      ${nyx('cover', 'nyx-cover')}
       <div class="cv-inner">
         <img class="cv-logo" src="assets/logo-shield-144.png" alt="" width="64" height="66">
         ${wordmark('cv-brand')}
@@ -67,7 +69,7 @@ export function bookCover({ kicker, name, place, era }) {
 const endpaper = () => `<div class="endpaper">
     <img class="ep-gent" src="assets/th/gentleman.webp" alt="" aria-hidden="true" draggable="false">
     <img class="ep-vine" src="assets/th/vine-edge.png" alt="" aria-hidden="true" draggable="false">
-    <div class="ep-in"><img src="assets/logo-shield-144.png" alt="" width="72" height="74"><span>Twisted Deeds</span><small>A record of houses with a past</small><em class="ep-tag">where the past has a presence</em><small class="ep-credit">a Twisted History Tours production</small></div></div>`;
+    <div class="ep-in"><img src="assets/logo-shield-144.png" alt="" width="72" height="74"><span>Twisted Deeds</span><small>A record of houses with a past</small><em class="ep-tag">where the past has a presence</em><small class="ep-credit">a Twisted History Tours production</small></div>${web('tr', 'ep-web')}${nyx('endpaper', 'nyx-ep')}</div>`;
 
 // S = { id, name, content (HTML; mark reveal lines with class "line"), hint, locked, lockedNote, kind }
 export function scrollShell(S) {
@@ -76,7 +78,8 @@ export function scrollShell(S) {
       <div class="rod top"><i class="knob l"></i><i class="knob r"></i></div>
       <div class="sheet"><div class="sheet-content">${S.content || ''}</div><i class="curl"></i></div>
       <div class="roll"><i class="knob l"></i><i class="knob r"></i>
-        <div class="tribbon"></div>
+        <div class="tribbon"></div><i class="bow" aria-hidden="true"><b></b><b></b><i></i></i>
+        ${nyx('scroll', 'nyx-scroll')}
         <button class="seal" ${S.locked ? 'disabled aria-disabled="true"' : ''} aria-label="${S.locked ? esc(S.lockedNote || 'Still sealed') : 'Break the seal to unroll'}">
           <span class="half a">${waxSeal()}</span><span class="half b">${waxSeal()}</span>
         </button>
@@ -108,7 +111,7 @@ function mountBook(root) {
   try { k = +(sessionStorage.getItem(KEY) || 0) || 0; } catch { /* private mode */ }
   const verso = () => '<div class="verso"></div>';
   // category opening effect (js/effects.js), keyed off data-fx on the book root; skipped under reduced motion
-  const fx = () => { if (root.dataset.fx) setTimeout(() => playOpenFx(stage, root.dataset.fx), 120); };
+  const fx = () => { logOpened(id); if (root.dataset.fx) setTimeout(() => playOpenFx(stage, root.dataset.fx), 120); };
   function build() {
     const faces = mode === 'spread'
       ? [[cover, pages[0]], [pages[1], pages[2]], [pages[3], pages[4]], [pages[5], endpaper()]]
@@ -118,6 +121,7 @@ function mountBook(root) {
         <div class="back-cover"></div>
         <div class="page-block"></div>
         <div class="spine"><span><b>Twisted Deeds · </b>${esc(name)}</span><img src="assets/logo-shield-48.png" alt="" width="20" height="21"></div>
+        <i class="bookmark${root.hasAttribute('data-saved') ? ' in' : ''}" aria-hidden="true"></i>
         ${faces.map(([f, b], i) => `<div class="leaf${i === 0 ? ' is-cover' : ''}" data-i="${i}"><div class="face front${i === 0 ? ' cover' : ' paper'}">${f}<i class="shade"></i></div><div class="face back paper">${b}<i class="shade"></i></div></div>`).join('')}
       </div></div>`;
     stage.style.height = (H + 80) + 'px';
@@ -246,7 +250,9 @@ function mountBook(root) {
     build();
   }
   layout();
-  return { go, layout, closeAll, get k() { return k; }, get pages() { return leaves.length; }, root };
+  // Share: snap shut to the cover (the wax seal is laid on by reveals.js)
+  function shut() { if (k === 0) return; k = 0; place(); if (!reduced()) { stage.classList.remove('shutting'); void stage.offsetWidth; stage.classList.add('shutting'); setTimeout(() => stage.classList.remove('shutting'), 600); } }
+  return { go, layout, closeAll, shut, get k() { return k; }, get pages() { return leaves.length; }, root };
 }
 addEventListener('keydown', (e) => {
   const b = activeBook; if (!b || !b.root.isConnected || e.target.closest?.('input,textarea,select,[contenteditable]')) return;
@@ -255,10 +261,10 @@ addEventListener('keydown', (e) => {
 let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => activeBook?.layout(), 150); });
 
 /* ---------------- the scroll ---------------- */
-function mountScroll(root, { autoOpen = false } = {}) {
+function mountScroll(root, { autoOpen = false, paid = false } = {}) {
   const sc = root.querySelector('.scroll'), btn = root.querySelector('[data-roll]');
   const locked = root.classList.contains('is-locked');
-  let st = 'sealed', timers = [];
+  let st = 'sealed', timers = [], tying = false;
   const later = (fn, ms) => timers.push(setTimeout(fn, reduced() ? 0 : ms));
   const clear = () => { timers.forEach(clearTimeout); timers = []; };
   const sheet = sc.querySelector('.sheet'), content = sheet.firstElementChild;
@@ -269,8 +275,13 @@ function mountScroll(root, { autoOpen = false } = {}) {
     const open = s === 'open' || s === 'opening'; content.inert = !open; content.setAttribute('aria-hidden', String(!open));
   }
   function open() {
-    if (st !== 'sealed' || locked) return;
-    clear(); setState('breaking');
+    if (st !== 'sealed' || locked || tying) return;
+    clear(); tying = true;
+    // the ribbon unties first (reveal), then the seal breaks
+    const untie = !reduced() && !calm();
+    if (untie) { sc.classList.add('untie'); setTimeout(() => sc.classList.remove('untie'), 1600); }
+    timers.push(setTimeout(() => {
+    tying = false; setState('breaking');
     root.dispatchEvent(new CustomEvent('tome-open', { bubbles: true }));
     later(() => {
       setState('opening');
@@ -297,6 +308,7 @@ function mountScroll(root, { autoOpen = false } = {}) {
       }
       later(() => { setState('open'); sheet.style.height = 'auto'; }, dur + 80);
     }, 900);
+    }, untie ? 560 : 0));
   }
   function close() {
     if (st !== 'open') return;
@@ -315,15 +327,23 @@ function mountScroll(root, { autoOpen = false } = {}) {
   btn?.addEventListener('click', () => (st === 'open' ? close() : open()));
   root.addEventListener('click', (e) => { if (e.target.closest('[data-reroll]')) close(); });
   setState('sealed');
-  if (autoOpen && !locked) setTimeout(open, reduced() ? 0 : 700);
+  // just paid: red wax drips onto the scroll and the TH seal presses in, then it opens
+  const press = paid && !locked && !reduced() && !calm();
+  if (press) {
+    const fx = document.createElement('div'); fx.className = 'paid-fx'; fx.setAttribute('aria-hidden', 'true');
+    fx.innerHTML = '<i class="pd d1"></i><i class="pd d2"></i><i class="pd d3"></i><i class="pd d4"></i><i class="pd d5"></i><img class="th-press" src="assets/th/th-seal.png" alt="" draggable="false">';
+    sc.querySelector('.roll').appendChild(fx); sc.classList.add('paid');
+    setTimeout(() => { fx.remove(); sc.classList.remove('paid'); }, 4200);
+  }
+  if (autoOpen && !locked) setTimeout(open, reduced() ? 0 : press ? 2100 : 700);
   return { open, close, get state() { return st; } };
 }
 
 // Called by app.js after every render.
-export function mountTomes(main, { openScroll = false } = {}) {
+export function mountTomes(main, { openScroll = false, paid = false } = {}) {
   activeBook = null;
   main.querySelectorAll('[data-book]').forEach((el) => { const b = mountBook(el); if (!activeBook) activeBook = b; });
-  const scrolls = [...main.querySelectorAll('[data-scroll]')].map((el) => mountScroll(el, { autoOpen: openScroll && el.dataset.kind === 'file' }));
+  const scrolls = [...main.querySelectorAll('[data-scroll]')].map((el) => mountScroll(el, { autoOpen: openScroll && el.dataset.kind === 'file', paid: paid && el.dataset.kind === 'file' }));
   window.TD_TOMES = { book: activeBook, scrolls };
   return window.TD_TOMES;
 }
