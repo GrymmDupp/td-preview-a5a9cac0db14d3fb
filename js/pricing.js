@@ -11,7 +11,7 @@
 export const PRICING = {
   currency: 'USD',
   products: {
-    unlock:        { name: 'Full file unlock',        price: 7,    link: '', kind: 'one-time', per: 'one file, yours for good',
+    unlock:        { name: 'Full file unlock',        price: 7,    link: 'https://buy.stripe.com/00weVc4I1bCra8v84S1Jm07', kind: 'one-time', per: 'one file, yours for good',
                      founder: { price: 5,  limit: 100, link: 'https://buy.stripe.com/4gM8wO5M56i76Wj5WK1Jm06', note: 'first 100 unlocks' } },
     member_year:   { name: 'Membership, annual',      price: 49,   link: '', kind: 'recurring', interval: 'year',  per: 'a year',
                      founder: { price: 39, limit: 100, link: '', note: 'first 100 members, kept while they stay' } },
