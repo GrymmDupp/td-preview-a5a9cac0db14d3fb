@@ -1,0 +1,86 @@
+/* Twisted Deeds "world": on-this-day line, time-of-day mood, moon, seasons, rain, offline plaque,
+   read aloud, pulled at random. transform/opacity only; static or hidden under .rm / .nofx. */
+
+/* On this day */
+.otd{display:block;margin:14px auto 4px;max-width:760px;padding:12px 18px 12px 46px;position:relative;background:linear-gradient(180deg,#e9dcbf,#dccaa3);color:#2a2018;border:1px solid #8a6f45;
+  box-shadow:0 1px 0 rgba(255,255,255,.3) inset,0 6px 16px rgba(0,0,0,.45);font:400 1rem/1.45 'IM Fell English',Georgia,serif;border-radius:2px}
+.otd::before{content:'';position:absolute;left:14px;top:13px;width:20px;height:20px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#b3343a,#6e1218 70%);box-shadow:0 1px 2px rgba(0,0,0,.5)}
+.otd-k{display:block;font:400 .82rem 'IM Fell English SC',Georgia,serif;letter-spacing:.14em;text-transform:uppercase;color:#6b1f1a}
+.otd-k b{font-weight:400;font-family:var(--th-display);font-size:1.05rem;letter-spacing:.06em}
+.otd-t{font-style:italic}.otd-l{color:#6b1f1a;font-style:normal;white-space:nowrap}
+
+/* Time of day: a veil over the page (dim at night, warm at dusk, pale at dawn) + fog density */
+.tod-veil{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity 2s,background 2s}
+html.tod-dawn .tod-veil{opacity:1;background:linear-gradient(180deg,rgba(220,210,190,.05),transparent 45%)}
+html.tod-dawn .atmo .fog{opacity:.3}
+html.tod-dusk .tod-veil{opacity:1;background:radial-gradient(ellipse 120% 70% at 50% 110%,rgba(120,60,20,.12),transparent 70%),rgba(10,6,4,.06)}
+html.tod-dusk .atmo .f1{opacity:.48}
+html.tod-night .tod-veil{opacity:1;background:radial-gradient(ellipse 90% 80% at 50% 45%,transparent 50%,rgba(2,3,8,.22)),rgba(4,6,12,.08)}
+html.tod-night .atmo .f1{opacity:.52}
+html.tod-night.full-moon .tod-veil{background:radial-gradient(ellipse 50% 40% at 85% 0%,rgba(190,200,220,.07),transparent 70%),radial-gradient(ellipse 90% 80% at 50% 45%,transparent 50%,rgba(2,3,8,.26)),rgba(6,8,16,.09)}
+html.full-moon .atmo .f1{opacity:.56}
+html.fog-heavy .atmo .fog{opacity:.62}
+
+/* Moon in the header */
+.site-head .moon{display:inline-flex;align-items:center;margin:0 6px 0 2px;line-height:0;opacity:.9;filter:drop-shadow(0 0 2px rgba(0,0,0,.8))}
+html.full-moon .site-head .moon svg{filter:drop-shadow(0 0 5px rgba(225,215,185,.45))}
+@media (max-width:600px){.site-head .head-in{position:relative}.site-head .moon{position:absolute;left:calc(var(--moon-x,50px));top:3px;margin:0;z-index:2;pointer-events:auto}.site-head .moon svg{width:16px;height:16px}}
+
+/* Seasons */
+.season{position:fixed;inset:0;pointer-events:none;z-index:44;overflow:hidden;contain:strict}
+body.is-map .season,body.is-map .rainpane,html.nofx .season,html.nofx .rainpane{display:none}
+.s-oct .cglow{position:absolute;bottom:-60px;width:260px;height:220px;background:radial-gradient(ellipse at 50% 70%,rgba(255,150,50,.16),transparent 65%);animation:cg-flick 3.8s ease-in-out infinite}
+.s-oct .cglow.l{left:-70px}.s-oct .cglow.r{right:-70px;animation-delay:-1.7s}
+.s-oct .jack{position:absolute;left:12px;bottom:10px;opacity:.55;filter:drop-shadow(0 0 6px rgba(255,150,40,.5))}
+.s-oct .jack path:last-child{animation:cg-flick 2.6s ease-in-out infinite}
+@keyframes cg-flick{0%,100%{opacity:1}40%{opacity:.72}55%{opacity:.9}70%{opacity:.65}}
+.s-nov .leaf{position:absolute;top:-30px;color:var(--c);opacity:.5;animation:lf-fall var(--d) linear var(--w) infinite;will-change:transform}
+.s-nov .leaf svg{display:block;transform:scale(var(--s));animation:lf-spin 5s ease-in-out infinite alternate}
+@keyframes lf-fall{0%{transform:translate3d(0,0,0)}50%{transform:translate3d(var(--x),55vh,0)}100%{transform:translate3d(calc(var(--x) * -.4),110vh,0)}}
+@keyframes lf-spin{from{transform:scale(var(--s)) rotate(-35deg) rotateY(0)}to{transform:scale(var(--s)) rotate(40deg) rotateY(160deg)}}
+.s-dec .flake{position:absolute;top:-10px;width:var(--z);height:var(--z);border-radius:50%;background:rgba(240,240,236,.7);filter:blur(.4px);animation:fl-fall var(--d) linear var(--w) infinite;will-change:transform}
+@keyframes fl-fall{to{transform:translate3d(var(--x),105vh,0)}}
+.s-frost .frost{position:absolute;inset:0;background:radial-gradient(ellipse 30% 26% at 0 0,rgba(210,225,240,.2),transparent 70%),radial-gradient(ellipse 30% 26% at 100% 0,rgba(210,225,240,.17),transparent 70%),
+  radial-gradient(ellipse 34% 24% at 0 100%,rgba(210,225,240,.16),transparent 70%),radial-gradient(ellipse 34% 24% at 100% 100%,rgba(210,225,240,.18),transparent 70%);
+  box-shadow:inset 0 0 40px rgba(200,215,235,.12)}
+.s-frost .frost::after{content:'';position:absolute;inset:0;opacity:.35;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 .86 0 0 0 0 .9 0 0 0 0 .96 0 0 0 1.6 -.9'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23f)'/%3E%3C/svg%3E");
+  -webkit-mask:radial-gradient(ellipse 75% 70% at 50% 50%,transparent 55%,#000 100%);mask:radial-gradient(ellipse 75% 70% at 50% 50%,transparent 55%,#000 100%)}
+.rm .season *,.rm .season *::after{animation:none!important}
+
+/* Rain on the window */
+.rainpane{position:fixed;inset:0;pointer-events:none;z-index:44;overflow:hidden;contain:strict;opacity:.55}
+.rainpane .sheet{position:absolute;inset:-20% 0 0;background:repeating-linear-gradient(100deg,transparent 0 18px,rgba(190,200,215,.10) 18px 19px,transparent 19px 47px);background-size:100% 160px;animation:rn-fall .5s linear infinite;will-change:transform}
+.rainpane .sheet.b{background-size:100% 230px;opacity:.6;animation-duration:.8s;filter:blur(.6px)}
+@keyframes rn-fall{to{transform:translate3d(-12px,160px,0)}}
+.rainpane .bead{position:absolute;top:-8px;width:3px;height:9px;border-radius:50% 50% 45% 45%;background:radial-gradient(circle at 40% 35%,rgba(255,255,255,.45),rgba(160,175,195,.18) 60%,transparent);animation:bd-run var(--d) cubic-bezier(.6,0,.9,.6) var(--w) infinite}
+@keyframes bd-run{0%{transform:translate3d(0,0,0)}30%{transform:translate3d(1px,12vh,0)}100%{transform:translate3d(-3px,104vh,0)}}
+html.raining .tod-veil{background-color:rgba(14,18,26,.08)}
+
+/* Offline plaque */
+.offline-plaque{position:fixed;left:50%;bottom:16px;z-index:60;transform:translate(-50%,140%);transition:transform .5s cubic-bezier(.3,1.3,.5,1);display:flex;gap:4px 10px;align-items:baseline;flex-wrap:wrap;justify-content:center;
+  max-width:min(92vw,520px);padding:9px 18px;background:linear-gradient(180deg,#3a2d1b,#21190f);color:#e8d9b5;border:1px solid #8a6d3b;outline:1px solid #2a1f12;outline-offset:2px;border-radius:3px;box-shadow:0 8px 20px rgba(0,0,0,.6);font:400 .92rem/1.3 'IM Fell English',Georgia,serif;text-align:center}
+.offline-plaque.in{transform:translate(-50%,0)}
+.offline-plaque b{font:400 1.05rem var(--th-display);letter-spacing:.08em;color:#e7c27a}.offline-plaque .op-orn{color:#b0893f}
+.rm .offline-plaque{transition:none}
+
+/* Read aloud */
+.reader{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;margin:10px 0}
+.reader .btn{font-size:.85rem}
+.reader[hidden]{display:none}
+.reader label{font:.82rem 'IM Fell English SC',Georgia,serif;letter-spacing:.06em;color:var(--muted,#9a8f7b);display:inline-flex;gap:4px;align-items:center}
+.reader select{padding:2px 4px;font-size:.82rem}
+.reader.on [data-read]{box-shadow:0 0 0 1px #c9a45c inset}
+.reader .rd-ic{display:inline-block;width:1em;margin-right:4px}
+
+/* Pulled at random */
+.pull-random{display:inline-flex;align-items:center;gap:8px}
+.pull-random .pr-ic{display:inline-block;width:8px;height:18px;border-radius:1px;background:linear-gradient(90deg,#3a1b12,#6a3220 45%,#3a1b12);box-shadow:inset 0 3px 0 -1px #c9a45c,inset 0 -3px 0 -1px #c9a45c;transform:rotate(-8deg)}
+.home-random{text-align:center;margin:6px 0 0}
+.shelf .spine.pulling{animation:sp-random .75s cubic-bezier(.4,0,.6,1) forwards;z-index:3}
+@keyframes sp-random{0%{transform:none}35%{transform:translateY(-14%) rotate(-4deg)}100%{transform:translateY(-120%) rotate(-10deg) scale(1.04);opacity:0}}
+.pull-book{position:fixed;left:50%;top:55%;z-index:70;pointer-events:none}
+.pull-book .pb-spine{display:block;width:54px;height:200px;margin:-100px 0 0 -27px;border-radius:3px;background:var(--leather);box-shadow:inset 0 22px 0 -18px #c9a45c,inset 0 -22px 0 -18px #c9a45c,inset 6px 0 10px rgba(255,255,255,.08),inset -8px 0 12px rgba(0,0,0,.6),0 14px 30px rgba(0,0,0,.6);
+  animation:pb-pull .9s cubic-bezier(.4,0,.6,1) forwards;display:flex;align-items:center;justify-content:center}
+.pull-book .pb-spine span{writing-mode:vertical-rl;transform:rotate(180deg);font:400 .82rem var(--th-display);letter-spacing:.06em;color:#e0c07a;max-height:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@keyframes pb-pull{0%{transform:translateY(40px) scale(.9);opacity:0}30%{transform:translateY(0) rotate(-3deg);opacity:1}100%{transform:translateY(-60px) rotate(-12deg) scale(1.15);opacity:0}}
+body > .tod-veil{position:fixed;z-index:44}

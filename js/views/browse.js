@@ -86,7 +86,8 @@ export async function browse(ctx, q) {
   </form>
   <div class="result-bar" id="results"><strong>${plural(list.length, 'property', 'properties')}</strong>
     ${active.length ? html`<a class="small" href="#/browse">Clear filters</a>` : ''}
-    <a class="small" href="#/map?${q}">Show these on the map →</a></div>
+    <a class="small" href="#/map?${q}">Show these on the map →</a>
+    ${list.length ? html`<button type="button" class="btn sm ghost pull-random" data-random="shelf" title="Pull one of these books off the shelf at random"><span class="pr-ic" aria-hidden="true"></span>Pulled at random</button>` : ''}</div>
   ${list.length ? html`<div class="grid">${list.map((l) => listingCard(l, { ...ctx, compact: false }))}</div>`
     : q.get('layer') && !L.some((l) => l.layer === q.get('layer'))
       ? html`<div class="empty-state shelf-empty">${emptyBay()}<p class="se-h">None on the shelf yet</p><p>No ${layerInfo(q.get('layer')).label} listings have been filed so far. When one is, it will stand here.</p><p><a href="#/browse">See every category</a> or <a href="#/suggest">suggest one</a>.</p></div>`

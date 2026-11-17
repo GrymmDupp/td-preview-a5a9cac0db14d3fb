@@ -1,5 +1,6 @@
 // Twisted Deeds public site: shell, router and global event handling.
 import { fxOn, setFx } from './effects.js';
+import { initWorld, syncWorld, keepBook, pullRandom, readAloud, pauseReading, stopReading, setReadRate, hapticsOn, setHaptics, buzz } from './world.js';
 import { initReveals, afterRender, candle, torn, toggleSave, sealBook, soundOn, setSound, visitorView, setVisitorView } from './reveals.js';
 import { initRadio, radioToggle, radioOff, onRadio, state as radioState } from './radio.js';
 import { CONFIG } from './config.js';
@@ -105,6 +106,9 @@ function renderChrome(path) {
   const fm = $('#foot-mod'); if (fm) fm.hidden = !(ctx.me && ['moderator', 'admin'].includes(ctx.me.role));
 }
 
+// random pick: the listings shown on this page (browse results), else the whole catalog
+const currentResults = () => { const ids = [...new Set([...document.querySelectorAll('#main .grid a[href^="#/l/"]')].map((a) => decodeURIComponent(a.getAttribute('href').slice(4).split(/[?#]/)[0])))]; const L = ids.map((i) => feed.byId.get(i)).filter(Boolean); return L.length ? L : feed.catalog; };
+let shareIds = new Set();   // listings with a static share page (s/<id>/: og tags + cover), built by design_lab/build_share_cards.py
 let refocusFilter = null;   // a filter dropdown that just changed: keep focus on it after the re-render
 async function route() {
   const raw = location.hash.replace(/^#/, '') || '/';
@@ -128,7 +132,8 @@ async function route() {
       if (view === mapView) await mountMap(ctx, q, main);
       let paid = false; try { paid = !!l && sessionStorage.getItem('td-paid') === l.id; if (paid) sessionStorage.removeItem('td-paid'); } catch { /* ignore */ }
       mountTomes(main, { openScroll: !!(q.get('unlocked') || q.get('at') === 'file'), paid });
-      afterRender(main, { path }); syncRm(); syncFx(); syncSound(); syncRadio();
+      afterRender(main, { path }); syncRm(); syncFx(); syncSound(); syncRadio(); syncHaptics();
+      if (l) keepBook(l);
       window.TD_ATMO_SYNC?.();
       if (view === account && hasPending()) checkPayments();
       const at = q.get('at') || (q.get('tab') === 'talk' ? 'comments' : '') || (q.get('unlocked') ? 'file' : '');
@@ -229,11 +234,19 @@ document.addEventListener('click', async (e) => {
     else if (ds.rejectPaid) { const note = prompt('Reject this unlock request? Optional note (not shown publicly):', ''); if (note === null) return;
       t.disabled = true; await ctx.be.rejectUnlockRequest(ds.rejectPaid, note); toast('Request rejected.'); route(); }
     else if (ds.resolve) { const [id, action] = ds.resolve.split(':'); await ctx.be.resolveReport(id, action); toast(action === 'removed' ? 'Content removed' : 'Report dismissed'); route(); }
-    else if (ds.share) { e.preventDefault(); const l = feed.byId.get(ds.share); const url = location.href.split('#')[0] + '#/l/' + encodeURIComponent(ds.share);
+    else if (ds.share) { e.preventDefault(); const l = feed.byId.get(ds.share); const base = location.href.split('#')[0].replace(/[?].*$/, ''), url = shareIds.has(ds.share) ? new URL('s/' + encodeURIComponent(ds.share) + '/', base).href : base + '#/l/' + encodeURIComponent(ds.share);
       const title = (l?.name || 'A listing') + ' · Twisted Deeds';
       await sealBook(document.querySelector(`[data-book="${CSS.escape(ds.share)}"]`));
       if (navigator.share) { try { await navigator.share({ title, url }); } catch { /* dismissed */ } }
       else { try { await navigator.clipboard.writeText(url); toast('Sealed and copied. The link opens this listing’s book.'); } catch { prompt('Copy this link:', url); } } }
+    else if ('random' in ds) { e.preventDefault(); pullRandom(ds.random === 'shelf' ? currentResults() : feed.catalog, (l) => { location.hash = '#/l/' + encodeURIComponent(l.id); }); }
+    else if ('read' in ds) { e.preventDefault(); const l = feed.byId.get(ds.read), box = t.closest('.reader'); if (!l || !box) return;
+      if (box.classList.contains('on')) { stopReading(); return; }
+      const rate = +(box.querySelector('[data-read-rate]')?.value || 1);
+      if (!readAloud(box, [l.name + '.', l.place ? 'In ' + l.place + '.' : '', l.preview?.summary, l.preview?.teaser ? 'The lore: ' + l.preview.teaser : ''], rate)) toast('This device has no built-in voice to read aloud.'); }
+    else if ('readPause' in ds) { e.preventDefault(); pauseReading(); }
+    else if ('readStop' in ds) { e.preventDefault(); stopReading(); }
+    else if ('haptics' in ds) { const on = !hapticsOn(); setHaptics(on); syncHaptics(); if (on) buzz('ribbon'); toast(on ? 'Haptics on: tiny pulses on seals, pages and ribbons (Android phones).' : 'Haptics off.'); }
     else if (ds.save) { e.preventDefault(); const on = toggleSave(ds.save); toast(on ? 'Saved. A red ribbon marks it; find it on the Saved shelf in Account.' : 'Ribbon removed. No longer saved.'); }
     else if ('visitor' in ds) { const on = !ctx.visitor; setVisitorView(on); await refreshCtx(); await route(); toast(on ? 'Visitor view: the app as a signed-in free user sees it (this device only; your role is unchanged).' : 'Back to your admin view.'); }
     else if ('radio' in ds) { if (!soundOn()) { setSound(true); syncSound(); } const on = await radioToggle(); syncRadio(); toast(on ? 'The radio in the next room is playing, softly.' : 'Radio off.'); }
@@ -278,6 +291,7 @@ document.addEventListener('submit', async (e) => {
 });
 
 document.addEventListener('change', (e) => {
+  if (e.target.matches?.('[data-read-rate]')) { setReadRate(+e.target.value || 1); return; }
   const f = e.target.closest('form[data-filters]');
   if (f) { const p = new URLSearchParams([...new FormData(f)].filter(([, v]) => v)); if (e.target.name && e.target.name !== 'q') refocusFilter = e.target.name; location.hash = '#/browse?' + p; }
   if (e.target.matches('[data-goto-state]') && e.target.value) location.hash = '#/browse?state=' + e.target.value;
@@ -298,12 +312,14 @@ document.addEventListener('input', (e) => {
 initPwa();
 function syncRadio() { const s = radioState(); document.querySelectorAll('[data-radio]').forEach((b) => { b.setAttribute('aria-pressed', String(s.on)); const l = b.querySelector('.rd-l'); if (l) l.textContent = s.on ? 'Radio: on' : 'Radio: off'; b.title = s.on ? s.track : 'An old radio in the next room (public-domain records)'; }); }
 function syncSound() { const on = soundOn(); document.querySelectorAll('[data-sound]').forEach((b) => { b.setAttribute('aria-pressed', String(on)); if (!b.classList.contains('brass')) b.textContent = on ? 'Sound: on' : 'Sound: off'; }); }
-function syncFx() { const on = fxOn(); document.querySelectorAll('[data-effects]').forEach((b) => { b.setAttribute('aria-pressed', String(on)); if (!b.classList.contains('brass')) b.textContent = on ? 'Effects: on' : 'Effects: off'; }); }
+function syncHaptics() { const on = hapticsOn(); document.querySelectorAll('[data-haptics]').forEach((b) => b.setAttribute('aria-pressed', String(on))); }
+function syncFx() { const on = fxOn(); syncWorld(); document.querySelectorAll('[data-effects]').forEach((b) => { b.setAttribute('aria-pressed', String(on)); if (!b.classList.contains('brass')) b.textContent = on ? 'Effects: on' : 'Effects: off'; }); }
 function syncRm() { const on = document.documentElement.classList.contains('rm'); document.querySelectorAll('[data-reduce-motion]').forEach((b) => { b.setAttribute('aria-pressed', String(on)); if (!b.classList.contains('brass')) b.textContent = on ? 'Motion reduced' : 'Reduce motion'; }); document.querySelectorAll('[data-candle]').forEach((c) => { c.classList.toggle('out', on); c.setAttribute('aria-pressed', String(on)); const t = c.querySelector('small'); if (t) t.textContent = on ? 'Snuffed: motion reduced' : 'Snuff to reduce motion'; }); window.TD_ATMO_SYNC?.(); }
 matchMedia('(prefers-reduced-motion: reduce)').addEventListener?.('change', (e) => { let saved = null; try { saved = localStorage.getItem('td-rm'); } catch { /* ignore */ } if (saved == null) { setReduceMotion(e.matches, false); syncRm(); } });
 (async function boot() {
   syncRm(); syncFx(); syncSound(); syncRadio(); onRadio(syncRadio);
-  initRadio({ soundOn });
+  initRadio({ soundOn }); initWorld();
+  fetch('s/ids.json').then((r) => r.ok ? r.json() : []).then((a) => { shareIds = new Set(a); }).catch(() => {});
   initReveals({ toast, refresh: async () => { await refreshCtx(); await route(); } });
   $('#disclaimer').textContent = DISCLAIMER;
   try { await loadFeed(); } catch (e) { $('#main').innerHTML = torn({ detail: `Listings unavailable: ${esc(e.message)}`, back: '#/', backText: 'Try again' }); return; }

@@ -5,6 +5,7 @@ import { esc } from './util.js';
 
 import { playOpenFx } from './effects.js';
 import { calm, nyx, web, logOpened } from './reveals.js';
+import { buzz } from './world.js';
 export const reduced = () => document.documentElement.classList.contains('rm');
 const ROMAN = ['i', 'ii', 'iii', 'iv', 'v', 'vi'];
 export const rule = (cls = '') => `<svg class="orn-rule ${cls}" viewBox="0 0 200 14" aria-hidden="true"><use href="#rule"/></svg>`;
@@ -173,7 +174,7 @@ function mountBook(root) {
     if (busy || !stage.isConnected) return;
     const n = leaves.length;
     if ((dir > 0 && k >= n) || (dir < 0 && k <= 0)) return;
-    busy = true;
+    busy = true; buzz('page');
     const el = dir > 0 ? leaves[k] : leaves[k - 1];
     if (mode === 'single' && dir < 0) el.style.visibility = '';
     el.querySelectorAll('.face').forEach((f) => f.removeAttribute('inert'));
@@ -281,7 +282,7 @@ function mountScroll(root, { autoOpen = false, paid = false } = {}) {
     const untie = !reduced() && !calm();
     if (untie) { sc.classList.add('untie'); setTimeout(() => sc.classList.remove('untie'), 1600); }
     timers.push(setTimeout(() => {
-    tying = false; setState('breaking');
+    tying = false; setState('breaking'); buzz('seal');
     root.dispatchEvent(new CustomEvent('tome-open', { bubbles: true }));
     later(() => {
       setState('opening');

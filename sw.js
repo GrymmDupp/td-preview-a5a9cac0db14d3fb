@@ -2,10 +2,14 @@
  * Scope is the folder this file is served from ('./'), so it works on a GitHub Pages subpath.
  * Bump VERSION on every deploy (the preview deploy script stamps it automatically); the old
  * caches are deleted when the new worker activates. See _build/PWA_NOTES.md. */
-const VERSION = 'td-pwa-20261116-192218';
+const VERSION = 'td-pwa-20261116-200739';
 const SHELL = `${VERSION}-shell`;      // precached app shell
 const RUNTIME = `${VERSION}-runtime`;  // static assets + data seen while browsing
 const OFFLINE = 'offline.html';
+// Books the reader opened: their preview images, kept across deploys so opened books stay readable
+// offline (the listing text itself comes from the cached feed / precached snapshot). Capped below.
+const BOOKS = 'td-books';
+const BOOKS_CAP = 48;   // images; oldest dropped first
 
 const PRECACHE = [
   './', 'index.html', OFFLINE, 'manifest.webmanifest',
@@ -15,7 +19,7 @@ const PRECACHE = [
   'assets/fonts/IMFellDoublePicaSC.woff2', 'assets/fonts/Sacramento.woff2', 'assets/fonts/SpecialElite.woff2',
   'assets/th/fog.webp', 'assets/th/gentleman.webp', 'assets/th/gentleman-glow.webp', 'assets/th/nyx.svg', 'assets/th/grain.png', 'assets/th/ink-mask.png', 'assets/th/rose.webp',
   'assets/th/th-letters.png', 'assets/th/th-seal.png', 'assets/th/vine-corner.png', 'assets/th/vine-edge.png',
-  'js/tome.js', 'js/atmo.js', 'js/effects.js', 'js/reveals.js', 'assets/css/effects.css', 'assets/css/reveals.css',
+  'js/tome.js', 'js/atmo.js', 'js/effects.js', 'js/reveals.js', 'js/world.js', 'assets/css/effects.css', 'assets/css/reveals.css', 'assets/css/world.css',
   'assets/fonts/Cinzel-500.woff2', 'assets/fonts/Cinzel-700.woff2', 'assets/fonts/CormorantGaramond-500.woff2',
   'assets/fonts/CormorantGaramond-500i.woff2', 'assets/fonts/CormorantGaramond-600.woff2',
   'assets/fonts/Inter-400.woff2', 'assets/fonts/Inter-600.woff2',
@@ -51,14 +55,39 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
-    const keep = new Set([SHELL, RUNTIME]);
+    const keep = new Set([SHELL, RUNTIME, BOOKS]);
     for (const key of await caches.keys()) if (key.startsWith('td-') && !keep.has(key)) await caches.delete(key);
     if (self.registration.navigationPreload) await self.registration.navigationPreload.enable().catch(() => {});
     await self.clients.claim();
   })());
 });
 
-self.addEventListener('message', (event) => { if (event.data === 'skipWaiting') self.skipWaiting(); });
+self.addEventListener('message', (event) => {
+  if (event.data === 'skipWaiting') { self.skipWaiting(); return; }
+  if (event.data?.type === 'td-keep') event.waitUntil(keepBook(event.data.urls || []));
+});
+
+// Keep an opened book's preview images (at most 4 per book, BOOKS_CAP overall, oldest out first).
+async function keepBook(urls) {
+  const cache = await caches.open(BOOKS);
+  for (const u of urls.slice(0, 4)) {
+    let url; try { url = new URL(u); } catch { continue; }
+    if (!/^https?:$/.test(url.protocol) || NEVER.some((re) => re.test(url.hostname))) continue;
+    if (await cache.match(url.href)) { const r = await cache.match(url.href); await cache.delete(url.href); await cache.put(url.href, r); continue; }   // refresh its place in line
+    try {
+      const same = url.origin === self.location.origin;
+      const res = await fetch(url.href, same ? {} : { mode: 'no-cors' });
+      if (res && (res.ok || res.type === 'opaque')) await cache.put(url.href, res);
+    } catch { /* offline or blocked: skip */ }
+  }
+  const keys = await cache.keys();
+  for (const k of keys.slice(0, Math.max(0, keys.length - BOOKS_CAP))) await cache.delete(k);
+}
+// Offline images: a kept copy from an opened book, else try the network anyway.
+async function imageWithBookFallback(event) {
+  const hit = await (await caches.open(BOOKS)).match(event.request.url);
+  return hit || fetch(event.request);
+}
 
 function cacheable(res) { return res && res.ok && res.type !== 'opaque' && !res.headers.get('cache-control')?.includes('no-store'); }
 
@@ -116,6 +145,8 @@ self.addEventListener('fetch', (event) => {
   if (url.protocol !== 'https:' && url.protocol !== 'http:') return;
   if (NEVER.some((re) => re.test(url.hostname))) return;              // Supabase, Stripe, map tiles
 
+  // Offline only (map tiles and every other image go straight to the network as before)
+  if (!self.navigator.onLine && req.destination === 'image' && (url.origin !== self.location.origin || !url.href.startsWith(scopeUrl.href))) { event.respondWith(imageWithBookFallback(event)); return; }
   if (url.origin !== self.location.origin) {
     if (LIB_CDN.test(url.hostname)) event.respondWith(staleWhileRevalidate(event));
     return;                                                           // everything else: network only

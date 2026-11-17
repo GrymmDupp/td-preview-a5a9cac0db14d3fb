@@ -1,5 +1,6 @@
 import { html, raw, fmtDate, ago, safeUrl, host } from '../util.js';
 import { savedList, nyxFriend, nyxFound, friendSeal, NYX_GOAL, nyx, openedList, nightOwl, fieldLeads, soundOn, visitorView } from '../reveals.js';
+import { hapticsOn } from '../world.js';
 import { fxOn } from '../effects.js';
 import { state as radioState, playlist } from '../radio.js';
 import { leatherFor, layerInfo } from '../taxonomy.js';
@@ -129,6 +130,7 @@ function writingDesk(ctx) {
         ${sw('data-sound', soundOn(), 'Sound', 'Off by default; only after a tap')}
         ${sw('data-effects', fxOn(), 'Effects', 'Opening effects and reveals')}
         ${sw('data-reduce-motion', rm, 'Reduce motion', 'Also the candle')}
+        ${sw('data-haptics', hapticsOn(), 'Haptics', 'Tiny pulses: seals, pages, ribbons (Android)')}
         <button type="button" class="brass radio-dial" data-radio aria-pressed="${r.on ? 'true' : 'false'}"><span class="dial" aria-hidden="true"></span><span class="bl rd-l">${r.on ? 'Radio: on' : 'Radio: off'}</span><small>An old radio in the next room · ${playlist().name}</small></button>
         ${ctx.staff ? sw('data-visitor', ctx.visitor, 'View as visitor', ctx.visitor ? 'On: staff tools hidden on this device' : 'Hide staff tools on this device') : ''}
       </div></div></section>`;

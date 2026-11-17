@@ -14,6 +14,7 @@
 <link rel="stylesheet" href="assets/css/shadow.css">
 <link rel="stylesheet" href="assets/css/effects.css">
 <link rel="stylesheet" href="assets/css/reveals.css">
+<link rel="stylesheet" href="assets/css/world.css">
 <style>
 .fxlab{max-width:1100px;margin:0 auto;padding:16px 14px 40px}
 .fxlab h1{margin:.2em 0 .1em}
@@ -60,7 +61,48 @@
 <section class="rv"><h2>Reveals, Nyx and the radio</h2>
 <p class="intro">Tap <b>Play</b> on any card. Everything here also runs in the app; all of it is still (but usable) under Reduce motion or with Effects off. Sounds need the app's Sound toggle on.</p>
 <div class="rv-grid" data-rv></div></section>
+<section class="rv"><h2>The world outside</h2>
+<p class="intro">Free, local-only ambience. The moon and the time-of-day mood are computed on the device; rain uses Open-Meteo only when the reader already granted location. Buttons here force a state on this page so you can see each one.</p>
+<div class="rv-grid" data-world></div></section>
 </main>
+<script type="module">
+import * as W from './js/world.js';
+import { loadFeed, feed } from './js/feed.js';
+const g = document.querySelector('[data-world]');
+const phases = [0, .125, .25, .375, .5, .625, .75, .875].map((p) => ({ p, lit: (1 - Math.cos(2 * Math.PI * p)) / 2, waxing: p < .5 }));
+const btns = (list, attr) => list.map(([v, t]) => `<button class="btn sm ghost" type="button" ${attr}="${v}">${t}</button>`).join(' ');
+const m = W.moonPhase();
+const C = [
+  ['Tonight\'s moon', `Engraved moon in the header, real phase computed locally. Tonight: ${m.name}, ${Math.round(m.lit * 100)}% lit. A full moon deepens the mood slightly.`, `<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">${W.moonSvg(m, 44)}<span style="width:12px"></span>${phases.map((x) => W.moonSvg(x, 26)).join('')}</div>`],
+  ['Time of day', 'Fog and light shift with the local hour: pale at dawn, warm at dusk, dim and heavy at night.', `<div>${btns([['dawn', 'Dawn'], ['day', 'Day'], ['dusk', 'Dusk'], ['night', 'Night'], ['', 'Now']], 'data-tod')}</div><p class="small" data-tod-now></p>`],
+  ['Seasons', 'Same seasons as the radio: October candle glow, November leaves, December snow, January–February frost. Effects off removes them.', `<div>${btns([['oct', 'October'], ['nov', 'November'], ['dec', 'December'], ['frost', 'Jan–Feb'], ['', 'Off']], 'data-season')}</div>`],
+  ['Rain on the window', 'Only when it is raining where the reader is, and only if they already allowed location (never asked for this).', `<div>${btns([['1', 'Rain'], ['0', 'Dry']], 'data-rain')}</div>`],
+  ['On this day', 'Drawn only from full dates already written in the public feed text. No match within three days: hidden.', '<div data-otd class="small">Loading the feed…</div>'],
+  ['Pulled at random', 'Pulls a book off the shelf (here: a demo pull, no navigation).', `<button class="btn ghost pull-random" type="button" data-pull><span class="pr-ic" aria-hidden="true"></span>Pulled at random</button>`],
+  ['Offline plaque', 'Shown when the device loses its connection. Opened books stay readable.', '<div class="offline-plaque in" style="position:relative;left:auto;bottom:auto;transform:none"><span class="op-orn">❦</span><b>The lamps are out</b><span>You are offline. The books you have opened are still on the shelf.</span></div>'],
+  ['Haptics', 'Short pulses on seal crack, page turn and ribbon save (Android; iPhones ignore it). Switch on the Account writing desk.', `<div>${btns([['seal', 'Seal'], ['page', 'Page'], ['ribbon', 'Ribbon']], 'data-hap')}</div>`],
+  ['Read this aloud', 'The device\'s own voice reads the free preview. Pause, stop, speed. Nothing plays unless tapped.', `<div class="reader"><button class="btn ghost sm" type="button" data-lab-read>Read this aloud</button><button class="btn ghost sm" type="button" data-read-pause hidden>Pause</button><button class="btn ghost sm" type="button" data-read-stop hidden>Stop</button></div>`],
+];
+g.innerHTML = C.map(([t, d, body]) => `<div class="rv-card"><h3>${t}</h3><p class="d">${d}</p><div class="stage" style="display:block">${body}</div></div>`).join('');
+const todNow = () => { g.querySelector('[data-tod-now]').textContent = 'Showing: ' + (['dawn', 'day', 'dusk', 'night'].find((k) => document.documentElement.classList.contains('tod-' + k)) || 'off (Effects off)'); };
+W.applyTod(); todNow();
+g.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return; const d = b.dataset;
+  if ('tod' in d) { W.applyTod(d.tod || null); todNow(); }
+  else if ('season' in d) W.applySeason(d.season);
+  else if ('rain' in d) W.setRain(d.rain === '1');
+  else if ('pull' in d) W.pullRandom(feed.catalog, (l) => { b.nextElementSibling?.remove(); b.insertAdjacentHTML('afterend', `<p class="small">Pulled: <a href="#/l/${l.id}">${l.name}</a></p>`); });
+  else if ('hap' in d) W.buzz(d.hap);
+  else if ('labRead' in d) { const box = b.closest('.reader'); if (box.classList.contains('on')) W.stopReading(); else W.readAloud(box, [feed.catalog[0]?.name + '.', feed.catalog[0]?.preview?.summary]); }
+  else if ('readPause' in d) W.pauseReading();
+  else if ('readStop' in d) W.stopReading();
+});
+await loadFeed();
+const all = [...feed.catalog, ...(feed.archive || [])], lines = W.datedLines(all);
+g.querySelector('[data-otd]').innerHTML = (W.onThisDayLine(all) || '<p class="small muted">No dated record within three days of today: the line is hidden on Home.</p>')
+  + `<p class="small muted">${lines.length} dated line(s) in the public text${lines.length ? ': ' + lines.map((x) => `${x.y}-${String(x.mo + 1).padStart(2, '0')}-${String(x.d).padStart(2, '0')}`).join(', ') : ''}. Sample (4 Oct):</p>` + (W.onThisDayLine(all, new Date(new Date().getFullYear(), 9, 4)) || '');
+window.TD_WORLDLAB = { ready: true, lines: lines.length };
+</script>
 <script type="module">
 import { bookShell, bookCover, pageHead, folio, mountTomes, reduced } from './js/tome.js';
 import { FX_LIST, fxOn } from './js/effects.js';

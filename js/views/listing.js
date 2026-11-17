@@ -250,6 +250,9 @@ export async function listing(ctx, q, id) {
     <button class="btn ghost" type="button" data-share="${l.id}">Share</button>
     <button class="btn ghost save-btn" type="button" data-save="${l.id}" aria-pressed="${isSaved(l.id) ? 'true' : 'false'}"><span class="rib" aria-hidden="true"></span><span class="sv-t">${isSaved(l.id) ? 'Saved' : 'Save'}</span></button>
   </div>
+  <div class="reader" role="group" aria-label="Read this aloud"><button class="btn ghost sm" type="button" data-read="${l.id}" aria-pressed="false"><span class="rd-ic" aria-hidden="true">❧</span>Read this aloud</button>
+    <button class="btn ghost sm" type="button" data-read-pause hidden>Pause</button><button class="btn ghost sm" type="button" data-read-stop hidden>Stop</button>
+    <label>Speed <select data-read-rate aria-label="Reading speed"><option value="0.85">Slow</option><option value="1" selected>Normal</option><option value="1.2">Brisk</option></select></label></div>
   <details class="book-alt"><summary>Read the preview as plain text</summary><div class="alt-body">
     <p class="summary">${l.preview.summary || 'Summary not written yet.'}</p>
     ${l.preview.teaser ? html`<p class="teaser"><span class="kicker">Lore teaser</span> ${l.preview.teaser}</p>` : ''}

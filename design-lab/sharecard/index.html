@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+<meta name="viewport" content="width=1200">
+<base href="../../">
+<title>Twisted Deeds · share card renderer</title>
+<link rel="stylesheet" href="assets/fonts/fonts.css">
+<link rel="stylesheet" href="assets/fonts/shadow-fonts.css">
+<link rel="stylesheet" href="assets/css/site.css">
+<link rel="stylesheet" href="assets/css/tome.css">
+<link rel="stylesheet" href="assets/css/shadow.css">
+<link rel="stylesheet" href="assets/css/reveals.css">
+<style>
+/* 1200x630 link-preview card: the listing's leather book cover + wordmark. Rendered headless at build time
+   (design_lab/build_share_cards.py) from public feed fields only. Open ?id=<listing id> to preview one. */
+html,body{margin:0;width:1200px;height:630px;overflow:hidden;background:#0d0c0b}
+.sc{position:relative;width:1200px;height:630px;display:grid;grid-template-columns:470px 1fr;align-items:center;
+  background:radial-gradient(ellipse 60% 75% at 26% 48%,rgba(255,190,120,.16),transparent 70%),radial-gradient(ellipse 90% 90% at 70% 30%,#24211f,#0d0c0b 75%)}
+.sc::after{content:'';position:absolute;inset:0;background:url(assets/th/grain.png);opacity:.08;pointer-events:none}
+.bk{position:relative;justify-self:center;width:340px;height:476px;filter:drop-shadow(0 24px 30px rgba(0,0,0,.75))}
+.bk .face{position:absolute;inset:0;border-radius:3px 8px 8px 3px;overflow:hidden}
+.bk .cv-tap,.bk .nyx{display:none}
+.txt{padding:0 70px 0 10px;color:#efe6d2}
+.wm{font:400 64px/1 var(--th-display);letter-spacing:.04em;color:#f2efe8;text-shadow:0 2px 0 #000}
+.wm span{color:#c42430}
+.kick{margin:26px 0 8px;font:400 22px var(--th-sc,serif);letter-spacing:.2em;text-transform:uppercase;color:#d0a75a}
+.nm{font:400 50px/1.05 var(--th-display);letter-spacing:.02em;color:#f7f0e0;max-height:3.2em;overflow:hidden}
+.pl{margin-top:14px;font:italic 26px var(--serif,'IM Fell English',serif);color:#cdbf9f}
+.cta{margin-top:30px;font:400 20px var(--th-sc,serif);letter-spacing:.14em;text-transform:uppercase;color:#a99a80}
+.rule{width:120px;height:2px;margin:22px 0 0;background:linear-gradient(90deg,#c9a45c,transparent)}
+</style></head><body>
+<div class="sc" id="card"></div>
+<script type="module">
+import { loadFeed, feed } from './js/feed.js';
+import { bookCover } from './js/tome.js';
+import { leatherFor, layerInfo, ratingLabel } from './js/taxonomy.js';
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+await loadFeed();
+const id = new URLSearchParams(location.search).get('id') || feed.catalog[0].id;
+const l = feed.byId.get(id);
+const name = l.name.replace(/\s*\(.*?\)\s*$/, '') || l.name;
+const place = [l.city, l.state].filter(Boolean).join(' · ') || l.place;
+document.getElementById('card').innerHTML = `<div class="bk"><section class="tome th tome-book" style="--pw:340px;--ph:476px;--leather:${leatherFor(l.layer)};--band:${layerInfo(l.layer).color};position:absolute;inset:0;margin:0;padding:0">
+  <div class="face cover">${bookCover({ kicker: ratingLabel(l), name, place, era: '' })}</div></section></div>
+  <div class="txt"><div class="wm">Twisted <span>Deeds</span></div><div class="kick">${esc(ratingLabel(l))} · ${esc(layerInfo(l.layer).label)}</div>
+  <div class="nm">${esc(name)}</div><div class="pl">${esc(l.place)}</div><div class="rule"></div><div class="cta">Open the book · free preview</div></div>`;
+await document.fonts.ready;
+await Promise.all([...document.images].map((i) => i.complete ? 0 : new Promise((r) => { i.onload = i.onerror = r; })));
+window.TD_CARD = { id, name, place: l.place, label: ratingLabel(l), cat: layerInfo(l.layer).label, summary: l.preview?.summary || '' };
+document.body.dataset.ready = '1';
+</script>
+</body></html>

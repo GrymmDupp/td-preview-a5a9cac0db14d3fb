@@ -3,6 +3,7 @@
 // when done, and is skipped under Reduce motion or with Effects off (static versions stay usable).
 // Sounds are off by default and only play after a user gesture with Sound on.
 import { fxOn } from './effects.js';
+import { buzz } from './world.js';
 
 const root = document.documentElement;
 const ls = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch { /* private mode */ } } };
@@ -43,6 +44,7 @@ export function toggleSave(id) {
   ls.set('td-saved', JSON.stringify(s.slice(0, 300)));
   document.querySelectorAll(`[data-save="${CSS.escape(id)}"]`).forEach((b) => { b.setAttribute('aria-pressed', String(on)); b.querySelector('.sv-t') && (b.querySelector('.sv-t').textContent = on ? 'Saved' : 'Save'); });
   document.querySelectorAll(`[data-book="${CSS.escape(id)}"]`).forEach((bk) => { bk.toggleAttribute('data-saved', on); bk.querySelectorAll('.bookmark').forEach((r) => { r.classList.toggle('in', on); if (on && !calm()) { r.classList.remove('slip'); void r.offsetWidth; r.classList.add('slip'); } }); });
+  if (on) buzz('ribbon');
   return on;
 }
 

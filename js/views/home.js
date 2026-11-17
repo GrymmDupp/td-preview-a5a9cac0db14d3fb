@@ -1,4 +1,5 @@
 import { web, nyx } from '../reveals.js';
+import { onThisDayLine } from '../world.js';
 import { html, raw, plural, ago, fmtDate, safeUrl } from '../util.js';
 import { listingCard, gradeBadge, unlockPrice, standardPrice, monthlyUnlockPrice, lifetimeUnlockPrice, monthlyPrice, lifetimePrice, membershipsOn, trialNote, soonChip, isTrial } from '../components.js';
 import { LAYERS, PRICE_BANDS, STATES, layerInfo } from '../taxonomy.js';
@@ -74,7 +75,8 @@ export async function home(ctx, q) {
       <div class="thc-credit">a Twisted History Tours production</div>
     </div>
     <img class="thc-seal" src="assets/th/th-seal.png" alt="Twisted History Tours seal" width="64" height="64">
-  </section>` : ''}
+  </section>${raw(onThisDayLine([...ctx.feed.catalog, ...(ctx.feed.archive || [])]))}
+  <p class="home-random"><button type="button" class="btn ghost pull-random" data-random title="Pull a book off the shelf at random"><span class="pr-ic" aria-hidden="true"></span>Pulled at random</button></p>` : ''}
   ${page === 1 ? html`<section class="hero">
     <div><h2 class="hero-h">Some houses <em>remember</em></h2>
     <div class="hero-intro"><p>Come in, and mind the threshold.</p>
