@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+<meta name="googlebot" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1b1b1a">
+<base href="../../">
+<title>Twisted Deeds · Design Lab · The Archive</title>
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32">
+<link rel="stylesheet" href="assets/fonts/fonts.css">
+<link rel="stylesheet" href="assets/fonts/shadow-fonts.css">
+<link rel="stylesheet" href="assets/css/site.css">
+<link rel="stylesheet" href="assets/css/tome.css">
+<link rel="stylesheet" href="assets/css/shadow.css">
+<link rel="stylesheet" href="assets/css/effects.css">
+<link rel="stylesheet" href="assets/css/reveals.css">
+<link rel="stylesheet" href="assets/css/world.css">
+<link rel="stylesheet" href="assets/css/archive.css">
+</head><body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <filter id="wax-edge"><feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="2" seed="7"/><feDisplacementMap in="SourceGraphic" scale="9"/></filter>
+    <radialGradient id="wax-th" cx="38%" cy="30%" r="78%"><stop offset="0" stop-color="#a3332a"/><stop offset=".45" stop-color="#60130b"/><stop offset="1" stop-color="#2a0603"/></radialGradient>
+    <radialGradient id="wax-th-in" cx="62%" cy="66%" r="72%"><stop offset="0" stop-color="#4a0d07"/><stop offset="1" stop-color="#74180f"/></radialGradient>
+    <filter id="th-dark"><feColorMatrix values="0 0 0 0 .12 0 0 0 0 .01 0 0 0 0 .0 0 0 0 .9 0"/></filter>
+    <symbol id="fleuron" viewBox="0 0 60 60"><path d="M4 4h22M4 4v22M4 4c10 2 16 8 18 18M10 4c0 8 4 12 12 12M4 10c8 0 12 4 12 12M26 4c3 3 3 6 0 9M4 26c3 3 6 3 9 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="22" cy="22" r="2.6" fill="currentColor"/></symbol>
+    <symbol id="rule" viewBox="0 0 200 14"><path d="M0 7h80M120 7h80" stroke="currentColor" stroke-width="1"/><path d="M100 1l6 6-6 6-6-6z" fill="currentColor"/><circle cx="86" cy="7" r="1.8" fill="currentColor"/><circle cx="114" cy="7" r="1.8" fill="currentColor"/></symbol>
+  </defs>
+</svg>
+<style>
+.fxlab{max-width:1100px;margin:0 auto;padding:16px 14px 50px}.fxlab h1{margin:.2em 0 .1em}.fxlab .intro{color:#d9d5cc;max-width:64ch}
+.al-sec{margin:30px 0 8px}.al-row{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start;margin:12px 0}
+.al-card{max-width:340px;flex:1 1 300px}.al-tag{display:inline-block;font:400 .72rem 'IM Fell English SC',serif;letter-spacing:.14em;color:#e2414c;border:1px solid #8d2012;padding:2px 8px;border-radius:2px;margin-bottom:8px}
+.al-plates{display:flex;gap:26px;flex-wrap:wrap;align-items:center;padding:18px;background:#141312;border:1px solid #3a3734;border-radius:4px}
+.al-ex{position:relative}
+</style>
+<main class="fxlab">
+<p class="small"><a href="design-lab/">← Design Lab</a> · <a href="design-lab/effects/">Opening effects</a> · <a href="./#/archive">The live Archive page</a></p>
+<h1>The Archive shelf</h1>
+<p class="intro">A second shelf for verified dark-history places that are <b>not for sale</b>. For-sale books carry a red wax <b>For sale now</b> seal; Archive books are bound in graphite cloth with silver tooling and a pasted paper bookplate. Everything below is a style sample. <b>No real Archive place exists yet</b>, and nothing on this page is a place.</p>
+
+<h2 class="al-sec">1. "For sale now" wax seal (real listings from the feed)</h2>
+<p class="intro">Pressed on the corner of every for-sale card and the cover of every for-sale book. "Sale pending" reads differently.</p>
+<div class="al-row" data-sale></div>
+
+<h2 class="al-sec">2. Bookplates and credits</h2>
+<div class="al-plates" data-plates></div>
+
+<h2 class="al-sec">3. An Archive book <span class="al-tag">EXAMPLE, NOT A REAL PLACE</span></h2>
+<p class="intro">Graphite buckram, silver tooling, a bookplate on the cover, an "As seen on" credit that names the episode and links to where to watch it (no footage, ever). Tap the book. The name, town and show below are placeholders.</p>
+<div data-book></div>
+
+<h2 class="al-sec">4. A private home: the town, never the pin</h2>
+<p class="intro">A private home in the Archive shows only its town. The app draws a dashed town-area circle instead of a pin, shows no street address or house photos, and the publisher rounds its coordinates to about 1 km and refuses a street address in the text. Places that are public, commercial or abandoned can carry an exact seal pin. Where flagged, the book says <i>View from the public road only</i>.</p>
+<div class="al-row"><svg viewBox="0 0 260 150" width="320" role="img" aria-label="A dashed circle over a town area, with no pin"><rect width="260" height="150" fill="#101010" stroke="#3a3734"/><path d="M0 100 Q60 70 120 95 T260 80" stroke="#2c2c2a" fill="none"/><path d="M40 0 Q70 60 60 150" stroke="#2c2c2a" fill="none"/><circle cx="130" cy="75" r="46" fill="#cfc8b8" fill-opacity=".14" stroke="#e8e2d6" stroke-width="1.6" stroke-dasharray="5 4"/><text x="130" y="140" text-anchor="middle" font-size="11" fill="#a8a49c" font-family="IM Fell English,serif">Example town area (no pin)</text></svg></div>
+
+<h2 class="al-sec">5. Empty state: the locked glass case</h2>
+<p class="intro">What the Archive page shows until places have been catalogued. Tap the padlock.</p>
+<div data-case></div>
+<script type="module">
+import { loadFeed, feed, normalize } from './js/feed.js';
+import { listingCard, forSaleSeal, archivePlate, mediaCredit, crewLine } from './js/components.js';
+import { bookShell, bookCover, pageHead, folio, mountTomes, rule, wordmark } from './js/tome.js';
+import { glassCase } from './js/views/archive.js';
+import { leatherFor } from './js/taxonomy.js';
+import { toast } from './js/util.js';
+try { if (localStorage.getItem('td-rm') === '1') document.documentElement.classList.add('rm'); } catch {}
+await loadFeed();
+const ctx = { comments: {}, unlocks: [], compact: true };
+const real = feed.catalog.filter((l) => l.status === 'Active').slice(0, 1).concat(feed.catalog.filter((l) => l.status === 'Pending').slice(0, 1));
+document.querySelector('[data-sale]').innerHTML = real.map((l) => `<div class="al-card">${listingCard(l, { ...ctx, compact: false })}</div>`).join('');
+// the sample record (an obvious example, never added to the feed)
+const ex = normalize({ id: 'example-place', name: 'An Example Place (sample, not a real record)', grade: 'story', layer: 'spectral', kind: 'commercial', tier: 2, storyCategory: 'folklore',
+  address: 'Anytown, MI', place: 'Anytown, MI', price: 'Not for sale', status: 'Archive', url: '', summary: 'This is a style sample. It is not a real place, and no real Archive record exists yet.', facts: '', loreTeaser: '',
+  images: [], priority: 1, logged: '2026-11-16', lastChecked: '2026-11-16', dossier: false, lore: false, collection: 'archive', shelf: 'archive', crew_featured: true, roadOnly: true,
+  media: [{ show: 'Example Show', network: 'Example Network', season: 1, episode: 1, title: 'Example Episode', year: 2000, url: '' }] });
+document.querySelector('[data-plates]').innerHTML = `${archivePlate(ex)} ${archivePlate({ ...ex, status: 'Sold' })}
+  ${forSaleSeal({ id: 'a', status: 'Active' })} ${forSaleSeal({ id: 'b', status: 'Pending' })}
+  <div style="max-width:420px">${mediaCredit(ex)}${crewLine(ex)}</div>`;
+const page = (t, body, n) => `${pageHead('Example', t)}<div class="pg-body ink"><h3>${t}</h3><p>${body}</p></div>${folio(n)}`;
+const pages = ['Plate', 'Title', 'Facts', 'Timeline', 'Sources', 'Finis'].map((t, i) => page(t, 'Sample page. No real place.', i + 1));
+document.querySelector('[data-book]').innerHTML = bookShell({ id: 'example-archive', name: 'An Example Place', pages, leather: leatherFor('spectral'), band: '#9aa3ab', fx: 'spectral', shelf: 'archive',
+  cover: bookCover({ kicker: 'Strong Story · Folklore', name: 'An Example Place', place: 'Anytown · MI (sample)', era: '', mark: String(archivePlate(ex, 'on-cover')) }) });
+mountTomes(document.querySelector('[data-book]'));
+document.querySelector('[data-case]').innerHTML = glassCase();
+document.addEventListener('click', (e) => { const t = e.target.closest('[data-caselock]'); if (!t) return; t.classList.remove('rattle'); void t.offsetWidth; t.classList.add('rattle'); toast('Locked. The curator is still cataloguing the Archive.'); });
+</script>
+</main>
+</body></html>

@@ -36,7 +36,7 @@ const waxSeal = () => `<svg viewBox="0 0 120 120" aria-hidden="true">
 /* ---------------- markup ---------------- */
 // B = { id, name, kicker, place, city, state, era, sealHTML, pages: [plate, title, facts, timeline, sources, finis] (HTML strings) }
 export function bookShell(B) {
-  return `<section class="tome th tome-book" data-book="${esc(B.id)}" aria-label="${esc(B.name)}: the book"${B.fx ? ` data-fx="${esc(B.fx)}"` : ''}${B.saved ? ' data-saved' : ''}${B.leather ? ` style="--leather:${esc(B.leather)};--band:${esc(B.band || '#8d2012')}"` : ''}>
+  return `<section class="tome th tome-book" data-book="${esc(B.id)}" aria-label="${esc(B.name)}: the book"${B.fx ? ` data-fx="${esc(B.fx)}"` : ''}${B.shelf ? ` data-shelf="${esc(B.shelf)}"` : ''}${B.saved ? ' data-saved' : ''}${B.leather ? ` style="--leather:${esc(B.leather)};--band:${esc(B.band || '#8d2012')}"` : ''}>
     <div class="book-stage" data-book-stage></div>
     <div class="ctl">
       <button class="ctl-b" data-act="prev" aria-label="Previous page">‹</button>
@@ -49,12 +49,13 @@ export function bookShell(B) {
 }
 export const pageHead = (name, t) => `<header class="pg-head ink"><span>${esc(name)}</span><span>${esc(t)}</span></header>`;
 export const folio = (n) => `<footer class="folio">— ${ROMAN[n] || n} —</footer>`;
-export function bookCover({ kicker, name, place, era }) {
+export function bookCover({ kicker, name, place, era, mark = '' }) {
   return `<div class="cover-front">
       <div class="tool tool1"></div><div class="tool tool2"></div>
       ${['tl', 'tr', 'bl', 'br'].map((c) => `<img class="cv-vine ${c}" src="assets/th/vine-corner.png" alt="" aria-hidden="true" draggable="false">`).join('')}
       <img class="cv-th" src="assets/th/th-seal.png" alt="" aria-hidden="true" draggable="false">
       ${nyx('cover', 'nyx-cover')}
+      ${mark}
       <div class="cv-inner">
         <img class="cv-logo" src="assets/logo-shield-144.png" alt="" width="64" height="66">
         ${wordmark('cv-brand')}

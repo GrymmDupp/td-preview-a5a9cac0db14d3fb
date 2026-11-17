@@ -1,5 +1,5 @@
 import { html, fmtDate } from '../util.js';
-import { isArchived } from '../feed.js';
+import { isArchived, isArchiveShelf } from '../feed.js';
 import { gradeBadge, plate, unlockPrice, membersLine, viewerTier, TIER_LABEL, trialNote, isTrial, unlockBar } from '../components.js';
 
 // Checkout. Local preview: a MOCK that records a test unlock, no card, no payment.
@@ -9,6 +9,7 @@ export async function unlock(ctx, q, id) {
   const l = ctx.feed.byId.get(id);
   if (!l) return html`<div class="empty-state"><h1>Not in the archive</h1><p><a href="#/browse">Browse the archive</a>.</p></div>`;
   const back = html`<a href="#/l/${l.id}">← Back to the preview</a>`;
+  if (isArchiveShelf(l)) return html`<div class="empty-state"><h1>No full file for this one yet</h1><p><b>${l.name}</b> is in the Archive: a place that is not for sale. Its free preview is the whole record for now.</p><p>${back}</p></div>`;
   if (ctx.unlocks.includes(l.id)) return html`<div class="empty-state"><h1>Already unlocked</h1><p>The full file for <b>${l.name}</b> is on your account.</p><a class="btn" href="#/l/${l.id}">Open the full file</a></div>`;
   const plink = !!ctx.be.paymentLinkCheckout, req = ctx.unlockRequests?.get(l.id), pend = plink && req?.status === 'pending';
   const mock = !plink && (ctx.be.isPreview || ctx.be.mockCheckout), where = ctx.be.mode === 'local' ? 'in this browser only' : 'to your account';

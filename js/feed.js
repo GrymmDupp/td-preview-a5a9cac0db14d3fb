@@ -11,12 +11,16 @@ const EVENTS_KEY = 'td-feed-events-v1'; // detected changes (price, status, new)
 // status stay viewable in the Sold & Off market archive (#/archive) and by direct link.
 export const OPEN_STATUSES = ['Active', 'Pending'];
 export const isOpen = (l) => OPEN_STATUSES.includes(l?.status);
-export const isArchived = (l) => !!l && !isOpen(l);
+// The Archive shelf (2026-11-16): verified dark-history places that are NOT for sale (haunted TV leads, sold listings that moved here).
+// A separate collection like Heritage Homes: feed/archive.json, advertised by the core envelope as archive: {count, url} once it has records.
+// It is NOT the "Sold & Off market" list (feed.archive): those are former listings that never moved to the shelf.
+export const isArchiveShelf = (l) => l?.shelf === 'archive';
+export const isArchived = (l) => !!l && !isOpen(l) && !isArchiveShelf(l);
 
 // listings/catalog/archive = CORE only (Twisted Deeds + Strong Stories). Heritage Homes are a separate
 // collection: feed.heritage = heritage-only listings (feed/heritage.json) + core listings that also qualify.
 // byId holds both, so listing pages and unlocks work for every id.
-export const feed = { meta: null, listings: [], catalog: [], archive: [], heritage: [], byId: new Map(), source: '', events: [], fullLocal: new Map() };
+export const feed = { meta: null, listings: [], catalog: [], archive: [], theArchive: [], heritage: [], byId: new Map(), source: '', events: [], fullLocal: new Map() };
 
 // ---- access split: FREE PREVIEW vs FULL FILE
 // Feed schema v3 (2026-10-30) is preview-only: summary, loreTeaser, basic facts and
@@ -105,13 +109,17 @@ export function normalize(raw) {
   l.city = l.place.split(',')[0]?.trim() || '';
   l.tier = deriveTier(l);
   l.heritage = cleanHeritage(raw.heritage);
-  l.collection = raw.collection === 'heritage' || l.tier === 3 ? 'heritage' : 'core';
+  l.collection = raw.collection === 'heritage' || l.tier === 3 ? 'heritage' : raw.collection === 'archive' ? 'archive' : 'core';
   if (l.collection === 'heritage') l.tier = 3;
   l.gradeI = l.tier === 2 && !GRADES[l.grade] ? { ...gradeInfo('story'), label: 'Story' } : gradeInfo(l.grade);
   l.layerI = layerInfo(l.layer || 'record');
   l.priceNum = parsePrice(l.price);
   l.auction = /bid|auction|opening/i.test(l.price || '');
   l.status = l.status || 'Active';
+  l.shelf = l.collection === 'archive' || raw.shelf === 'archive' || l.status === 'Archive' ? 'archive' : 'sale';
+  l.media = cleanMedia(raw.media);
+  l.crewFeatured = raw.crew_featured === true || raw.crewFeatured === true;
+  l.roadOnly = raw.roadOnly === true;
   l.images = Array.isArray(l.images) ? l.images.filter((i) => i && typeof i === 'object') : [];
   l.extra = l.extra && typeof l.extra === 'object' ? l.extra : {};
   l.priority = Number.isFinite(+l.priority) ? +l.priority : 50;
@@ -132,11 +140,36 @@ export function normalize(raw) {
     const full = splitAccess(l);
     if (CONFIG.backend !== 'supabase' && isLocalHost()) feed.fullLocal.set(l.id, full);
   }
-  delete l.summary; delete l.loreTeaser;
+  delete l.summary; delete l.loreTeaser; delete l.crew_featured;
   l.blurb = l.preview.summary;
+  if (l.shelf === 'archive') archivePrivacy(l);
   return l;
 }
 
+// Archive: "As seen on" credits. Credit only (show, network, season/episode, title, year, link to where to watch); never footage.
+// Anything odd is dropped; links must be https and never a listing portal.
+const PORTAL_RE = /zillow|redfin|realtor\.com|trulia|homes\.com|movoto|mls/i;
+export function cleanMedia(list) {
+  const out = [];
+  for (const m of Array.isArray(list) ? list : []) {
+    if (!m || typeof m !== 'object' || !String(m.show || '').trim()) continue;
+    const num = (v) => { const n = parseInt(v, 10); return n > 0 && n < 5000 ? n : null; };
+    const url = /^https:\/\//i.test(String(m.url || '')) && !PORTAL_RE.test(String(m.url)) ? String(m.url) : '';
+    out.push({ show: String(m.show).trim().slice(0, 80), network: String(m.network || '').trim().slice(0, 60), season: num(m.season), episode: num(m.episode),
+      title: String(m.title || '').trim().slice(0, 120), year: num(m.year), url });
+  }
+  return out;
+}
+// Defence in depth (the publisher enforces this too): an Archive record at town precision never shows a street address,
+// an exact pin or photos of the house, whatever the feed says.
+function archivePrivacy(l) {
+  if (l.geo_precision !== 'town') return;
+  l.address = l.place;
+  l.url = '';
+  l.images = [];
+  if (l.lat != null) { l.lat = Math.round(l.lat * 100) / 100; l.lon = Math.round(l.lon * 100) / 100; }
+  l.townOnly = true;
+}
 // Optional Heritage Homes object: { tier, since, years, family?, structureType, sourceCount }. Anything odd -> null.
 const H_TIERS = ['century', 'sesquicentennial', 'bicentennial'];
 function cleanHeritage(h) {
@@ -179,11 +212,14 @@ export async function loadFeed() {
   const all = (Array.isArray(data?.listings) ? data.listings : [])
     .map(normalize).filter((l) => l.id);
   // Defensive: a heritage-only listing must never enter core counts, lists, the map or packs.
-  const listings = all.filter((l) => !isHeritageOnly(l));
+  const nonHeritage = all.filter((l) => !isHeritageOnly(l));
+  const listings = nonHeritage.filter((l) => !isArchiveShelf(l));   // Archive records never enter core counts, lists, packs or ranks
+  const shelf = [...new Map([...nonHeritage.filter(isArchiveShelf), ...(await loadArchiveShelf(data, source))].map((l) => [l.id, l])).values()];
   const hOnly = [...all.filter(isHeritageOnly), ...(await loadHeritage(data, source))];
   feed.meta = { version: data.version, schema_version: data.schema_version, generated_at: data.generated_at, count: listings.length, geo_attribution: data.geo_attribution, scouting: cleanScouting(data.scouting) };
   feed.listings = sortListings(listings);
-  feed.byId = new Map([...hOnly, ...listings].map((l) => [l.id, l]));
+  feed.theArchive = sortShelf(shelf);
+  feed.byId = new Map([...hOnly, ...shelf, ...listings].map((l) => [l.id, l]));
   feed.heritage = sortHeritage([...new Map([...hOnly, ...listings.filter((l) => l.heritage)].map((l) => [l.id, l])).values()]);
   feed.catalog = feed.listings.filter(isOpen);
   feed.archive = feed.listings.filter(isArchived);
@@ -202,6 +238,20 @@ async function loadHeritage(data, source) {
     const d = await fetchJson(h.url);
     return (Array.isArray(d?.listings) ? d.listings : []).map((x) => normalize({ ...x, collection: 'heritage' })).filter((l) => l.id && l.heritage);
   } catch (e) { console.info('Heritage collection unavailable', e.message); return []; }
+}
+// The Archive shelf: feed/archive.json, advertised by the core envelope as archive: {count, url} only once it has records.
+// Missing / failed -> an empty shelf (the #/archive page shows its glass-case empty state). Never invents anything.
+async function loadArchiveShelf(data, source) {
+  const a = data?.archive;
+  if (source !== 'live' || !a || !(a.count > 0) || !/^https:\/\/grymmdupp\.github\.io\//.test(String(a.url || ''))) return [];
+  try {
+    const d = await fetchJson(a.url);
+    return (Array.isArray(d?.listings) ? d.listings : []).map((x) => normalize({ ...x, collection: 'archive', shelf: 'archive' })).filter((l) => l.id);
+  } catch (e) { console.info('Archive shelf unavailable', e.message); return []; }
+}
+// Crew-featured and TV-credited places first, then A to Z.
+export function sortShelf(list) {
+  return [...list].sort((a, b) => (b.crewFeatured - a.crewFeatured) || (b.media.length - a.media.length) || a.name.localeCompare(b.name));
 }
 // Oldest family tenure first; Active before Pending before anything else.
 export function sortHeritage(list) {

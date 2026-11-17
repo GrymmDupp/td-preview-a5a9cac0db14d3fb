@@ -1,8 +1,8 @@
 import { html, raw, esc, fmtDate, ago, plural, safeUrl, host } from '../util.js';
-import { heritageCrossLink } from '../components.js';
+import { heritageCrossLink, forSaleSeal, archivePlate, mediaCredit, mediaLine, crewLine } from '../components.js';
 import { newTag, updatedTag, gradeBadge, layerChip, statusPill, plate, photoCredit, imageType, imgAlt, authorName, pendingTag, reportBtn, sourceLinks, listingCard, kindLabel, unlockPrice, membersLine, viewerTier, TIER_LABEL, trialNote, isTrial, unlockBar, publicUrl, findListingUrl } from '../components.js';
 import { STATES, ratingLabel, leatherFor, layerInfo } from '../taxonomy.js';
-import { displayableImages, updateLine, isArchived } from '../feed.js';
+import { displayableImages, updateLine, isArchived, isArchiveShelf } from '../feed.js';
 import { isSaved } from '../reveals.js';
 import { bookShell, bookCover, pageHead, folio, rule, wordmark, statusSeal, scrollShell } from '../tome.js';
 
@@ -31,7 +31,9 @@ export function threadItem(row, replies, { type, replyAttr, signedIn }) {
 function previewFacts(l) {
   return [
     ['Rating', ratingLabel(l)], ['Category', l.layerI.label],
-    ['Type', kindLabel(l.kind)], l.facts && ['Facts', l.facts], ['Address', l.address], ['Asking', l.price], ['Status', l.status],
+    ['Type', kindLabel(l.kind)], l.facts && ['Facts', l.facts], ['Address', isArchiveShelf(l) && l.townOnly ? `${l.place} (a private home: the address is withheld)` : l.address],
+    isArchiveShelf(l) ? ['Market', l.status === 'Sold' ? 'Sold. No longer on the market' : 'Not for sale. In the Archive'] : ['Asking', l.price], ['Status', isArchiveShelf(l) ? 'In the Archive' : l.status],
+    ...(l.media || []).map((m) => ['As seen on', mediaLine(m)]), l.crewFeatured && ['Also', 'As seen with the Twisted History crew'], l.roadOnly && ['Visiting', 'View from the public road only'],
     l.significance && ['Significance', SIG[l.significance] || l.significance], l.lane && ['Lane', LANE[l.lane] || l.lane],
     l.extra.verification && ['Verification', l.extra.verification],
     ['Added to archive', fmtDate(l.addedAt || l.logged)], ['Last checked', fmtDate(l.lastChecked)], l.soldOn && ['Sold on', fmtDate(l.soldOn)],
@@ -145,8 +147,8 @@ function previewTimeline(l) {
   if (l.lastChecked) arch.push({ d: fmtDate(l.lastChecked), t: `Listing last checked: ${l.status}.` });
   return { hist: hist.slice(0, 6), arch, era: hist.length ? (hist[0].y === hist[hist.length - 1].y ? hist[0].d : `${hist[0].d} – ${hist[hist.length - 1].d}`) : '' };
 }
-export const sealFor = (l, size) => statusSeal({ top: l.collection === 'heritage' ? 'Heritage Home' : l.tier === 1 ? 'Twisted Deed' : 'Strong Story',
-  bottom: `${l.status} · checked ${fmtDate(l.lastChecked) || 'n/a'}`, mid: 'TD', era: previewTimeline(l).era, label: `${ratingLabel(l)}, ${l.status}${l.lastChecked ? ', last checked ' + fmtDate(l.lastChecked) : ''}` }, size);
+export const sealFor = (l, size) => statusSeal({ top: isArchiveShelf(l) ? 'From the Archive' : l.collection === 'heritage' ? 'Heritage Home' : l.tier === 1 ? 'Twisted Deed' : 'Strong Story',
+  bottom: `${isArchiveShelf(l) ? 'Not for sale' : l.status} · checked ${fmtDate(l.lastChecked) || 'n/a'}`, mid: 'TD', era: previewTimeline(l).era, label: `${ratingLabel(l)}, ${l.status}${l.lastChecked ? ', last checked ' + fmtDate(l.lastChecked) : ''}` }, size);
 const credText = (i) => String(photoCredit(i)).replace(/<[^>]+>/g, '');
 function plateHTML(l, i) {
   if (!i) return `<figure class="tplate empty"><div class="tplate-frame"><div class="tplate-none"><svg viewBox="0 0 60 60" width="60"><use href="#fleuron"/></svg><span>No photo on file</span></div></div><figcaption>Plate I</figcaption></figure>`;
@@ -158,7 +160,7 @@ function plateHTML(l, i) {
   </figure>`;
 }
 function bookFor(ctx, l, imgs, finis) {
-  const tl = previewTimeline(l), arch = isArchived(l);
+  const tl = previewTimeline(l), arch = isArchived(l), onShelf = isArchiveShelf(l);
   const hook = l.preview.summary || 'Summary not written yet.';
   const facts = String(l.facts || '').split('·').map((x) => x.trim()).filter(Boolean);
   const name = l.name.replace(/\s*\(.*?\)\s*$/, '') || l.name;
@@ -177,14 +179,17 @@ function bookFor(ctx, l, imgs, finis) {
     `<div class="pg pg-facts">${pageHead(name, 'Facts')}
       <h3 class="ink">Particulars</h3>
       <dl class="tfacts">
-        <div class="ink"><dt>Address</dt><dd>${esc(l.address || l.place)}${l.geo_precision === 'town' ? ' <small>(map point: town only)</small>' : ''}</dd></div>
-        <div class="ink quill"><dt>${arch ? 'Last asking' : 'Asking'}</dt><dd><span class="qw">${esc(l.price || 'Price not listed')}</span></dd></div>
-        <div class="ink"><dt>Status</dt><dd>${esc(l.status)}${l.lastChecked ? ` <small>(checked ${esc(fmtDate(l.lastChecked))})</small>` : ''}</dd></div>
+        <div class="ink"><dt>${onShelf && l.townOnly ? 'Town' : 'Address'}</dt><dd>${esc(onShelf && l.townOnly ? l.place : (l.address || l.place))}${onShelf && l.townOnly ? ' <small>(a private home: the address is withheld)</small>' : l.geo_precision === 'town' ? ' <small>(map point: town only)</small>' : ''}</dd></div>
+        ${onShelf ? `<div class="ink"><dt>Market</dt><dd>${l.status === 'Sold' ? `Sold${l.soldOn ? ` <small>(${esc(fmtDate(l.soldOn))})</small>` : ''}` : 'Not for sale'}</dd></div>`
+          : `<div class="ink quill"><dt>${arch ? 'Last asking' : 'Asking'}</dt><dd><span class="qw">${esc(l.price || 'Price not listed')}</span></dd></div>`}
+        <div class="ink"><dt>Status</dt><dd>${onShelf ? 'In the Archive' : esc(l.status)}${l.lastChecked ? ` <small>(checked ${esc(fmtDate(l.lastChecked))})</small>` : ''}</dd></div>
         <div class="ink"><dt>Rating</dt><dd>${esc(ratingLabel(l))}</dd></div>
         <div class="ink"><dt>Category</dt><dd>${esc(l.layerI.label)} · ${esc(kindLabel(l.kind))}</dd></div>
         ${facts.length ? `<div class="ink"><dt>On record</dt><dd>${facts.map(esc).join(' · ')}</dd></div>` : ''}
       </dl>
       ${l.preview.teaser ? `<p class="ink summ"><b>Lore teaser.</b> ${esc(clip(l.preview.teaser.replace(/^Lore:\s*/i, ''), 200))}</p>` : ''}
+      ${l.media?.length ? `<p class="ink as-seen-pg"><b>As seen on</b> ${esc(mediaLine(l.media[0]))}${l.media.length > 1 ? ` <small>+${l.media.length - 1} more, on the Sources page</small>` : ''}</p>` : ''}
+      ${l.roadOnly ? '<p class="ink road-note">View from the public road only.</p>' : ''}
       ${folio(2)}</div>`,
     `<div class="pg pg-time">${pageHead(name, 'Timeline')}
       <h3 class="ink">The Record</h3>
@@ -194,22 +199,24 @@ function bookFor(ctx, l, imgs, finis) {
       ${folio(3)}</div>`,
     `<div class="pg pg-src">${pageHead(name, 'Sources')}
       <h3 class="ink">Sources</h3>
+      ${l.media?.length ? `<div class="ink media-src"><h4>As seen on</h4><ul>${l.media.map((m) => `<li>${esc(mediaLine(m))}${m.url ? ` · <a href="${esc(m.url)}" target="_blank" rel="noopener nofollow">Where to watch</a>` : ''}</li>`).join('')}</ul>${l.crewFeatured ? '<p class="crew-line"><i aria-hidden="true">✦</i> As seen with the Twisted History crew</p>' : ''}</div>` : ''}
       <ul class="src">
         ${imgs.slice(0, 4).map((i) => { const u = publicUrl(i.source || i.page || ''); return `<li class="ink">${esc(imageType(i) === 'illustration' ? 'Illustration' : (i.caption || 'Photo'))}. ${u ? `<a href="${esc(u)}" target="_blank" rel="noopener nofollow">${esc(credText(i))}</a>` : esc(credText(i))}</li>`; }).join('')}
-        <li class="ink">The listing: <a href="${esc(findListingUrl(l))}" target="_blank" rel="noopener">search the address</a>${publicUrl(l.url) ? ` · <a href="${esc(publicUrl(l.url))}" target="_blank" rel="noopener nofollow">original listing</a>` : ''}</li>
+        ${onShelf ? '' : `<li class="ink">The listing: <a href="${esc(findListingUrl(l))}" target="_blank" rel="noopener">search the address</a>${publicUrl(l.url) ? ` · <a href="${esc(publicUrl(l.url))}" target="_blank" rel="noopener nofollow">original listing</a>` : ''}</li>`}
       </ul>
-      <p class="ink note">This is the free preview. The full file carries the full story, the dated history and every citation.</p>
+      <p class="ink note">${onShelf ? 'This is the free preview of an Archive record. Every place here is checked against written sources and public records before it is shelved.' : 'This is the free preview. The full file carries the full story, the dated history and every citation.'}</p>
       ${folio(4)}</div>`,
     `<div class="pg pg-fin">
       <div class="ink fin-rose"><img src="assets/th/rose.webp" alt="" width="84" height="84" draggable="false"></div>
       <div class="ink fin">Finis</div>
       ${finis}
-      <p class="ink note">View from public ground only. Many of these places are occupied homes.</p>
+      <p class="ink note">${l.roadOnly ? 'View from the public road only. Do not enter the property or disturb anyone who lives or works there.' : 'View from public ground only. Many of these places are occupied homes.'}</p>
       <button class="ink bk-btn ghost" data-act="close">Close the book</button>
       ${folio(5)}</div>`,
   ];
-  const cover = bookCover({ kicker: ratingLabel(l), name, place: [l.city, l.state].filter(Boolean).join(' · '), era: tl.era });
-  return bookShell({ id: l.id, name, pages, cover, leather: leatherFor(l.layer), band: layerInfo(l.layer).color, fx: l.layer, saved: isSaved(l.id) });
+  const mark = onShelf ? String(archivePlate(l, 'on-cover')) : String(forSaleSeal(l, 'on-cover'));
+  const cover = bookCover({ kicker: ratingLabel(l), name, place: [l.city, l.state].filter(Boolean).join(' · '), era: tl.era, mark });
+  return bookShell({ id: l.id, name, pages, cover, leather: leatherFor(l.layer), band: layerInfo(l.layer).color, fx: l.layer, saved: isSaved(l.id), shelf: onShelf ? 'archive' : '' });
 }
 
 export async function listing(ctx, q, id) {
@@ -219,7 +226,7 @@ export async function listing(ctx, q, id) {
   const full = ctx.visitor && !ctx.unlocks.includes(l.id) ? null : fullRaw;   // View as visitor: no staff access to sealed files
   const top = comments.filter((c) => !c.parent_id), kids = (c) => comments.filter((r) => r.parent_id === c.id);
   const imgs = displayableImages(l);
-  const nearby = ctx.feed.catalog.filter((x) => x.state === l.state && x.id !== l.id).slice(0, 3);
+  const nearby = (isArchiveShelf(l) ? ctx.feed.theArchive : ctx.feed.catalog).filter((x) => x.state === l.state && x.id !== l.id).slice(0, 3);
   const signedIn = !!ctx.me;
   const unlocked = !!full && ctx.unlocks.includes(l.id);
   const upd = ctx.updates?.get(l.id);   // fact + kinds only; the content stays in the full file
@@ -227,24 +234,27 @@ export async function listing(ctx, q, id) {
   const enc = encodeURIComponent(l.id);
   const mapLink = l.lat != null ? `#/map?focus=${enc}` : '';
   const orig = publicUrl(l.url);
-  const fileBtn = full ? `<a class="ink bk-btn gold" href="#/l/${enc}?at=file">Open the sealed full file</a>`
+  const onShelf = isArchiveShelf(l);
+  const fileBtn = onShelf ? '' : full ? `<a class="ink bk-btn gold" href="#/l/${enc}?at=file">Open the sealed full file</a>`
     : `<a class="ink bk-btn gold" href="#/unlock/${enc}" data-unlock-link>Unlock the full file · ${esc(unlockPrice(ctx))}</a>`;
   const finis = `${fileBtn}
-    <a class="ink bk-btn" href="${esc(findListingUrl(l))}" target="_blank" rel="noopener">Find listing</a>
+    ${onShelf ? '<p class="ink fin-arch">Not for sale. Kept in the Archive for its story.</p>' : `<a class="ink bk-btn" href="${esc(findListingUrl(l))}" target="_blank" rel="noopener">Find listing</a>`}
     <div class="ink fin-row">${mapLink ? `<a class="bk-btn sm" href="${mapLink}">Map</a>` : ''}<button class="bk-btn sm" type="button" data-share="${esc(l.id)}">Share</button><button class="bk-btn sm" type="button" data-save="${esc(l.id)}" aria-pressed="${isSaved(l.id)}"><span class="sv-t">${isSaved(l.id) ? 'Saved' : 'Save'}</span></button><a class="bk-btn sm" href="#/l/${enc}?at=comments">Comments</a></div>`;
   const extra = [...imgs.slice(1), ...samples];
-  return html`<nav class="crumbs">${arch ? html`<a href="#/archive">Sold & Off market archive</a> › ` : html`<a href="#/">Listings</a> › `}${l.state ? html`<a href="#/browse?state=${l.state}">${STATES[l.state] || l.state}</a> › ` : ''}<span>${l.name}</span></nav>
+  return html`<nav class="crumbs">${isArchiveShelf(l) ? html`<a href="#/archive">The Archive</a> › ` : arch ? html`<a href="#/archive?at=sold">Sold & Off market archive</a> › ` : html`<a href="#/">Listings</a> › `}${l.state ? html`<a href="#/browse?state=${l.state}">${STATES[l.state] || l.state}</a> › ` : ''}<span>${l.name}</span></nav>
   <div class="detail-shell">
   <header class="detail-head book-head" style="--c:${l.layerI.color}">
     <h1 class="sr-only">${l.name}</h1>
-    <div class="book-badges detail-badges">${gradeBadge(l, true)} ${newTag(l)} ${updatedTag(upd)} ${layerChip(l)} ${statusPill(l)} ${unlocked ? html`<span class="file-state open">🔓 Full file unlocked</span>` : full ? html`<span class="file-state open">Moderator view</span>` : html`<span class="file-state">🔒 Free preview</span>`}</div>
+    <div class="book-badges detail-badges">${gradeBadge(l, true)} ${isArchiveShelf(l) ? archivePlate(l, 'inline') : forSaleSeal(l, 'inline')} ${newTag(l)} ${updatedTag(upd)} ${layerChip(l)} ${statusPill(l)} ${unlocked ? html`<span class="file-state open">🔓 Full file unlocked</span>` : full ? html`<span class="file-state open">Moderator view</span>` : html`<span class="file-state">🔒 Free preview</span>`}</div>
     ${l.collection === 'heritage' ? html`<p class="small heritage-crumb"><a href="#/heritage">❦ Heritage Homes</a> · a separate collection: one family, ${l.heritage?.years || '100+'} years${l.heritage?.since ? html` (since ${l.heritage.since})` : ''}</p>` : heritageCrossLink(l) ? html`<p class="small book-badges">${heritageCrossLink(l)}</p>` : ''}
+    ${mediaCredit(l)}${crewLine(l)}
   </header>
-  ${arch ? html`<div class="no-longer" role="note"><b>No longer for sale.</b> This property is marked <b>${l.status}</b>${l.statusChangedAt ? html` since ${fmtDate(l.statusChangedAt)}` : ''}${l.lastChecked ? html` (last checked ${fmtDate(l.lastChecked)})` : ''}. The price shown is the last known asking price, not an offer. It stays in the <a href="#/archive">Sold & Off market archive</a> for its story; the original listing may be gone.</div>` : ''}
+  ${isArchiveShelf(l) ? html`<div class="arch-note" role="note"><b>${l.status === 'Sold' ? 'Sold, and no longer on the market.' : 'Not for sale.'}</b> This place is kept in <a href="#/archive">the Archive</a> for its story.${l.townOnly ? ' It is a private home, so only the town is shown on the map and the address is withheld.' : ''}${l.roadOnly ? ' View it from the public road only.' : ''}</div>` : ''}
+  ${arch ? html`<div class="no-longer" role="note"><b>No longer for sale.</b> This property is marked <b>${l.status}</b>${l.statusChangedAt ? html` since ${fmtDate(l.statusChangedAt)}` : ''}${l.lastChecked ? html` (last checked ${fmtDate(l.lastChecked)})` : ''}. The price shown is the last known asking price, not an offer. It stays on the <a href="#/archive?at=sold">Once for sale</a> list for its story; the original listing may be gone.</div>` : ''}
   ${raw(bookFor(ctx, l, imgs, finis))}
   <div class="book-quick">
-    ${full ? html`<a class="btn" href="#/l/${enc}?at=file">${unlocked ? 'Your full file' : 'Full file (moderator)'} ↓</a>` : html`<a class="btn" href="#/unlock/${enc}" data-unlock-link>Unlock full file · ${unlockPrice(ctx)}</a>`}
-    <a class="btn ghost" href="${findListingUrl(l)}" target="_blank" rel="noopener">Find listing</a>
+    ${isArchiveShelf(l) ? '' : full ? html`<a class="btn" href="#/l/${enc}?at=file">${unlocked ? 'Your full file' : 'Full file (moderator)'} ↓</a>` : html`<a class="btn" href="#/unlock/${enc}" data-unlock-link>Unlock full file · ${unlockPrice(ctx)}</a>`}
+    ${isArchiveShelf(l) ? '' : html`<a class="btn ghost" href="${findListingUrl(l)}" target="_blank" rel="noopener">Find listing</a>`}
     ${orig ? html`<a class="btn ghost" href="${orig}" target="_blank" rel="noopener nofollow">Original listing ↗</a>` : ''}
     ${mapLink ? html`<a class="btn ghost" href="${mapLink}">Map</a>` : ''}
     <button class="btn ghost" type="button" data-share="${l.id}">Share</button>
@@ -268,7 +278,7 @@ export async function listing(ctx, q, id) {
 
   <div class="with-side detail">
   <div class="detail-main">
-    ${full ? fullFile(l, full, unlocked) : lockedPanel(ctx, l, counts, signedIn)}
+    ${isArchiveShelf(l) ? '' : full ? fullFile(l, full, unlocked) : lockedPanel(ctx, l, counts, signedIn)}
 
     <section class="block comments" id="comments"><h2>Comments <small class="muted">${comments.length}</small></h2>
       <p class="muted small">Public discussion about this listing. Separate from submissions: to add facts, photos, lore or links to the file, use <a href="#/contribute?listing=${l.id}">Submit</a>.</p>
@@ -281,10 +291,10 @@ export async function listing(ctx, q, id) {
     </section>
   </div>
   <aside class="sidebar">
-    <section class="box warn"><h4>Before you visit</h4><p>This is a public-interest archive, not a real-estate broker. Many of these places are <b>occupied homes</b>. View from public ground only, never trespass, and don’t contact owners or occupants about the history. To ask about buying, <a href="${findListingUrl(l)}" target="_blank" rel="noopener">find the current listing</a>${orig ? html` or open the <a href="${orig}" target="_blank" rel="noopener nofollow">original listing</a>` : ''}.</p></section>
+    <section class="box warn"><h4>Before you visit</h4>${isArchiveShelf(l) ? html`<p>This place is <b>not for sale</b>, and it may be someone’s home. ${l.roadOnly ? 'View it from the public road only. ' : 'View from public ground only. '}Never trespass, and don’t contact owners or occupants about the history. We are a public-interest archive, not a broker.</p>` : html`<p>This is a public-interest archive, not a real-estate broker. Many of these places are <b>occupied homes</b>. View from public ground only, never trespass, and don’t contact owners or occupants about the history. To ask about buying, <a href="${findListingUrl(l)}" target="_blank" rel="noopener">find the current listing</a>${orig ? html` or open the <a href="${orig}" target="_blank" rel="noopener nofollow">original listing</a>` : ''}.</p>`}</section>
     <section class="box"><h4>Submit to this file</h4><ul class="contrib"><li><a href="#/contribute?type=info&listing=${l.id}">✒ Add info or a correction</a></li><li><a href="#/contribute?type=photo&listing=${l.id}">🗄 Add a photo or document</a></li><li><a href="#/contribute?type=lore&listing=${l.id}">🕯 Add lore or a story</a></li><li><a href="#/contribute?type=link&listing=${l.id}">🔗 Add a link</a></li></ul>
       <p class="small muted">Moderated. Approved submissions become part of the full file.</p>
       <button class="link small" data-report="listing:${l.id}">⚑ Report a problem with this page</button></section>
-    ${nearby.length ? html`<section class="box"><h4>More in ${STATES[l.state] || l.state}</h4>${nearby.map((x) => listingCard(x, { ...ctx, compact: true }))}</section>` : ''}
+    ${nearby.length ? html`<section class="box"><h4>${isArchiveShelf(l) ? 'More from the Archive in' : 'More in'} ${STATES[l.state] || l.state}</h4>${nearby.map((x) => listingCard(x, { ...ctx, compact: true }))}</section>` : ''}
   </aside></div>`;
 }

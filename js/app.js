@@ -33,7 +33,7 @@ const ROUTES = [
   [/^\/?$/, home, 'Listings'], [/^\/browse$/, browse, 'Browse'], [/^\/l\/(.+)$/, listing, null], [/^\/map$/, mapView, 'Map'],
   [/^\/board$/, board, 'Community board'], [/^\/unlock\/(.+)$/, unlock, 'Unlock the full file'], [/^\/membership$/, membership, 'Membership'], [/^\/lifetime$/, (c, q) => { q.set('plan', 'lifetime'); return membership(c, q); }, 'Membership'], [/^\/account$/, account, 'Account'],
   [/^\/contribute$/, contribute, 'Submit'], [/^\/suggest$/, suggest, 'Suggest a property'], [/^\/moderate$/, moderation, 'Moderation'],
-  [/^\/packs$/, packs, 'Dossier Packs'], [/^\/archive$/, archive, 'Sold & Off market archive'],
+  [/^\/packs$/, packs, 'Dossier Packs'], [/^\/archive$/, archive, 'The Archive'],
   [/^\/heritage$/, heritage, 'Heritage Homes'],
   [/^\/research$/, research, 'Commission a Research File'],
   [/^\/rules$/, rules, 'Community rules'], [/^\/about$/, about, 'About'],
@@ -250,6 +250,7 @@ document.addEventListener('click', async (e) => {
     else if (ds.save) { e.preventDefault(); const on = toggleSave(ds.save); toast(on ? 'Saved. A red ribbon marks it; find it on the Saved shelf in Account.' : 'Ribbon removed. No longer saved.'); }
     else if ('visitor' in ds) { const on = !ctx.visitor; setVisitorView(on); await refreshCtx(); await route(); toast(on ? 'Visitor view: the app as a signed-in free user sees it (this device only; your role is unchanged).' : 'Back to your admin view.'); }
     else if ('radio' in ds) { if (!soundOn()) { setSound(true); syncSound(); } const on = await radioToggle(); syncRadio(); toast(on ? 'The radio in the next room is playing, softly.' : 'Radio off.'); }
+    else if ('caselock' in ds) { e.preventDefault(); t.classList.remove('rattle'); void t.offsetWidth; t.classList.add('rattle'); buzz?.('ribbon'); toast('Locked. The curator is still cataloguing the Archive.'); }
     else if ('candle' in ds) { const on = !document.documentElement.classList.contains('rm'); setReduceMotion(on); syncRm(); toast(on ? 'Candle snuffed: motion reduced.' : 'Candle lit: motion back on.'); }
     else if ('sound' in ds) { const on = !soundOn(); setSound(on); syncSound(); if (!on) { radioOff(false); syncRadio(); } toast(on ? 'Sound on: soft, rare, and only after you tap.' : 'Sound off.'); }
     else if ('effects' in ds) { const on = !fxOn(); setFx(on); syncFx(); toast(on ? 'Opening effects on.' : 'Opening effects off.'); }

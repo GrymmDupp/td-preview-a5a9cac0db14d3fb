@@ -70,6 +70,7 @@ export const STATUSES = {
   Stale:   { label: 'Unverified', cls: 'off' },
   'Off market': { label: 'Off market', cls: 'off' },
   Watch:   { label: 'To watch', cls: 'warn' },
+  Archive: { label: 'Archive · not for sale', cls: 'arch' },   // The Archive shelf (2026-11-16)
 };
 
 export const KINDS = { house: 'House', commercial: 'Commercial', investment: 'Land & investment' };

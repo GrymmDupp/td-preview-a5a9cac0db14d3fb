@@ -1,7 +1,7 @@
 import { web, nyx } from '../reveals.js';
 import { onThisDayLine } from '../world.js';
 import { html, raw, plural, ago, fmtDate, safeUrl } from '../util.js';
-import { listingCard, gradeBadge, unlockPrice, standardPrice, monthlyUnlockPrice, lifetimeUnlockPrice, monthlyPrice, lifetimePrice, membershipsOn, trialNote, soonChip, isTrial } from '../components.js';
+import { listingCard, shelfTabs, gradeBadge, unlockPrice, standardPrice, monthlyUnlockPrice, lifetimeUnlockPrice, monthlyPrice, lifetimePrice, membershipsOn, trialNote, soonChip, isTrial } from '../components.js';
 import { LAYERS, PRICE_BANDS, STATES, layerInfo } from '../taxonomy.js';
 import { newThisWeek } from '../feed.js';
 import { CONFIG } from '../config.js';
@@ -48,6 +48,16 @@ function newThisWeekBlock(ctx) {
   </section>`;
 }
 
+// Home door to the Archive shelf: places with a verified dark history that are not for sale. Honest when empty.
+function archiveDoor(ctx) {
+  const n = ctx.feed.theArchive?.length || 0;
+  return html`<section class="archive-door" aria-labelledby="ad-h">
+    <div class="ad-case" aria-hidden="true"><span class="ad-glass"></span><span class="ad-lock">${n ? '' : '🔒'}</span></div>
+    <div><h2 id="ad-h">The Archive</h2>
+      <p>${n ? `${plural(n, 'place')} with a verified dark history that ${n === 1 ? 'is' : 'are'} not for sale: television locations, houses that have sold, forgotten institutions.` : 'A second shelf for places with a verified dark history that are not for sale: television locations, houses that have sold, forgotten institutions. The case is locked while it is being catalogued.'}</p></div>
+    <a class="btn ghost" href="#/archive">${n ? 'Enter the Archive →' : 'Peek at the case →'}</a></section>`;
+}
+
 // Home teaser for the themed dossier packs (#/packs). Coming soon: no purchase button.
 function packsTeaser() {
   return html`<section class="packs-teaser"><div><h2>Dossier Packs ${soonChip()}</h2>
@@ -75,7 +85,7 @@ export async function home(ctx, q) {
       <div class="thc-credit">a Twisted History Tours production</div>
     </div>
     <img class="thc-seal" src="assets/th/th-seal.png" alt="Twisted History Tours seal" width="64" height="64">
-  </section>${raw(onThisDayLine([...ctx.feed.catalog, ...(ctx.feed.archive || [])]))}
+  </section>${raw(onThisDayLine([...ctx.feed.catalog, ...(ctx.feed.archive || []), ...(ctx.feed.theArchive || [])]))}
   <p class="home-random"><button type="button" class="btn ghost pull-random" data-random title="Pull a book off the shelf at random"><span class="pr-ic" aria-hidden="true"></span>Pulled at random</button></p>` : ''}
   ${page === 1 ? html`<section class="hero">
     <div><h2 class="hero-h">Some houses <em>remember</em></h2>
@@ -83,14 +93,14 @@ export async function home(ctx, q) {
     <p>Every door here opens on a real house or building for sale today, its dark history researched and sourced from the public record.</p>
     <p>Read any file's preview free, then unlock the full file when one keeps hold of you.</p></div>
     <div class="hero-stats"><span><b>${actT1}</b> ${actT1 === 1 ? 'Twisted Deed' : 'Twisted Deeds'}</span><span><b>${actT2}</b> ${actT2 === 1 ? 'Strong Story' : 'Strong Stories'} on the market now</span><span>Full files <b>${standardPrice()}</b>${isTrial() ? ' during the trial' : ''}</span></div></div>
-  </section>${newThisWeekBlock(ctx)}${sponsorSlots('inline')}${packsTeaser()}` : ''}
+  </section>${shelfTabs(ctx, 'sale')}${newThisWeekBlock(ctx)}${archiveDoor(ctx)}${sponsorSlots('inline')}${packsTeaser()}` : ''}
   <div class="with-side"><div class="feed">
     <div class="feed-head"><h2>${page === 1 ? 'Latest listings' : `Listings · page ${page}`}</h2><span class="muted">Most twisted first, then strong stories</span></div>
     ${slice.map((l) => listingCard(l, ctx))}
     <nav class="pager">${page > 1 ? html`<a class="btn ghost" href="#/?page=${page - 1}">← Newer</a>` : html`<span></span>`}
       <span class="muted">Page ${page} of ${pages}</span>
       ${page < pages ? html`<a class="btn ghost" href="#/?page=${page + 1}">Older listings →</a>` : html`<span></span>`}</nav>
-    ${ctx.feed.archive.length ? html`<p class="small muted archive-line">${plural(ctx.feed.archive.length, 'property', 'properties')} no longer for sale ${ctx.feed.archive.length === 1 ? 'is' : 'are'} kept in the <a href="#/archive">Sold & Off market archive</a>.</p>` : ''}
+    ${ctx.feed.archive.length ? html`<p class="small muted archive-line">${plural(ctx.feed.archive.length, 'property', 'properties')} no longer for sale ${ctx.feed.archive.length === 1 ? 'is' : 'are'} kept in the <a href="#/archive?at=sold">Sold & Off market list</a>.</p>` : ''}
   </div>${sidebar(ctx)}</div>`;
 }
 

@@ -3,7 +3,7 @@ import { html, raw, esc, fmtDate, truncate, plural, safeUrl, host } from './util
 import { CONFIG } from './config.js';
 import { statusInfo, kindLabel, tierInfo, storyLabel, PUBLIC_TIER1, PUBLIC_TIER2, PUBLIC_HERITAGE, heritageTierInfo } from './taxonomy.js';
 import { displayableImages } from './feed.js';
-import { isNew, isArchived, updateLine } from './feed.js';
+import { isNew, isArchived, isArchiveShelf, isOpen, updateLine } from './feed.js';
 
 // Public rating badge. Tier 1 = prominent "Twisted Deed"; tier 2 = muted "Strong Story"
 // with its category. The internal grade (and its letters/emoji) is never shown.
@@ -19,7 +19,41 @@ export const gradeBadge = (l, big = false) => l.collection === 'heritage' ? heri
   ? html`<span class="badge ddd ${big ? 'big' : ''}" style="--c:#c41e32" title="${PUBLIC_TIER1}" aria-label="Rating: ${PUBLIC_TIER1}"><b>${PUBLIC_TIER1}</b></span>`
   : html`<span class="badge story ${big ? 'big' : ''}" title="${PUBLIC_TIER2}${storyLabel(l) ? ': ' + storyLabel(l) : ''}" aria-label="Rating: ${PUBLIC_TIER2}${storyLabel(l) ? ', ' + storyLabel(l) : ''}">${PUBLIC_TIER2}${storyLabel(l) ? html`<i>${storyLabel(l)}</i>` : ''}</span>`;
 export const layerChip = (l) => l.collection === 'heritage' ? html`<a class="layer" style="--c:#c9a227" href="#/heritage"><span class="dot"></span>Heritage Homes</a>` : html`<a class="layer" style="--c:${l.layerI.color}" href="#/browse?layer=${encodeURIComponent(l.layer || '')}"><span class="dot"></span>${l.layerI.label}</a>`;
-export const statusPill = (l) => { const s = statusInfo(l.status); return html`<span class="status ${s.cls}">${s.label}</span>`; };
+export const statusPill = (l) => { if (isArchiveShelf(l)) return l.status === 'Sold' ? html`<span class="status off">Sold · in the Archive</span>` : html`<span class="status arch">Not for sale</span>`; const s = statusInfo(l.status); return html`<span class="status ${s.cls}">${s.label}</span>`; };
+// ---- The Archive (2026-11-16) -------------------------------------------------------------------------------
+// "For sale now": a red wax seal on every book that is on the market today (Active), "Sale pending" for Pending.
+// Text lives on the seal's rim (SVG textPath), so it reads as pressed wax, not a badge.
+export function forSaleSeal(l, cls = '') {
+  if (!isOpen(l)) return '';
+  const pend = l.status === 'Pending', top = pend ? 'SALE' : 'FOR SALE', mid = pend ? 'PENDING' : 'NOW', uid = 'fs' + Math.abs([...l.id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7));
+  return raw(`<span class="fs-seal ${cls}" role="img" aria-label="${pend ? 'Sale pending' : 'For sale now'}" title="${pend ? 'Sale pending' : 'For sale now'}"><svg viewBox="0 0 120 120" aria-hidden="true"><defs><path id="${uid}" d="M60 60m-35 0a35 35 0 1 1 70 0"/></defs>
+    <g filter="url(#wax-edge)"><circle cx="60" cy="60" r="54" fill="url(#wax-th)"/></g>
+    <circle cx="60" cy="60" r="43" fill="url(#wax-th-in)" stroke="#2a0603" stroke-width="2"/>
+    <circle cx="60" cy="60" r="39.5" fill="none" stroke="#e9b7a8" stroke-opacity=".4" stroke-width="1.1"/>
+    <text font-size="15" letter-spacing="2" fill="#f6dcd2" font-family="Cinzel,serif" font-weight="700" style="paint-order:stroke" stroke="#2a0603" stroke-width=".7"><textPath href="#${uid}" startOffset="50%" text-anchor="middle">${top}</textPath></text>
+    <path d="M30 63h60" stroke="#e9b7a8" stroke-opacity=".5" stroke-width="1"/>
+    <text x="60" y="${pend ? 86 : 90}" text-anchor="middle" font-size="${pend ? 13.5 : 27}" letter-spacing="${pend ? .5 : 1}" fill="#f6dcd2" font-family="Cinzel,serif" font-weight="700" stroke="#2a0603" stroke-width=".8" style="paint-order:stroke">${mid}</text>
+    <ellipse cx="42" cy="34" rx="14" ry="5.5" fill="#fff" opacity=".13" transform="rotate(-30 42 34)"/></svg></span>`);
+}
+// Archive bookplate: a pasted paper label (ex libris style) that marks a place as not for sale.
+export const archivePlate = (l, cls = '') => !isArchiveShelf(l) ? '' : html`<span class="bookplate ${cls}" role="note" aria-label="From the Archive. Not for sale."><i aria-hidden="true">❦</i><b>From the Archive</b><small>${l.status === 'Sold' ? 'Sold · no longer on the market' : 'Not for sale'}</small></span>`;
+
+// "As seen on": credit lines for the shows a place appeared in. Names the episode and links to where to watch it. No footage.
+export const mediaLine = (m) => {
+  const head = m.show + (m.network ? ` (${m.network})` : '');
+  const ep = [(m.season && m.episode) ? `S${m.season}·E${m.episode}` : m.season ? `Season ${m.season}` : '', m.title ? `“${m.title}”` : ''].filter(Boolean).join(' ');
+  return [head, ep, m.year || ''].filter(Boolean).join(', ');
+};
+export const mediaCredit = (l) => !l.media?.length ? '' : html`<div class="as-seen" role="note"><span class="as-k">As seen on</span> ${l.media.slice(0, 3).map((m, i) => html`${i ? ' · ' : ''}<span class="as-s">${mediaLine(m)}</span>`)}${l.media.length > 3 ? ` · +${l.media.length - 3} more` : ''}</div>`;
+export const crewLine = (l) => l.crewFeatured ? html`<div class="crew-line"><i aria-hidden="true">✦</i> As seen with the Twisted History crew</div>` : '';
+
+// Two bookmarks that move between the shelves: for sale now / the Archive.
+export function shelfTabs(ctx, on = 'sale') {
+  const n = ctx.feed.theArchive?.length || 0, sale = ctx.feed.catalog.length;
+  return html`<nav class="shelf-tabs" aria-label="Shelves">
+    <a href="#/browse" class="st ${on === 'sale' ? 'on' : ''}" ${on === 'sale' ? 'aria-current="page"' : ''}><span class="st-r" aria-hidden="true"></span>For sale now <small>${sale}</small></a>
+    <a href="#/archive" class="st arch ${on === 'archive' ? 'on' : ''}" ${on === 'archive' ? 'aria-current="page"' : ''}><span class="st-r" aria-hidden="true"></span>The Archive <small>${n ? n : 'being catalogued'}</small></a></nav>`;
+}
 export const pendingTag = (row) => row?.status === 'pending' ? html`<span class="pending" title="Only you can see this until a moderator approves it">Awaiting review</span>` : '';
 
 // The archival plate is shown when a listing has no usable photo, and behind every
@@ -128,20 +162,22 @@ export const updatedTag = (u) => u ? html`<span class="tag-upd" title="${updateL
 
 export function listingCard(l, { comments = {}, unlocks = [], compact = false, updates } = {}) {
   const n = comments[l.id] || 0, open = unlocks.includes(l.id), upd = updates?.get?.(l.id);
-  return html`<article class="card ${l.tier === 1 ? 't1' : 't2'} ${compact ? 'compact' : ''}" style="--c:${l.layerI.color}">
+  const shelf = isArchiveShelf(l);
+  return html`<article class="card ${l.tier === 1 ? 't1' : 't2'} ${compact ? 'compact' : ''} ${shelf ? 'in-archive' : ''}" style="--c:${l.layerI.color}">
   <a class="card-media" href="#/l/${encodeURIComponent(l.id)}" aria-label="${l.name}">${photoOrPlate(l)}
-    ${isNew(l) ? html`<span class="ribbon">New</span>` : ''}</a>
+    ${isNew(l) ? html`<span class="ribbon">New</span>` : ''}${shelf ? archivePlate(l, 'on-card') : forSaleSeal(l, 'on-card')}</a>
   <div class="card-body">
     <div class="card-badges">${gradeBadge(l)} ${compact ? newTag(l) : ''} ${updatedTag(upd)} ${layerChip(l)} ${statusPill(l)} ${heritageCrossLink(l)}</div>
     <h3><a href="#/l/${encodeURIComponent(l.id)}">${l.name}</a></h3>
     <div class="card-place">${l.place.replace(/,\s*[A-Z]{2}$/, '')}${l.state ? html`, <a href="#/browse?state=${l.state}">${l.state}</a>` : ''}</div>
-    ${isArchived(l) ? html`<div class="card-price archived">Last known: ${l.price || 'price not listed'}${l.lastChecked ? html` <span class="muted">(${fmtDate(l.lastChecked)})</span>` : ''}</div><div class="no-sale small">No longer for sale</div>` : html`<div class="card-price">${l.price || 'Price not listed'}</div>`}
+    ${shelf ? html`<div class="card-price archived">${l.status === 'Sold' ? html`Sold${l.soldOn ? html` <span class="muted">(${fmtDate(l.soldOn)})</span>` : ''}` : 'Not for sale'}</div>${mediaCredit(l)}${crewLine(l)}` : isArchived(l) ? html`<div class="card-price archived">Last known: ${l.price || 'price not listed'}${l.lastChecked ? html` <span class="muted">(${fmtDate(l.lastChecked)})</span>` : ''}</div><div class="no-sale small">No longer for sale</div>` : html`<div class="card-price">${l.price || 'Price not listed'}</div>`}
+    ${shelf ? '' : mediaCredit(l)}
     ${compact ? '' : html`<p class="card-story">${truncate(l.blurb, 220)}</p>`}
     ${l.facts && !compact ? html`<div class="card-facts">${l.facts}</div>` : ''}
     <div class="card-foot">
       <span class="posted">Added ${fmtDate(l.addedAt || l.logged)}</span>
       <a class="cc" href="#/l/${encodeURIComponent(l.id)}?at=comments">💬 ${plural(n, 'comment')}</a>
-      ${open ? html`<span class="file-state open">🔓 Full file</span>` : html`<a class="file-state unlock-link" href="#/unlock/${encodeURIComponent(l.id)}" title="Free preview on the listing page; unlock the full file for ${standardPrice()} one time">🔒 Unlock full file · ${standardPrice()}</a>`}
+      ${shelf ? html`<span class="file-state">${l.media.length ? 'From the Archive' : 'Preview'}</span>` : open ? html`<span class="file-state open">🔓 Full file</span>` : html`<a class="file-state unlock-link" href="#/unlock/${encodeURIComponent(l.id)}" title="Free preview on the listing page; unlock the full file for ${standardPrice()} one time">🔒 Unlock full file · ${standardPrice()}</a>`}
     </div>
   </div></article>`;
 }

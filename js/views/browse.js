@@ -1,6 +1,6 @@
 import { html, raw, plural } from '../util.js';
 import { web, nyx } from '../reveals.js';
-import { listingCard } from '../components.js';
+import { listingCard, shelfTabs } from '../components.js';
 import { LAYERS, PRICE_BANDS, STATES, STATUSES, layerInfo, statusInfo, kindLabel, ratingLabel, leatherFor } from '../taxonomy.js';
 import { sortListings, isNew, isOpen, feed } from '../feed.js';
 
@@ -37,7 +37,7 @@ function shelf(layers, L, cur) {
       return html`<button type="button" class="spine ${on ? 'on' : ''} ${n ? '' : 'zero'} ${i % 4 === 2 ? 'paper' : ''} ${two ? 'two' : ''}" name="spine-${k}" data-spine="${k}" aria-pressed="${on ? 'true' : 'false'}"
         aria-label="${inf.label}, ${n ? n + (n === 1 ? ' listing' : ' listings') : 'none on the shelf yet'}" style="--c:${inf.color};--leather:${leatherFor(k)};--h:${HEIGHTS[i % HEIGHTS.length]}%">
         <span class="bk" aria-hidden="true"><span class="band"><i></i></span><span class="ttl">${two && words.length > 1 ? html`${words.slice(0, Math.ceil(words.length / 2)).join(' ')}<br>${words.slice(Math.ceil(words.length / 2)).join(' ')}` : inf.label}</span><span class="cnt">${n}</span></span></button>`;
-    })}</div><div class="shelf-plate" aria-hidden="true"><span>The Archive</span><small>Categories · Shelf I</small></div></div>`;
+    })}</div><div class="shelf-plate" aria-hidden="true"><span>The Stacks</span><small>Categories · Shelf I</small></div></div>`;
 }
 // Empty results: a bare shelf bay with a single cobweb; Nyx keeps it.
 const emptyBay = () => raw(`<div class="empty-bay" aria-hidden="false"><span class="eb-board"></span>${web('full', 'eb-web')}<span class="eb-thread"></span>${nyx('shelf', 'eb-nyx')}</div>`);
@@ -61,7 +61,8 @@ export async function browse(ctx, q) {
   const active = [...q.entries()].filter(([k, v]) => v && k !== 'sort');
   const stateCounts = states.map((s) => [s, L.filter((l) => l.state === s).length]);
   const nAct = activeFilterCount(q), fOpen = filterPanel.open;
-  return html`<div class="page-head"><h1>Browse the archive</h1><p class="muted">Filter by state, category and price. Twisted Deeds always rank first. Shows properties for sale (active or pending); sold and off-market ones are in the <a href="#/archive">Sold & Off market archive</a>.</p>
+  return html`<div class="page-head"><h1>Browse</h1><p class="muted">Filter by state, category and price. Twisted Deeds always rank first. Shows properties for sale (active or pending). Places that are <b>not for sale</b> are on the other shelf, <a href="#/archive">the Archive</a>${ctx.feed.theArchive?.length ? ` (${ctx.feed.theArchive.length})` : ''}; sold and off-market listings are in <a href="#/archive?at=sold">Once for sale</a>.</p>
+    ${shelfTabs(ctx, 'sale')}
     ${sc ? html`<p class="scouting small">Currently scouting: <b>${sc.label}</b> · ${scOn ? html`<span class="muted">showing ${plural(scN, 'listing')}</span> · <a href="#/browse">all states</a>`
       : html`<a href="#/browse?state=${sc.focus.join(',')}">See ${sc.label} (${scN})</a>`}</p>` : ''}</div>
   <form class="filters ${fOpen ? 'f-open' : ''}" data-filters>
@@ -77,7 +78,7 @@ export async function browse(ctx, q) {
     <label class="f"><span>Status</span><select name="status">
       <option value="" ${!stQ || stQ === 'open' ? 'selected' : ''}>For sale: Active or pending (${L.length})</option>
       ${statuses.map((s) => html`<option value="${s}" ${stQ === s ? 'selected' : ''}>${statusInfo(s).label} (${ALL.filter((l) => l.status === s).length})</option>`)}
-      <option value="archive" ${stQ === 'archive' ? 'selected' : ''}>Sold & Off market archive (${nArch})</option>
+      <option value="archive" ${stQ === 'archive' ? 'selected' : ''}>Sold & Off market (${nArch})</option>
       <option value="all" ${stQ === 'all' ? 'selected' : ''}>Everything, archive included (${ALL.length})</option></select></label>
     <label class="f"><span>Sort</span><select name="sort">${[['featured', 'Most twisted first'], ['newest', 'Newest added'], ['priceAsc', 'Price: low to high'], ['priceDesc', 'Price: high to low'], ['name', 'Name']].map(([v, t]) => html`<option value="${v}" ${(q.get('sort') || 'featured') === v ? 'selected' : ''}>${t}</option>`)}</select></label>
     <div class="f-actions"><a class="btn ghost" href="#/browse${q.get('q') ? '?' + new URLSearchParams({ q: q.get('q') }) : ''}" data-filters-clear>Clear${nAct ? ` (${nAct})` : ''}</a><button type="button" class="btn" data-filters-done>Show ${plural(list.length, 'result')}</button></div>
