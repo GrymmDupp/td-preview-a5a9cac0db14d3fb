@@ -98,3 +98,12 @@ textarea{width:100%;min-height:76px;background:#100c0c;color:var(--bone);border:
 .chip{background:#232322}.chip.on{background:#2d2d2d;border-color:#a19d95}
 .mini button,.rad button{background:#232322}
 #toast{background:#2d2d2d;border-color:#6f6a62}
+
+/* reveals (subtle): lantern flicker outside the alert card; passed pins as small gravestones */
+#alert.lantern::after{content:'';position:absolute;inset:-4px;border-radius:20px;pointer-events:none;box-shadow:0 0 0 0 rgba(255,176,80,0);animation:lantern 1.3s linear 1}
+@keyframes lantern{0%{box-shadow:0 0 18px 4px rgba(255,176,80,.55)}12%{box-shadow:0 0 6px 1px rgba(255,176,80,.2)}22%{box-shadow:0 0 22px 6px rgba(255,186,90,.6)}34%{box-shadow:0 0 10px 2px rgba(255,176,80,.3)}48%{box-shadow:0 0 20px 5px rgba(255,186,90,.5)}100%{box-shadow:0 0 0 0 rgba(255,176,80,0)}}
+.pin.grave{width:22px;height:26px;border:0;border-radius:0;background:none!important;box-shadow:none;opacity:.78;filter:drop-shadow(0 1px 2px rgba(0,0,0,.8))}
+.pin.grave svg{display:block}
+.pin.grave.fade{animation:grave-in .9s ease-out 1}
+@keyframes grave-in{from{opacity:0;transform:scale(.6)}to{opacity:.78;transform:none}}
+@media (prefers-reduced-motion:reduce){#alert.lantern::after,.pin.grave.fade{animation:none}}

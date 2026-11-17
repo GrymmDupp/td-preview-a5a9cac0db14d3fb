@@ -20,7 +20,7 @@ const sess = {
 };
 
 // ---------- settings
-const S = Object.assign({ radius: 0.5, chime: false, show: { deed: true, story: true, lead: true, unverified: true, context: false } }, store.get('td-live-settings', {}));
+const S = Object.assign({ radius: 0.5, chime: false, speak: false, show: { deed: true, story: true, lead: true, unverified: true, context: false } }, store.get('td-live-settings', {}));
 S.show = Object.assign({ deed: true, story: true, lead: true, unverified: true, context: false }, S.show);
 const saveS = () => store.set('td-live-settings', S);
 
@@ -35,7 +35,7 @@ const dirUrl = (p) => 'https://www.google.com/maps/dir/?api=1&destination=' + p.
 
 // ---------- state
 let PINS = [];
-let me = null, meAcc = 0, meTs = 0;
+let me = null, meAcc = 0, meTs = 0, meHead = null;
 let watchId = null, running = false, follow = true, wakeLock = null;
 const mine = [];   // private field-lead markers
 const markers = new Map();
@@ -50,7 +50,13 @@ let meMarker = null, meCircle = null;
 
 // ---------- pins
 const inactive = (p) => !!p.off;
+// Reveals (subtle only): a pin you have already been alerted to and walked away from fades to a small
+// crossed-out gravestone (still tappable). Motion off when the app's Reduce motion / Effects are off.
+const calm = () => { try { if (localStorage.getItem('td-rm') === '1' || localStorage.getItem('td-fx') === '0') return true; } catch (e) { /* ignore */ } return matchMedia('(prefers-reduced-motion: reduce)').matches; };
+let passed = new Set(sess.get('td-live-passed', []));
+const GRAVE = '<svg viewBox="0 0 20 24" width="20" height="24" aria-hidden="true"><path d="M3 23V9a7 7 0 0 1 14 0v14z" fill="#4a4744" stroke="#cfc8bb" stroke-width="1.4"/><path d="M6.5 11.5l7 7M13.5 11.5l-7 7" stroke="#e8dcc4" stroke-width="1.6" stroke-linecap="round"/><path d="M1 23h18" stroke="#cfc8bb" stroke-width="1.4"/></svg>';
 function pinIcon(p) {
+  if (passed.has(p.id)) return L.divIcon({ className: '', html: '<div class="pin grave ' + p.cat + (calm() ? '' : ' fade') + '" title="Passed">' + GRAVE + '</div>', iconSize: [22, 26], iconAnchor: [11, 22] });
   const cls = 'pin ' + p.cat + (inactive(p) ? ' off' : '') + (p.approx ? ' approx' : '');
   const sz = p.cat === 'context' ? 24 : 34;
   return L.divIcon({ className: '', html: '<div class="' + cls + '">' + LETTER[p.cat] + '</div>', iconSize: [sz, sz], iconAnchor: [sz / 2, sz / 2] });
@@ -117,14 +123,14 @@ function checkAlerts() {
   if (!me || (meAcc && meAcc > 500)) return;
   const fresh = nearbyList().filter((x) => x.d <= S.radius && alertable(x.p) && !alerted.has(x.p.id));
   for (const x of fresh) { alerted.add(x.p.id); queue.push(x.p.id); }
-  if (fresh.length) { sess.set('td-live-alerted', [...alerted]); buzz(); }
+  if (fresh.length) { sess.set('td-live-alerted', [...alerted]); buzz(); speakAlerts(fresh); }
   if (!showing && queue.length) nextAlert();
   else if (showing) renderAlert();
 }
 function nextAlert() {
   showing = queue.shift() || null;
   if (!showing) { $('#alert').hidden = true; $('#stage').classList.remove('has-alert'); return; }
-  renderAlert();
+  renderAlert(); lantern();
 }
 function renderAlert() {
   const el = $('#alert'); const p = PINS.find((x) => x.id === showing);
@@ -148,10 +154,35 @@ function chime() {
   try {
     actx = actx || new (window.AudioContext || window.webkitAudioContext)();
     const t = actx.currentTime;
-    [660, 880].forEach((f, i) => { const o = actx.createOscillator(), g = actx.createGain(); o.frequency.value = f; o.type = 'sine'; o.connect(g); g.connect(actx.destination);
-      g.gain.setValueAtTime(0.0001, t + i * 0.18); g.gain.exponentialRampToValueAtTime(0.35, t + i * 0.18 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.18 + 0.3); o.start(t + i * 0.18); o.stop(t + i * 0.18 + 0.32); });
+    // soft hand bell: two strikes (same timing as before), each a fundamental + inharmonic bell partials
+    [660, 880].forEach((f, i) => { const t0 = t + i * 0.18;
+      [[1, 0.32, 1.1], [2.01, 0.12, 0.7], [2.76, 0.07, 0.45], [4.07, 0.03, 0.3]].forEach(([m, a, d]) => {
+        const o = actx.createOscillator(), g = actx.createGain(); o.frequency.value = f * m; o.type = 'sine'; o.connect(g); g.connect(actx.destination);
+        g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(a, t0 + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d); o.start(t0); o.stop(t0 + d + 0.05); }); });
   } catch (e) { /* no audio */ }
 }
+// ---------- Speak alerts (optional, off by default; browser speechSynthesis, nothing leaves the phone)
+const canSpeak = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
+function sayDist(mi) {
+  if (mi < 0.1) return Math.max(50, Math.round(mi * 5280 / 50) * 50) + ' feet';
+  if (mi < 1.6) { const q = Math.max(1, Math.round(mi * 4)); return ({ 1: 'a quarter mile', 2: 'half a mile', 3: 'three quarters of a mile', 4: 'a mile', 5: 'a mile and a quarter', 6: 'a mile and a half' })[q] || mi.toFixed(1) + ' miles'; }
+  return (mi < 10 ? mi.toFixed(1) : Math.round(mi)) + ' miles';
+}
+function sayDir(b) {
+  if (meHead == null) return '';
+  const r = (b - meHead + 360) % 360;
+  return r < 45 || r >= 315 ? 'ahead' : r < 135 ? 'on the right' : r < 225 ? 'behind you' : 'on the left';
+}
+function speakLine(x) {
+  const dir = sayDir(x.b);
+  return CATS[x.p.cat] + ' ' + (dir ? dir + ', ' : 'nearby, ') + sayDist(x.d) + '. ' + (x.p.name || '') + '.';
+}
+function say(text, delay) {
+  if (!S.speak || !canSpeak) return;
+  setTimeout(() => { if (!S.speak) return; try { const u = new SpeechSynthesisUtterance(text); u.rate = 1; u.pitch = 1; u.volume = 1; u.lang = 'en-US'; speechSynthesis.speak(u); } catch (e) { /* ignore */ } }, delay || 0);
+}
+function speakAlerts(fresh) { if (!S.speak) return; fresh.forEach((x, i) => say(speakLine(x), (S.chime ? 700 : 0) + i * 50)); }
+function paintSpeak() { const b = $('#speak'); if (!b) return; b.hidden = !canSpeak; b.textContent = 'Speak: ' + (S.speak ? 'on' : 'off'); b.setAttribute('aria-pressed', S.speak); }
 function buzz() { try { if (navigator.vibrate) navigator.vibrate([300, 120, 300]); } catch (e) { /* ignore */ } chime(); }
 
 // ---------- location
@@ -159,6 +190,7 @@ function setGps(txt, cls) { const g = $('#gps'); g.textContent = txt; g.classNam
 function toast(t, ms) { const el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true; }, ms || 4000); }
 function onFix(pos) {
   me = [pos.coords.latitude, pos.coords.longitude]; meAcc = pos.coords.accuracy || 0; meTs = Date.now();
+  meHead = (pos.coords.heading != null && !isNaN(pos.coords.heading) && (pos.coords.speed == null || pos.coords.speed > 0.5)) ? pos.coords.heading : null;
   const first = !meMarker;
   if (first) {
     meMarker = L.marker(me, { icon: L.divIcon({ className: '', html: '<div class="me"></div>', iconSize: [20, 20], iconAnchor: [10, 10] }), zIndexOffset: 2000, interactive: false }).addTo(map);
@@ -166,7 +198,23 @@ function onFix(pos) {
   } else { meMarker.setLatLng(me); meCircle.setLatLng(me).setRadius(meAcc); }
   setGps('GPS ±' + Math.round(meAcc) + ' m', meAcc > 100 ? 'warn' : 'on');
   if (first) map.setView(me, Math.max(map.getZoom(), 15)); else if (follow) map.panTo(me, { animate: true });
-  checkAlerts(); refreshNearby();
+  checkAlerts(); markPassed(); refreshNearby();
+}
+function markPassed() {
+  if (!me || (meAcc && meAcc > 500)) return;
+  let changed = false;
+  for (const id of alerted) {
+    if (passed.has(id) || id === showing || queue.includes(id)) continue;
+    const p = PINS.find((x) => x.id === id); if (!p) continue;
+    if (hav(me[0], me[1], p.lat, p.lon) > S.radius * 1.25) { passed.add(id); changed = true; markers.get(id)?.setIcon(pinIcon(p)); }
+  }
+  if (changed) sess.set('td-live-passed', [...passed]);
+}
+// Brief lantern flicker around a new alert (a glow outside the card; the text never moves or dims).
+function lantern() {
+  const el = $('#alert'); if (calm()) return;
+  el.classList.remove('lantern'); void el.offsetWidth; el.classList.add('lantern');
+  clearTimeout(lantern.t); lantern.t = setTimeout(() => el.classList.remove('lantern'), 1400);
 }
 function onErr(err) {
   const msg = err.code === 1 ? 'Location is blocked. Allow location for this site in the browser or phone settings, then tap Start.' : err.code === 3 ? 'Still looking for GPS… check you are outdoors or near a window.' : 'Location error' + (err.message ? ': ' + err.message : '') + '. Still trying.';
@@ -188,6 +236,7 @@ function start() {
 function stop() {
   if (watchId !== null) navigator.geolocation.clearWatch(watchId);
   watchId = null; running = false;
+  try { if (canSpeak) speechSynthesis.cancel(); } catch (e) { /* ignore */ }
   const b = $('#start'); b.textContent = '▶ Start'; b.classList.remove('running');
   if (me) setGps('Stopped', 'off'); else setGps('GPS off', 'off');
   try { if (wakeLock) wakeLock.release(); } catch (e) { /* ignore */ } wakeLock = null;
@@ -207,6 +256,11 @@ document.querySelectorAll('.chip').forEach((b) => {
   const k = b.dataset.k; b.classList.toggle('on', !!S.show[k]); b.setAttribute('aria-pressed', !!S.show[k]);
   b.onclick = () => { S.show[k] = !S.show[k]; saveS(); b.classList.toggle('on', S.show[k]); b.setAttribute('aria-pressed', S.show[k]); drawPins(); checkAlerts(); };
 });
+$('#speak') && ($('#speak').onclick = () => {
+  S.speak = !S.speak; saveS(); paintSpeak();
+  try { if (canSpeak) { speechSynthesis.cancel(); if (S.speak) speechSynthesis.speak(new SpeechSynthesisUtterance('Alerts will be spoken.')); } } catch (e) { /* ignore */ }
+});
+paintSpeak();
 function paintSound() { const b = $('#sound'); b.textContent = 'Chime: ' + (S.chime ? 'on' : 'off'); b.setAttribute('aria-pressed', S.chime); }
 $('#sound').onclick = () => { S.chime = !S.chime; saveS(); paintSound(); if (S.chime) { try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); actx.resume(); } catch (e) { /* ignore */ } chime(); } };
 paintSound();
