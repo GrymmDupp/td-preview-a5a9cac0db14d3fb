@@ -106,7 +106,7 @@ export async function mountMap(ctx, q, root) {
     map.addLayer({ id: 'arc-pt', type: 'symbol', source: 'arc-p', layout: { 'icon-image': sealId, 'icon-size': 0.95, 'icon-allow-overlap': true, 'icon-ignore-placement': true } });
     archVis();
   };
-  map.on('styleimagemissing', (e) => { const id = e.id || ''; if (!id.startsWith('seal|') || map.hasImage(id)) return; const [, color, approx, tier] = id.split('|'); map.addImage(id, sealImage(color, approx === '1', tier === '1'), { pixelRatio: 2 }); });
+  map.on('styleimagemissing', (e) => { const id = e.id || ''; if (map.hasImage(id)) return; if (!id.startsWith('seal|')) { map.addImage(id, { width: 1, height: 1, data: new Uint8Array(4) }); return; } const [, color, approx, tier] = id.split('|'); map.addImage(id, sealImage(color, approx === '1', tier === '1'), { pixelRatio: 2 }); });
   let glowT = 0;
   const lantern = (id) => {
     if (!map.getLayer('lantern')) return; cancelAnimationFrame(glowT);

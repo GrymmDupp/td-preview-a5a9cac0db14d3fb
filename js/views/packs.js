@@ -4,6 +4,7 @@
 // The PDFs and full-file content are never shipped with the site.
 import { html, plural, fmtDate } from '../util.js';
 import { soonChip, standardPrice } from '../components.js';
+import { CONFIG } from '../config.js';
 
 let cache = null;
 async function loadPacks() {
@@ -14,6 +15,8 @@ async function loadPacks() {
 }
 
 export async function packs(ctx) {
+  // Hidden for visitors until packs are on sale (CONFIG.show.packs).
+  if (!CONFIG.show?.packs) return html`<div class="empty-state"><h1>Dossier Packs</h1><p>Themed packs aren’t open yet. Every listing’s full file can be unlocked on its own now, and hand-made Research Files can be commissioned.</p><p><a class="btn" href="#/browse">Browse the listings</a> <a class="btn ghost" href="#/patronage">See Patronage</a></p></div>`;
   let data;
   try { data = await loadPacks(); } catch (e) { return html`<div class="empty-state"><h1>Dossier Packs</h1><p>The pack list couldn’t be loaded. ${e.message}</p></div>`; }
   const list = (data.packs || []).filter((p) => p.status === 'coming_soon');

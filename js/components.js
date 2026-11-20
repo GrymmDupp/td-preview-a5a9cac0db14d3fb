@@ -83,14 +83,14 @@ export function plate(l, cls = '') {
 
 // Listing-portal pages carry listing / MLS IDs: never link them from public pages (same rule as /jackson/ and /live/).
 // Instead, "Find listing" searches the address. News, archives and Wikipedia are never treated as portals.
-const PORTALS = ['zillow.com', 'redfin.com', 'trulia.com', 'realtor.com', 'coldwellbanker.com', 'coldwellbankerhomes.com', 'howardhanna.com', 'crexi.com', 'loopnet.com', 'landwatch.com', 'realmo.com', 'greenridge.com', 'arterrarealty.com', 'remax.com', 'bhhschicago.com', 'commercialcafe.com', 'commercialsearch.com', 'brevitas.com', 'michiganwhitetailproperties.com', 'homes.com', 'century21.com', 'compass.com', 'movoto.com'];
+const PORTALS = ['zillow.com', 'redfin.com', 'trulia.com', 'realtor.com', 'coldwellbanker.com', 'coldwellbankerhomes.com', 'howardhanna.com', 'crexi.com', 'loopnet.com', 'landwatch.com', 'realmo.com', 'greenridge.com', 'arterrarealty.com', 'remax.com', 'bhhschicago.com', 'commercialcafe.com', 'commercialsearch.com', 'brevitas.com', 'michiganwhitetailproperties.com', 'homes.com', 'century21.com', 'compass.com', 'movoto.com', 'highrises.com', 'residential.com', 'cityfeet.com', 'homefront.com'];
 const NEWS = ['mlive.com', 'wkar.org', 'npgallery.nps.gov', 'wikipedia.org', 'wikimedia.org', 'wikidata.org', 'loc.gov', 'nps.gov', 'archive.org', 'newspapers.com', 'findagrave.com'];
 export function isPortalUrl(u) {
   const s = safeUrl(u); if (!s) return false;
   const h = host(s).toLowerCase(), on = (d) => h === d || h.endsWith('.' + d);
   if (NEWS.some(on)) return false;
   if (PORTALS.some(on)) return true;
-  return /property-id|mls|\/\d{6,}|[-_/]\d{6,}|lid-|pid_|id_\d|zpid|\/home\/\d/i.test(s);
+  return /property-id|mls|realestateandhomes-detail|_M\d{5}-\d{5}|\/\d{6,}|[-_/]\d{6,}|lid-|pid_|id_\d|zpid|\/home\/\d/i.test(s);
 }
 export const publicUrl = (u) => (isPortalUrl(u) ? '' : safeUrl(u));
 export const findListingUrl = (l) => 'https://www.google.com/search?q=' + encodeURIComponent(`${l.address || l.name + ' ' + l.place} for sale`);
@@ -116,7 +116,7 @@ export const trialNote = () => (founderOn('unlock') ? html` <span class="trial-n
 export const soonChip = () => html`<span class="soon">Coming soon</span>`;
 export const soonButton = (label) => html`<button class="btn sm ghost soon-btn" type="button" disabled aria-disabled="true">${label} · Coming soon</button>`;
 // Quiet line under unlock buttons for non-members.
-export const membersLine = () => raw(`Or become a patron: <a href="#/patronage">see membership and research packs</a>.`);
+export const membersLine = () => raw(`Or become a patron: <a href="#/patronage">see membership and research files</a>.`);
 
 // Photo label per image_type. Listing photos are hotlinked from the source page, never rehosted.
 export const IMAGE_TYPE_LABEL = { listing: 'Listing photo', 'alt-listing': 'Photo from another listing', 'public-domain': 'Public domain', cc: 'Creative Commons', illustration: 'Illustration, not a photo' };
@@ -128,7 +128,7 @@ export function photoCredit(i) {
   const lic = (t === 'cc' || (t === 'public-domain' && !/^public[\s-]*domain$/i.test(String(i.license || '').trim()))) ? html`${i.license ? html` · ${safeUrl(i.license_url) ? html`<a href="${safeUrl(i.license_url)}" target="_blank" rel="noopener nofollow license">${i.license}</a>` : i.license}` : ''}` : '';
   const free = t === 'cc' || t === 'public-domain';
   const via = t === 'listing' ? 'via listing' : t === 'alt-listing' ? 'via another listing' : free ? `via ${host(src) === 'commons.wikimedia.org' ? 'Wikimedia Commons' : host(src) || 'source'}` : 'via source';
-  const who = String((free && i.author) || i.credit || host(src) || 'unknown').replace(/[\s,;]+$/, '');
+  const who = String((free && i.author) || i.credit || host(src) || host(safeUrl(i.source || i.page || '')) || 'source not recorded').replace(/[\s,;]+$/, '');
   return html`<span class="ph-type">${IMAGE_TYPE_LABEL[t] || 'Photo'}</span> · ${src ? html`<a href="${src}" target="_blank" rel="noopener nofollow">Photo: ${who}, ${via}</a>` : html`Photo: ${who}`}${lic}`;
 }
 // First usable photo with the plate underneath as its fallback (see app.js img error handler).

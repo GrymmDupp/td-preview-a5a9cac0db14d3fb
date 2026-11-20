@@ -21,12 +21,12 @@ export function sidebar(ctx) {
     ${states.map((s) => html`<option value="${s}">${STATES[s] || s} (${count((l) => l.state === s)})</option>`)}</select>
     <a class="small" href="#/map">or explore the map →</a>
     ${ctx.feed.meta.scouting ? html`<p class="small muted scouting-mini">Currently scouting: <a href="#/browse?state=${ctx.feed.meta.scouting.focus.join(',')}">${ctx.feed.meta.scouting.label}</a></p>` : ''}</section>
-  <section class="box how"><h4>How files work</h4><ul class="small"><li><b>Free preview</b> on every listing: facts, a short summary, a lore teaser, sample photos and the original listing link.</li><li><b>Full file</b>: ${standardPrice()}${trialNote()} one time per listing, yours permanently on every device. Use “Unlock full file” on any listing.</li><li><b>Patronage</b>: membership, research packs and gifts. <a href="#/patronage">See the prices</a>.</li></ul><a class="small" href="#/about">More about the archive →</a></section>
+  <section class="box how"><h4>How files work</h4><ul class="small"><li><b>Free preview</b> on every listing: facts, a short summary, a lore teaser, sample photos and the original listing link.</li><li><b>Full file</b>: ${standardPrice()}${trialNote()} one time per listing, yours permanently on every device. Use “Unlock full file” on any listing.</li><li><b>Patronage</b>: membership and research files. <a href="#/patronage">See the prices</a>.</li></ul><a class="small" href="#/about">More about the archive →</a></section>
   <section class="box"><h4>Categories</h4><ul class="cats">
     <li class="cat-tier"><a href="#/browse?tier=1">Twisted Deeds <span>${count((l) => l.tier === 1)}</span></a></li>
     ${layers.map((k) => { const n = count((l) => l.layer === k); const i = layerInfo(k); return html`<li class="${n ? '' : 'empty'}"><a href="#/browse?layer=${k}" style="--c:${i.color}"><span class="dot"></span>${i.label} <span>${n || 'soon'}</span></a></li>`; })}
     <li class="cat-tier"><a href="#/browse?tier=2">Strong Story <span>${count((l) => l.tier === 2) || 'new tier'}</span></a></li></ul>
-    <p class="small heritage-side"><a href="#/heritage">❦ Heritage Homes</a> <span class="muted">· a separate collection: one family, 100+ years${(ctx.feed.heritage || []).length ? ` (${ctx.feed.heritage.length})` : ''}</span></p></section>
+    ${CONFIG.show?.heritage || (ctx.feed.heritage || []).length ? html`<p class="small heritage-side"><a href="#/heritage">❦ Heritage Homes</a> <span class="muted">· a separate collection: one family, 100+ years${(ctx.feed.heritage || []).length ? ` (${ctx.feed.heritage.length})` : ''}</span></p>` : ''}</section>
   <section class="box"><h4>By price</h4><ul class="cats">${PRICE_BANDS.map((b) => html`<li><a href="#/browse?price=${b.key}">${b.label}</a></li>`)}</ul></section>
   <section class="box"><h4>Community</h4><p class="small">Comment on any listing, or talk research on the one general board.</p><a class="small" href="#/board">Community board →</a></section>
   <section class="box cta"><h4>Know a listing with a past?</h4><p>Found a house for sale with a documented dark history or a strong story? Send the link.</p><a class="btn sm" href="#/suggest">Suggest a property</a></section>
@@ -92,8 +92,8 @@ export async function home(ctx, q) {
     <div class="hero-intro"><p>Come in, and mind the threshold.</p>
     <p>Every door here opens on a real house or building for sale today, its dark history researched and sourced from the public record.</p>
     <p>Read any file's preview free, then unlock the full file when one keeps hold of you.</p></div>
-    <div class="hero-stats"><span><b>${actT1}</b> ${actT1 === 1 ? 'Twisted Deed' : 'Twisted Deeds'}</span><span><b>${actT2}</b> ${actT2 === 1 ? 'Strong Story' : 'Strong Stories'} on the market now</span><span>Full files <b>${standardPrice()}</b>${isTrial() ? ' during the trial' : ''}</span></div></div>
-  </section>${shelfTabs(ctx, 'sale')}${newThisWeekBlock(ctx)}${archiveDoor(ctx)}${sponsorSlots('inline')}${packsTeaser()}` : ''}
+    <div class="hero-stats"><span><b>${actT1}</b> ${actT1 === 1 ? 'Twisted Deed' : 'Twisted Deeds'}</span><span><b>${actT2}</b> ${actT2 === 1 ? 'Strong Story' : 'Strong Stories'} on the market now</span><span>Full files <b>${standardPrice()}</b>${isTrial() ? ' at the founder price' : ''}</span></div></div>
+  </section>${shelfTabs(ctx, 'sale')}${newThisWeekBlock(ctx)}${archiveDoor(ctx)}${sponsorSlots('inline')}${CONFIG.show?.packs ? packsTeaser() : ''}` : ''}
   <div class="with-side"><div class="feed">
     <div class="feed-head"><h2>${page === 1 ? 'Latest listings' : `Listings · page ${page}`}</h2><span class="muted">Most twisted first, then strong stories</span></div>
     ${slice.map((l) => listingCard(l, ctx))}
@@ -109,7 +109,7 @@ export async function home(ctx, q) {
 // spots, the sidebar ('side', desktop) and right after New this week ('inline', one-column layouts < 960px);
 // CSS shows exactly one (display:none also removes the other from the accessibility tree).
 function sponsorSlots(where = 'side') {
-  const list = (CONFIG.sponsors || []).filter((x) => x && x.name);
+  const list = (CONFIG.sponsors || []).filter((x) => x && x.name && (!x.sample || CONFIG.show?.sampleAds));
   if (!list.length) return '';
   return html`<div class="sponsors sponsors--${where}" aria-label="Sponsors">${list.map((x) => { const u = x.url ? safeUrl(x.url) : '';
     return html`<section class="box sponsor">${x.sample ? html`<span class="ad-tag">Sample ad</span>` : html`<span class="ad-tag">Sponsor</span>`}

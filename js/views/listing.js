@@ -74,9 +74,8 @@ function fullFileContent(l, f, unlocked) {
     <div class="line sc-place">${esc(l.place)}</div>
     ${rule('line')}
     <p class="line sc-note">${unlocked ? 'Unlocked on your account. Yours permanently, on every device you sign in on.' : 'Moderator view: you can read every full file.'}</p>
-    <h3 class="line">The Story</h3>
-    ${first ? `<p class="line sc-hook"><span class="drop">${esc(first[0])}</span>${esc(first.slice(1))}</p>${story.map((x) => `<p class="line">${esc(x)}</p>`).join('')}` : '<p class="line sc-empty">Story not written yet.</p>'}
-    <h3 class="line">History</h3>${f.history ? lines(f.history) : '<p class="line sc-empty">History not written yet.</p>'}
+    ${first ? `<h3 class="line">The Story</h3><p class="line sc-hook"><span class="drop">${esc(first[0])}</span>${esc(first.slice(1))}</p>${story.map((x) => `<p class="line">${esc(x)}</p>`).join('')}` : ''}
+    ${f.history ? `<h3 class="line">History</h3>${lines(f.history)}` : ''}
     ${f.timeline?.length ? `<h3 class="line">Timeline</h3><ol class="sc-tl">${f.timeline.map((t) => `<li class="line"><b>${esc(t.year)}</b> ${esc(t.text)}</li>`).join('')}</ol><p class="line sc-small">Built from the dated lines in this file.</p>` : ''}
     <h3 class="line">Lore</h3>${f.lore?.length ? `<ul class="sc-lore">${f.lore.map((x) => `<li class="line">${esc(x)}</li>`).join('')}</ul><p class="line sc-small">Lore and reported sightings are witness claims, not fact.</p>` : '<p class="line sc-empty">No lore recorded beyond the story.</p>'}
     ${f.ownershipChain || sf.length ? `<h3 class="line">Ownership &amp; story notes</h3><dl class="sc-facts">${f.ownershipChain ? `<div class="line"><dt>Ownership chain</dt><dd>${esc(f.ownershipChain)}</dd></div>` : ''}${sf.map(([k, v]) => `<div class="line"><dt>${esc(STORY_FIELDS[k])}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>` : ''}
@@ -129,7 +128,8 @@ function lockedPanel(ctx, l, counts, signedIn) {
 // ---------------------------------------------------------------------------------------------
 // THE BOOK: how every listing opens for browsing. Free preview content only (public feed fields).
 const YEAR_RE = /\b(1[6-9]\d\d|20[0-2]\d)s?\b/;
-const sentencesOf = (t) => String(t || '').replace(/\s+/g, ' ').trim().split(/(?<=[.!?;])\s+(?=[A-Z0-9"“(])/).filter(Boolean);
+// Never split after an initial ("C.L. Pace", "James M. Cox") or a common abbreviation ("St.", "Dr.").
+const sentencesOf = (t) => String(t || '').replace(/\s+/g, ' ').trim().split(/(?<!\b(?:v|vs|Sr|Jr|Dr|St|Mr|Mrs|Ms|Mt|Co|No|Ft|Gen|Gov|Capt|Rev|Bros|Inc|[A-Z])\.)(?<=[.!?;])\s+(?=[A-Z0-9"“(])/).filter(Boolean);
 const clip = (t, n) => (t.length <= n ? t : t.slice(0, n).replace(/\s+\S*$/, '') + '…');
 const stop = (t) => (/[.!?”’"')…]$/.test(t.trim()) ? t.trim() : t.trim() + '.');
 function previewTimeline(l) {
@@ -161,7 +161,7 @@ function plateHTML(l, i) {
 }
 function bookFor(ctx, l, imgs, finis) {
   const tl = previewTimeline(l), arch = isArchived(l), onShelf = isArchiveShelf(l);
-  const hook = l.preview.summary || 'Summary not written yet.';
+  const hook = l.preview.summary || l.preview.teaser || '';
   const facts = String(l.facts || '').split('·').map((x) => x.trim()).filter(Boolean);
   const name = l.name.replace(/\s*\(.*?\)\s*$/, '') || l.name;
   const pages = [
@@ -172,7 +172,7 @@ function bookFor(ctx, l, imgs, finis) {
       <h2 class="ink">${esc(name)}</h2>
       <div class="ink place">${esc(l.place)}</div>
       ${rule('ink')}
-      <p class="ink thook"><span class="drop">${esc(hook[0])}</span>${esc(clip(hook, 260).slice(1))}</p>
+      ${hook ? `<p class="ink thook"><span class="drop">${esc(hook[0])}</span>${esc(clip(hook, 260).slice(1))}</p>` : ''}
       ${tl.era ? `<div class="ink era"><span>Era</span> ${esc(tl.era)}</div>` : ''}
       <div class="ink seal-wrap">${sealFor(l, 104)}</div>
       ${folio(1)}</div>`,
@@ -221,7 +221,7 @@ function bookFor(ctx, l, imgs, finis) {
 
 export async function listing(ctx, q, id) {
   const l = ctx.feed.byId.get(id);
-  if (!l) return html`<div class="empty-state"><h1>Not in the archive</h1><p>This listing isn’t in the current feed. It may have sold and been retired. <a href="#/browse">Browse the archive</a>.</p></div>`;
+  if (!l) return html`<div class="empty-state"><h1>Not in the archive</h1><p>This listing isn’t in the current feed. It may have sold and been retired. <a href="#/browse">Browse the listings</a> or <a href="#/archive">visit the Archive</a>.</p></div>`;
   const [comments, samples, fullRaw, counts] = await Promise.all([ctx.be.listComments(l.id), ctx.be.samplePhotos(l.id), ctx.be.getFullFile(l.id), ctx.be.fileCounts(l.id)]);
   const full = ctx.visitor && !ctx.unlocks.includes(l.id) ? null : fullRaw;   // View as visitor: no staff access to sealed files
   const top = comments.filter((c) => !c.parent_id), kids = (c) => comments.filter((r) => r.parent_id === c.id);
@@ -264,7 +264,7 @@ export async function listing(ctx, q, id) {
     <button class="btn ghost sm" type="button" data-read-pause hidden>Pause</button><button class="btn ghost sm" type="button" data-read-stop hidden>Stop</button>
     <label>Speed <select data-read-rate aria-label="Reading speed"><option value="0.85">Slow</option><option value="1" selected>Normal</option><option value="1.2">Brisk</option></select></label></div>
   <details class="book-alt"><summary>Read the preview as plain text</summary><div class="alt-body">
-    <p class="summary">${l.preview.summary || 'Summary not written yet.'}</p>
+    ${l.preview.summary ? html`<p class="summary">${l.preview.summary}</p>` : ''}
     ${l.preview.teaser ? html`<p class="teaser"><span class="kicker">Lore teaser</span> ${l.preview.teaser}</p>` : ''}
     <dl class="facts">${previewFacts(l).map(([k, v]) => html`<dt>${k}</dt><dd>${v}</dd>`)}</dl>
     ${imgs[0] ? html`<p class="ph-credit small">${photoCredit(imgs[0])}</p>` : ''}

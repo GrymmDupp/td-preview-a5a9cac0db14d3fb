@@ -96,7 +96,7 @@ function startPoll(ms = 120000) {
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && hasPending()) { checkPayments(); startPoll(60000); } });
 
 function renderChrome(path) {
-  const nav = [['#/', 'Listings', /^\/?$/], ['#/browse', 'Browse', /^\/browse/], ['#/map', 'Map', /^\/map/], ['live/', 'Live', /^$/], ['#/packs', 'Dossier Packs', /^\/packs/], ['#/heritage', 'Heritage Homes', /^\/heritage/], ['#/board', 'Board', /^\/board/]];
+  const nav = [['#/', 'Listings', /^\/?$/], ['#/browse', 'Browse', /^\/browse/], ['#/map', 'Map', /^\/map/], ['live/', 'Live', /^$/], ...(CONFIG.show?.packs ? [['#/packs', 'Dossier Packs', /^\/packs/]] : []), ...(CONFIG.show?.heritage || (feed.heritage || []).length ? [['#/heritage', 'Heritage Homes', /^\/heritage/]] : []), ['#/board', 'Board', /^\/board/]];
   $('#nav').innerHTML = nav.map(([h, t, re]) => `<a href="${h}" class="${re.test(path) ? 'on' : ''}">${t}</a>`).join('') + `<a href="#/contribute" class="nav-cta ${/contribute|suggest/.test(path) ? 'on' : ''}">Submit</a>`;
   $('#who').innerHTML = (ctx.me
     ? `${['moderator', 'admin'].includes(ctx.me.role) ? '<a class="modlink" href="#/moderate" title="Moderation queue">⚖</a>' : ''}
@@ -346,7 +346,8 @@ matchMedia('(prefers-reduced-motion: reduce)').addEventListener?.('change', (e) 
   else if (ctx.be.isPreview) { banner.querySelector('b').textContent = 'Local mode'; banner.querySelector('.short').innerHTML = 'Community content is <b>stored in this browser only</b>.'; banner.querySelector('.long').innerHTML = 'Local developer mode: comments, posts, submissions, accounts and unlocks are stored only in this browser, and checkouts take no payment. Listings are real.'; banner.hidden = false; }
   // Live with Stripe (payment_link): no banner; accounts, comments, submissions and unlocks are real.
   else if (ctx.be.mockCheckout) { banner.querySelector('b').textContent = 'Note'; banner.querySelector('.short').innerHTML = 'Checkout isn’t live yet: <b>no payment is taken</b>.'; banner.querySelector('.long').innerHTML = 'Accounts, comments and submissions are saved and moderated. Checkout isn’t live yet: <b>no payment is taken</b>, and unlocks made now are saved to your account as examples.'; banner.querySelector('[data-reset-preview]')?.remove(); banner.hidden = false; }
-  $('#feed-meta').textContent = `Feed v${feed.meta.version} · ${feed.meta.count} listings · ${feed.source === 'live' ? 'live' : 'offline snapshot'}`;
+  // Visitors only see this line when the app is showing its saved offline copy (feed version stays in the title for support).
+  const fm = $('#feed-meta'); fm.title = `Feed v${feed.meta.version} · ${feed.meta.count} listings · ${feed.source}`; fm.textContent = feed.source === 'live' ? '' : 'Showing the saved offline copy of the listings.';
   initAnalytics(ctx.be);
   await refreshCtx();
   window.addEventListener('hashchange', route);

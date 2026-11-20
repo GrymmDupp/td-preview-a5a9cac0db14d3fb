@@ -45,6 +45,16 @@ export const CONFIG = {
     { name: 'The Old Church With the Purple Door', place: 'Horton, Michigan', line: 'A spiritual sanctuary · Events · Weddings · Community hub', sample: true },
     { name: 'Luminarium Obscura', line: 'Ad space reserved', sample: true },
   ],
+  // Guest-ready switches (2026-11-17): parts that are not ready for visitors stay in the code but are hidden.
+  // Flip one to true when it is real. Sample ads are never shown to visitors.
+  show: {
+    sampleAds: false,      // CONFIG.sponsors entries marked sample: true
+    packs: false,          // Dossier Packs (#/packs): not on sale, no Payment Links
+    heritage: false,       // Heritage Homes (#/heritage): no house published yet
+    lifetime: false,       // Lifetime membership: parked by Grymm (11/16)
+    giftsAndDrives: false, // Gift membership + city drive packs: no Payment Links yet
+    notifications: false,  // New-listing email notifications: nothing sends yet
+  },
   pricing: { currency: 'USD', membershipsEnabled: false, monthlyPrice: 5.99, lifetimePrice: 99 },
 
   // "New this week": a listing counts as New for this many days after it first appeared

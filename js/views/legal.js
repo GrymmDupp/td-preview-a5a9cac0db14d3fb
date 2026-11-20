@@ -2,6 +2,7 @@
 // Contact is the corrections form only: no email address is shown anywhere public. Each page is marked as an attorney-unreviewed draft.
 import { html, raw, esc } from '../util.js';
 import { rule } from '../tome.js';
+import { CONFIG } from '../config.js';
 import { PRICING, money, product } from '../pricing.js';
 import { analyticsOn, analyticsBlocked } from '../analytics.js';
 
@@ -71,7 +72,7 @@ export const refunds = () => shell('Refund Policy', 'If something is wrong', htm
 <h2>Drive packs</h2><p>Digital downloads: same as full-file unlocks, 7 days if the pack has an error or does not work.</p>
 <h2>How to ask</h2>
 <p>Use <a href="#/stories#correction">the form on Stories &amp; Corrections</a>, choose “Other”, and begin your message with “Refund:” plus your account email and what you bought. Refunds go back to the original payment method through Stripe and usually appear in 5 to 10 business days. If a charge looks wrong, please write to us first so we can fix it quickly.</p>
-<p class="small muted">Current prices: unlock ${money(U().price)} (founder ${money(U().founder.price)}), annual ${money(product('member_year').price)}, monthly ${money(product('member_month').price)}, lifetime ${money(product('lifetime').price)}, Record ${money(product('pack_record').price)}, Dossier ${money(product('pack_dossier').price)}. See <a href="#/patronage">Patronage</a>.</p>`);
+<p class="small muted">Current prices: unlock ${money(U().price)} (founder ${money(U().founder.price)}), annual ${money(product('member_year').price)}, monthly ${money(product('member_month').price)}${CONFIG.show?.lifetime ? `, lifetime ${money(product('lifetime').price)}` : ''}, Record ${money(product('pack_record').price)}, Dossier ${money(product('pack_dossier').price)}. See <a href="#/patronage">Patronage</a>.</p>`);
 
 const OPTION = (v, t, sel) => html`<option value="${v}" ${sel === v ? 'selected' : ''}>${t}</option>`;
 export async function stories(ctx, q) {

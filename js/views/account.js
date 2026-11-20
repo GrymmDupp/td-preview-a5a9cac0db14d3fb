@@ -1,3 +1,4 @@
+import { CONFIG } from '../config.js';
 import { html, raw, fmtDate, ago, safeUrl, host } from '../util.js';
 import { savedList, nyxFriend, nyxFound, friendSeal, NYX_GOAL, nyx, openedList, nightOwl, fieldLeads, soundOn, visitorView } from '../reveals.js';
 import { hapticsOn } from '../world.js';
@@ -24,7 +25,7 @@ function planBlock(ctx) {
       ${membershipsOn() ? html`<a class="btn sm ghost" href="#/membership?plan=lifetime">Switch to Lifetime (${lifetimePrice()})</a>` : soonButton('Lifetime')}
       ${ctx.be.isPreview || ctx.be.mockCheckout ? html`<button class="link small" data-preview-lapse>Preview: end the period now</button>` : ''}</div>`;
   return html`<p>No membership. A single unlock is ${standardPrice()}${trialNote()}.</p>
-    <p class="small muted">${membershipsOn() ? '' : html`Memberships ${soonChip()} are not on sale yet. `}<a href="#/patronage">See Patronage: membership, research packs and gifts</a>.</p>`;
+    <p class="small muted">${membershipsOn() ? '' : 'Memberships are not on sale yet. '}<a href="#/patronage">See Patronage: membership and research files</a>.</p>`;
 }
 
 const syncLine = () => ({ synced: 'Last synced just now.', syncing: 'Syncing…', unavailable: 'Sync is not available right now; everything is kept on this device meanwhile.', local: '' })[syncState.status] || '';
@@ -181,9 +182,9 @@ export async function account(ctx) {
   </div><aside class="sidebar">
     ${nyxBlock()}<section class="box"><h4>Your account</h4><p class="small">Handle: <b>@${ctx.me.handle}</b></p><button class="btn sm ghost" data-signout>Sign out</button></section>
     <section class="box install-box" data-install-entry><h4>The app</h4><p class="small">Install Twisted Deeds on your phone or computer. It opens full screen like an app, and you stay signed in.</p><button class="btn sm ghost" data-install-app>Install the app</button></section>
-    <section class="box notify-box"><h4>Notifications <span class="soon">Coming soon</span></h4>
+    ${CONFIG.show?.notifications ? html`<section class="box notify-box"><h4>Notifications <span class="soon">Coming soon</span></h4>
       <label class="check"><input type="checkbox" data-notify-pref ${ctx.notifyPref?.opted_in ? 'checked' : ''}> <span>Get notified about new Twisted Deeds</span></label>
-      <p class="small muted">At most one short email a day, only when a new Twisted Deed is added, with a one-click unsubscribe. Nothing is sent yet; ${ctx.be.mode === 'local' ? 'this choice is saved in this browser only' : 'this choice is saved to your account'}.</p></section>
+      <p class="small muted">At most one short email a day, only when a new Twisted Deed is added, with a one-click unsubscribe. Nothing is sent yet; ${ctx.be.mode === 'local' ? 'this choice is saved in this browser only' : 'this choice is saved to your account'}.</p></section>` : ''}
     <section class="box sync-box"><h4>Saved with your account</h4><p class="small">${ctx.be.mode === 'supabase' ? html`Your saves, reading log and the spiders you have found follow you to every device you sign in on. ${syncLine()}` : 'Preview mode: kept in this browser only.'}</p></section>
     ${pendingBox(ctx)}<section class="box"><h4>How unlocks work</h4><p class="small">Each listing’s full file is a one-time unlock: ${standardPrice()}${trialNote()}. Unlocked files never expire and open on every device you sign in on. <a href="#/patronage">Membership and research packs</a>.</p></section>
     ${ctx.be.isPreview && !ctx.visitor ? html`<section class="box"><h4>Preview tools</h4><p class="small">Try the moderation queue with this test account.</p>

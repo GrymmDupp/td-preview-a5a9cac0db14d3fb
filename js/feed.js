@@ -33,7 +33,7 @@ export const feed = { meta: null, listings: [], catalog: [], archive: [], theArc
 // full text: it derives the preview and strips the full text off the listing.
 export function sentences(t) {
   t = String(t || '').replace(/\s+/g, ' ').trim(); if (!t) return [];
-  return t.split(/(?<!\b(?:v|Sr|Jr|Dr|St|Mr|Mrs|Mt|Co|No|U\.S|[A-Z]))(?<=[.!?])\s+(?=[A-Z"“(])/);
+  return t.split(/(?<!\b(?:v|Sr|Jr|Dr|St|Mr|Mrs|Mt|Co|No|Gov|Gen|Bros|[A-Z])\.)(?<=[.!?])\s+(?=[A-Z"“(])/);
 }
 const cut = (t, n) => { t = String(t || '').trim(); return t.length <= n ? t : t.slice(0, n).replace(/\s+\S*$/, '').replace(/[,;:–-]+$/, '') + '…'; };
 const LORE_RE = /ghost|haunt|legend|lore|spirit|apparition|said to|reported|rumou?r|curse|myth|tale|claim/i;
@@ -99,10 +99,20 @@ function deriveTier(l) {
   return 2; // unknown grade: neutral, never outranks tier 1 (Twisted Deed)
 }
 
+// Public-text guard (display only; the published feed is NOT edited). A few preview lines in the feed are
+// working notes ("listed this morning", "The sheet prints ...") or were cut mid-name at an initial ("where J.L.").
+// Visitors never see those: the line is dropped and the page falls back to the lore teaser or nothing.
+const NOTE_RE = /\b(this morning|the sheet|still listed|unconfirmed)\b/i;
+const CUT_RE = /\b[A-Z]\.$/;
+export const publicLine = (s) => { s = String(s || '').trim(); return !s || NOTE_RE.test(s) || CUT_RE.test(s) ? '' : s; };
+const publicName = (s) => String(s || '').replace(/\s*\([^)]*\b(unconfirmed|unverified|match)\b[^)]*\)\s*$/i, '').trim() || String(s || '');
+const publicFacts = (s) => String(s || '').split('·').map((x) => x.trim()).filter((x) => x && !/\bunconfirmed\b|^(sheet|copy)\b/i.test(x)).join(' · ');
+
 export function normalize(raw) {
   const l = { ...raw };
   l.id = String(l.id || '').trim();
-  l.name = l.name || 'Untitled property';
+  l.name = publicName(l.name) || 'Untitled property';
+  if (l.facts) l.facts = publicFacts(l.facts);
   l.place = l.place || '';
   const st = (l.place.match(/,\s*([A-Z]{2})\s*$/) || [])[1] || '';
   l.state = st;
@@ -133,7 +143,7 @@ export function normalize(raw) {
   l.addedAt = /^\d{4}-\d{2}-\d{2}$/.test(String(raw.addedAt || '')) ? raw.addedAt : (/^\d{4}-\d{2}-\d{2}$/.test(String(l.logged || '')) ? l.logged : '');
   l.hasStoryFields = !!(l.extra.architecturalNotes || l.extra.ownershipChainSummary || l.extra.folkloreType);
   if ('summary' in raw || 'loreTeaser' in raw) {            // schema v3: preview only
-    l.preview = { summary: String(l.summary || ''), teaser: String(l.loreTeaser || '') };
+    l.preview = { summary: publicLine(l.summary), teaser: publicLine(l.loreTeaser) };
     for (const k of FULL_KEYS) delete l[k];                  // defensive: never keep locked text on the listing
     for (const k of FULL_EXTRA) delete l.extra[k];
   } else {                                                   // legacy v2 feed/snapshot

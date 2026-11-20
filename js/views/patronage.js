@@ -1,6 +1,7 @@
 // Patronage (#/patronage): every paid thing in one Victorian price list. All numbers and Payment Link URLs come
 // from js/pricing.js. A product with no Payment Link yet shows a quiet "Opening soon" plate, never a dead button.
 import { html, raw } from '../util.js';
+import { CONFIG } from '../config.js';
 import { rule } from '../tome.js';
 import { PRICING, product, money, founderOn, founderRemaining, linkNow, isOpen, withReference } from '../pricing.js';
 
@@ -40,7 +41,7 @@ export async function patronage(ctx) {
     <div class="pt-grid">
       ${plate('member_year', { lead: true })}
       ${plate('member_month')}
-      ${plate('lifetime')}
+      ${CONFIG.show?.lifetime || isOpen('lifetime') ? plate('lifetime') : ''}
     </div>
     <ul class="pt-perks">${PRICING.memberPerks.map((t) => html`<li>${t}</li>`)}</ul>
   </section>
@@ -52,15 +53,15 @@ export async function patronage(ctx) {
       ${plate('pack_dossier', { extra: html`<p class="small">Everything in Record, plus a full narrative history, an incident and public-safety search, historic maps, a people-of-the-house timeline and a long PDF.</p><p class="small muted">Members: ${money(product('pack_dossier_member').price)}</p>`, cta: html`<a class="btn" href="#/research" data-pricing-click="pack_dossier">Commission a Dossier</a>` })}
       ${plate('rush', { extra: html`<p class="small">Moves either pack to the front of the line: 72 hours.</p>`, cta: html`<p class="pt-soon small muted">Tick “Rush” on the request form.</p>` })}
     </div>
-    <p class="small muted pt-foot">Requests are taken now. We email you to confirm the price and the turnaround, and send the payment link, before any work begins. ${isOpen('pack_record') ? '' : html`Online payment is <span class="soon">Opening soon</span>. `}A Research File is not a consumer report, a title search, an inspection or legal advice. <a href="#/refunds">Refunds</a> · <a href="#/terms">Terms</a>.</p>
+    <p class="small muted pt-foot">Requests are taken now. We email you to confirm the price and the turnaround, and send the payment link, before any work begins. ${isOpen('pack_record') ? '' : 'Online payment is not open yet; we send a secure Stripe link by email. '}A Research File is not a consumer report, a title search, an inspection or legal advice. <a href="#/refunds">Refunds</a> · <a href="#/terms">Terms</a>.</p>
   </section>
 
-  <section class="pt-sec"><h2>Gifts and drive packs</h2>
+  ${CONFIG.show?.giftsAndDrives || isOpen('gift') || isOpen('drive_jackson') ? html`<section class="pt-sec"><h2>Gifts and drive packs</h2>
     <div class="pt-grid">
       ${plate('gift', { extra: html`<p class="small">A year of membership, sent as a printable library-card certificate. It does not renew by itself.</p>` })}
       ${plate('drive_jackson', { extra: html`<p class="small">A printable map, route and stop list for one city. Free for members.</p>` })}
     </div>
-  </section>
+  </section>` : ''}
 
   <p class="small muted pt-foot">Prices in US dollars. Payments are taken by Stripe; we never see or store your card. Read the <a href="#/refunds">refund policy</a> and the <a href="#/terms">terms</a>. Twisted Deeds, a Twisted History Tours production · Horton, Michigan.</p>`;
 }
