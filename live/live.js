@@ -416,9 +416,11 @@ function renderNearby() {
   const list = nearbyList().slice(0, 40);
   const inR = me ? list.filter((x) => x.d <= S.radius && !inactive(x.p)).length : 0;
   const head = me ? '<p class="note">Sorted by distance from you. ' + inR + ' inside your ' + S.radius + ' mi alert radius.</p>' : '<p class="note">Tap <b>Start</b> to measure from your GPS. For now this is sorted from the middle of the map.</p>';
-  $('#sh-body').innerHTML = head + (list.map((x) => '<div class="item"><div>' + tagHtml(x.p) + '</div><div class="t">' + esc(x.p.name) + '</div><div class="m"><span class="dist">' + esc(fmtDist(x.d)) + ' ' + compass(x.b) + '</span> · ' + esc(x.p.addr) + '</div>'
-    + '<div class="it-act"><a class="btn p sm g" target="_blank" rel="noopener" href="' + dirUrl(x.p) + '">Directions</a><button class="btn sm g" data-det="' + esc(x.p.id) + '">Details</button><button class="btn sm" data-see="' + esc(x.p.id) + '">Map</button></div></div>').join('') || '<p>Nothing to show with these filters.</p>')
-    + lyrNearbyHtml();
+  const card = (x) => '<div class="item"><div>' + tagHtml(x.p) + '</div><div class="t">' + esc(x.p.name) + '</div><div class="m"><span class="dist">' + esc(fmtDist(x.d)) + ' ' + compass(x.b) + '</span> · ' + esc(x.p.addr) + '</div>'
+    + '<div class="it-act"><a class="btn p sm g" target="_blank" rel="noopener" href="' + dirUrl(x.p) + '">Directions</a><button class="btn sm g" data-det="' + esc(x.p.id) + '">Details</button><button class="btn sm" data-see="' + esc(x.p.id) + '">Map</button></div></div>';
+  // markers and cemeteries go after the listings within 3 mi, before the farther ones
+  const cut = list.findIndex((x) => x.d > 3), k = cut < 0 ? list.length : cut;
+  $('#sh-body').innerHTML = head + (list.length ? list.slice(0, k).map(card).join('') + lyrNearbyHtml() + list.slice(k).map(card).join('') : lyrNearbyHtml() || '<p>Nothing to show with these filters.</p>');
   bindItems();
 }
 function bindItems() {
