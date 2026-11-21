@@ -116,3 +116,20 @@ textarea{width:100%;min-height:76px;background:#100c0c;color:var(--bone);border:
 .lyr.sm{transform:scale(.8);transform-origin:50% 100%;opacity:.8}
 .tag.lyr-hmark{background:#2f3a2c;color:#ecdcb2;box-shadow:inset 0 0 0 1px #c9a96a}.tag.lyr-cem{background:#55605a;color:#eef1ec}
 @media (max-height:700px){.lyrs .chip{min-height:30px}}
+/* Marker / cemetery detail card: hero photo, parchment story page, facts row, credits */
+.ly-hero{margin:-4px -4px 10px;border-radius:12px;overflow:hidden;border:2px solid #6b4a22;background:#120d0b;box-shadow:inset 0 0 0 1px #c9a96a33}
+.ly-hero img{display:block;width:100%;height:190px;object-fit:cover;background:#1e1718}
+.ly-hero figcaption{padding:6px 10px;font-size:.74rem;line-height:1.3;color:#cbbd9f;background:#1a1310;border-top:1px solid #6b4a22}
+.ly-hero figcaption a{color:#e6c352}
+.ly-head .addr{margin-top:8px;font-family:'IM Fell English SC','Cinzel',Georgia,serif;font-size:1.4rem}
+.ly-dist{color:var(--gold2);font-weight:700;margin-top:2px}.ly-desc{color:var(--parch);font-style:italic;margin-top:4px}
+.ly-story{margin:12px 0;padding:14px 16px;border-radius:10px;background:#e9dec4 linear-gradient(180deg,#efe6cf,#e2d4b4);color:#2b2016;border:1px solid #b8995e;box-shadow:inset 0 0 18px #b8995e66,0 2px 8px #0008;font:1.02rem/1.5 'IM Fell English','Cormorant Garamond',Georgia,serif}
+.ly-story p{margin:0 0 8px}.ly-story .ly-k{font:700 .7rem var(--display);letter-spacing:.16em;text-transform:uppercase;color:#7a5520;margin-bottom:6px}
+.ly-story .ly-st{font:600 1.05rem 'IM Fell English SC','Cinzel',Georgia,serif;color:#3b2a14;margin:4px 0 4px}
+.ly-cite{font:.76rem/1.3 var(--sans);color:#6b5434}.ly-cite a{color:#7a3e0e}
+.ly-facts{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0}
+.ly-fact{background:#1e1718;border:1px solid var(--line);border-left:3px solid var(--bronze);border-radius:8px;padding:6px 9px;min-width:0}
+.ly-fact.w{grid-column:1/-1}.ly-fact span{display:block;font:700 .66rem var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.ly-fact b{display:block;font-weight:600;font-size:.92rem;overflow-wrap:anywhere}
+.ly-bur{margin:0 0 6px;padding-left:18px}.ly-bur li{margin:3px 0}
+.ly-links{flex-wrap:wrap}.ly-credits{margin-top:10px}

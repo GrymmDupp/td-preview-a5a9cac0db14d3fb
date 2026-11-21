@@ -2,7 +2,7 @@
  * Scope is the folder this file is served from ('./'), so it works on a GitHub Pages subpath.
  * Bump VERSION on every deploy (the preview deploy script stamps it automatically); the old
  * caches are deleted when the new worker activates. See _build/PWA_NOTES.md. */
-const VERSION = 'td-pwa-20261121-014339';
+const VERSION = 'td-pwa-20261121-184210';
 const SHELL = `${VERSION}-shell`;      // precached app shell
 const RUNTIME = `${VERSION}-runtime`;  // static assets + data seen while browsing
 const OFFLINE = 'offline.html';
@@ -160,7 +160,7 @@ self.addEventListener('fetch', (event) => {
   if (!inScope) return;
   // Live map layers (historical markers + cemeteries): versioned static tiles (?v=build), so answer from cache
   // at once and refresh in the background; tiles seen once keep working offline on the road.
-  if (/\/live\/layers\/t\/.+\.json$/.test(url.pathname)) { event.respondWith(staleWhileRevalidate(event)); return; }
+  if (/\/live\/layers\/[te]\/.+\.json$/.test(url.pathname)) { event.respondWith(staleWhileRevalidate(event)); return; }
   // The Live navigator, Jackson map and Design Lab files: network first so a deploy shows up at once (cache only when offline).
   if (/\/(live|jackson|design-lab)\/.+\.(js|json|css)$/.test(url.pathname)) { event.respondWith(networkFirst(event)); return; }
   if (url.pathname.endsWith('/sw.js') || /listings_full/.test(url.pathname)) return;

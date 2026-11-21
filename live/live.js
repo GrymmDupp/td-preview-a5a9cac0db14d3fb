@@ -249,11 +249,46 @@ function renderLyrAlert(el, p) {
   el.onclick = () => { if (el.classList.contains('compact')) closeSheet(); };
   $('#a-d').onclick = (e) => { e.stopPropagation(); showing = null; $('#alert').hidden = true; showLyr(p.id); };
 }
-function showLyr(id) {
-  const p = LYR.items.get(id); if (!p) return;
-  const o = me; let h = '<div>' + lyrTag(p) + '</div><div class="addr" style="margin-top:8px">' + esc(p.name) + '</div>';
-  if (o) h += '<p class="muted">' + esc(fmtDist(lyrDist(o, p)) + ' ' + compass(bearing(o[0], o[1], p.lat, p.lon))) + ' from you</p>';
-  if (p.t === 'N') h += '<p class="note">Listed on the National Register of Historic Places. Many are private homes: please view from the road.</p>';
+// Card details (photo, marker text, facts, burials) live in small files per 0.1-degree cell (layers/e/), keyed by the
+// place's first source id, listed in layers/e/index.json. Fetched on the first tap only, then kept for the session.
+LYR.enr = new Map();
+async function lyrEnrIndex() {
+  if (!LYR.eidxP) LYR.eidxP = getJson('layers/e/index.json', 10000).then((j) => (j.cells = new Set(j.cells || []), j)).catch(() => { LYR.eidxP = null; return null; });
+  return LYR.eidxP;
+}
+async function lyrEnrich(p) {
+  const ix = await lyrEnrIndex(); if (!ix) return null;
+  const C = ix.cell || 0.1, k = (Math.floor(p.lat / C + 1e-9) * C).toFixed(1) + '_' + (Math.floor(p.lon / C + 1e-9) * C).toFixed(1);
+  if (!ix.cells.has(k)) return null;
+  if (!LYR.enr.has(k)) LYR.enr.set(k, getJson('layers/e/' + k + '.json?v=' + ix.v, 15000).then((j) => j.e || {}).catch(() => { LYR.enr.delete(k); return null; }));
+  const e = await LYR.enr.get(k); if (!e) return null;
+  for (const s of p.srcs) if (e[s]) return e[s];
+  return {};
+}
+const safeUrl = (u) => (/^https:\/\//.test(u || '') ? u : '');
+const linkUrl = (u) => (/^https?:\/\//.test(u || '') ? u : '');
+function lyrCard(p, e) {
+  const o = me; let h = '';
+  const ph = e && e.ph && safeUrl(e.ph.u) ? e.ph : null;
+  if (ph) h += '<figure class="ly-hero"><a href="' + esc(safeUrl(ph.l) || safeUrl(ph.u)) + '" target="_blank" rel="noopener"><img src="' + esc(ph.u) + '" alt="' + esc(ph.alt || p.name) + '" decoding="async" referrerpolicy="no-referrer" onerror="this.closest(\'figure\').remove()"></a>'
+    + '<figcaption>' + esc(/^photo/i.test(ph.a) ? ph.a : 'Photo: ' + ph.a) + ' · ' + (safeUrl(ph.licu) ? '<a href="' + esc(ph.licu) + '" target="_blank" rel="noopener">' + esc(ph.lic) + '</a>' : esc(ph.lic)) + ' · <a href="' + esc(safeUrl(ph.l) || safeUrl(ph.u)) + '" target="_blank" rel="noopener">' + esc(ph.src) + '</a></figcaption></figure>';
+  h += '<div class="ly-head"><div>' + lyrTag(p) + '</div><div class="addr">' + esc(p.name) + '</div>';
+  if (o) h += '<div class="ly-dist">' + esc(fmtDist(lyrDist(o, p)) + ' ' + compass(bearing(o[0], o[1], p.lat, p.lon))) + ' from you</div>';
+  if (e && e.d) h += '<div class="ly-desc">' + esc(e.d.charAt(0).toUpperCase() + e.d.slice(1)) + '</div>';
+  h += '</div>';
+  if (e && e.ins) {
+    h += '<div class="ly-story"><div class="ly-k">Marker text</div>';
+    e.ins.forEach((x, i) => { if (x[0] && (x[0] !== p.name || i > 0)) h += '<div class="ly-st">' + esc(x[0]) + '</div>'; h += '<p>' + esc(x[1]) + '</p>'; });
+    h += '<div class="ly-cite">Text of the state marker, from the Michigan History Center’s open marker records (public record).</div></div>';
+  } else if (e && e.wx) {
+    h += '<div class="ly-story"><p>' + esc(e.wx[0]) + '</p><div class="ly-cite">From <a href="' + esc(safeUrl(e.wx[1])) + '" target="_blank" rel="noopener">Wikipedia</a>, CC BY-SA 4.0.</div></div>';
+  }
+  const facts = (e && e.f ? e.f.slice() : []);
+  if (e && e.hrs) facts.push(['Hours', e.hrs]);
+  if (facts.length) h += '<div class="ly-facts">' + facts.map((f) => '<div class="ly-fact' + (String(f[1]).length > 26 ? ' w' : '') + '"><span>' + esc(f[0]) + '</span><b>' + esc(f[1]) + '</b></div>').join('') + '</div>';
+  if (e && e.bu && e.bu.length) h += '<h4>Notable burials</h4><ul class="ly-bur">' + e.bu.map((b) => '<li><b>' + esc(b[0]) + '</b>' + (b[1] ? ' <span class="muted">' + esc(b[1]) + '</span>' : '') + '</li>').join('') + '</ul>'
+    + (e.bn > e.bu.length ? '<p class="note">' + e.bn + ' people with a Wikidata record are buried here.</p>' : '');
+  if (p.t === 'N') h += '<p class="note">' + (e && e.pv === 0 ? 'Listed on the National Register of Historic Places.' : 'Listed on the National Register of Historic Places. Many are private homes: please view from the road.') + '</p>';
   if (p.t === 'C') {
     if (p.place) h += '<p class="muted" style="margin-top:2px">' + esc(p.place) + '</p>';
     if (p.fl & 1) h += '<p class="note">Listed as a historical cemetery: it may be gone, moved or hard to see today.</p>';
@@ -261,14 +296,31 @@ function showLyr(id) {
     if (p.fl & 4) h += '<p class="note">A small family or pioneer burial ground. Many are on private land: please view from the road.</p>';
     h += '<p class="note">Please respect posted hours and visitors.</p>';
   }
-  h += '<div class="row"><a class="btn p g" target="_blank" rel="noopener" href="' + dirUrl(p) + '">Directions</a><button class="btn g" id="ly-here">What’s here?</button></div><div class="row">';
+  h += '<div class="row"><a class="btn p g" target="_blank" rel="noopener" href="' + dirUrl(p) + '">Directions</a><button class="btn g" id="ly-here">What’s here?</button></div><div class="row ly-links">';
+  (e && e.lk ? e.lk : []).forEach((l) => { if (linkUrl(l[1])) h += '<a class="btn sm" target="_blank" rel="noopener" href="' + esc(l[1]) + '">' + esc(l[0]) + '</a>'; });
   p.srcs.map(lyrSrc).filter(Boolean).forEach((s) => { h += '<a class="btn sm" target="_blank" rel="noopener" href="' + esc(s.url) + '">' + esc(s.label) + '</a>'; });
   const fag = p.t === 'C' ? fagUrl(p) : '';
   if (fag) h += '</div><div class="row"><a class="btn sm g" id="ly-fag" target="_blank" rel="noopener" href="' + esc(fag) + '">Look it up on Find a Grave</a>';
-  h += '</div>' + (fag ? '<p class="note">Opens a Find a Grave search for “' + esc(fagName(p.name)) + '” in ' + esc(fagWhere(p)) + '. Find a Grave is a separate site; nothing is copied from it.</p>' : '')
-    + '<p class="note">Map data: OpenStreetMap contributors (ODbL); Michigan Historical Markers, Michigan History Center / DNR; National Register of Historic Places, National Park Service' + (p.t === 'C' ? '; cemeteries also from USGS GNIS and The National Map (public domain) and Oakland and Barry County MI open data' : '') + '.</p>';
-  openSheet('details', 'Details', h); TDP() && TDP().details(p, $('#sh-body'));
-  $('#ly-here').onclick = () => whatsHere([p.lat, p.lon], p.name);
+  h += '</div>' + (fag ? '<p class="note">Opens a Find a Grave search for “' + esc(fagName(p.name)) + '” in ' + esc(fagWhere(p)) + '. Find a Grave is a separate site; nothing is copied from it.</p>' : '');
+  const cr = ['Map data: OpenStreetMap contributors (ODbL)'];
+  if (p.t === 'C') cr.push('cemeteries also from USGS GNIS and The National Map (public domain) and Oakland and Barry County MI open data');
+  if (p.srcs.some((x) => x.startsWith('m:'))) cr.push('Michigan Historical Markers, Michigan History Center / DNR (public record)');
+  if (p.srcs.some((x) => x.startsWith('n:'))) cr.push('National Register of Historic Places, National Park Service (public domain)');
+  if (e && (e.d || (e.lk || []).some((l) => l[0] === 'Wikidata') || e.bu)) cr.push('Wikidata (CC0)');
+  if (ph && ph.src === 'Wikimedia Commons') cr.push('Photo: Wikimedia Commons, ' + ph.lic);
+  if (e && e.wx) cr.push('Wikipedia (CC BY-SA 4.0)');
+  h += '<p class="note ly-credits">Sources: ' + esc(cr.join(' · ')) + '.</p>';
+  if (e === undefined) h += '<p class="note" id="ly-wait">Loading photo and details…</p>';
+  return h;
+}
+function showLyr(id) {
+  const p = LYR.items.get(id); if (!p) return;
+  const paint = (e) => {
+    openSheet('details', 'Details', lyrCard(p, e)); TDP() && TDP().details(p, $('#sh-body'));
+    $('#ly-here').onclick = () => whatsHere([p.lat, p.lon], p.name);
+  };
+  paint(undefined);
+  lyrEnrich(p).then((e) => { if ($('#sheet').dataset.kind === 'details' && $('#sh-body .addr') && $('#sh-body .addr').textContent === p.name) paint(e || null); });
 }
 // Find a Grave link-out (never copied): its own cemetery search, by name within the state (or Canada)
 function fagName(n) { return String(n || '').replace(/\s*\/.*$/, '').replace(/\(.*?\)/g, '').replace(/\b(cemetery|cemetary|graveyard)\b/ig, '').replace(/\s+/g, ' ').trim(); }
