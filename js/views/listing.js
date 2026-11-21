@@ -3,6 +3,7 @@ import { heritageCrossLink, forSaleSeal, archivePlate, mediaCredit, mediaLine, c
 import { newTag, updatedTag, gradeBadge, layerChip, statusPill, plate, photoCredit, imageType, imgAlt, authorName, pendingTag, reportBtn, sourceLinks, listingCard, kindLabel, unlockPrice, membersLine, viewerTier, TIER_LABEL, trialNote, isTrial, unlockBar, publicUrl, findListingUrl } from '../components.js';
 import { STATES, ratingLabel, leatherFor, layerInfo } from '../taxonomy.js';
 import { displayableImages, updateLine, isArchived, isArchiveShelf } from '../feed.js';
+import { isPrivateHome, publicAreaLabel } from '../privacy.js';
 import { isSaved } from '../reveals.js';
 import { bookShell, bookCover, pageHead, folio, rule, wordmark, statusSeal, scrollShell } from '../tome.js';
 
@@ -31,7 +32,7 @@ export function threadItem(row, replies, { type, replyAttr, signedIn }) {
 function previewFacts(l) {
   return [
     ['Rating', ratingLabel(l)], ['Category', l.layerI.label],
-    ['Type', kindLabel(l.kind)], l.facts && ['Facts', l.facts], ['Address', isArchiveShelf(l) && l.townOnly ? `${l.place} (a private home: the address is withheld)` : l.address],
+    ['Type', kindLabel(l.kind)], l.facts && ['Facts', l.facts], [isPrivateHome(l) ? 'Area' : 'Address', isPrivateHome(l) ? `${publicAreaLabel(l) || l.place} (a private home: the address is withheld)` : l.address],
     isArchiveShelf(l) ? ['Market', l.status === 'Sold' ? 'Sold. No longer on the market' : 'Not for sale. In the Archive'] : ['Asking', l.price], ['Status', isArchiveShelf(l) ? 'In the Archive' : l.status],
     ...(l.media || []).map((m) => ['As seen on', mediaLine(m)]), l.crewFeatured && ['Also', 'As seen with the Twisted History crew'], l.roadOnly && ['Visiting', 'View from the public road only'],
     l.significance && ['Significance', SIG[l.significance] || l.significance], l.lane && ['Lane', LANE[l.lane] || l.lane],
@@ -179,7 +180,7 @@ function bookFor(ctx, l, imgs, finis) {
     `<div class="pg pg-facts">${pageHead(name, 'Facts')}
       <h3 class="ink">Particulars</h3>
       <dl class="tfacts">
-        <div class="ink"><dt>${onShelf && l.townOnly ? 'Town' : 'Address'}</dt><dd>${esc(onShelf && l.townOnly ? l.place : (l.address || l.place))}${onShelf && l.townOnly ? ' <small>(a private home: the address is withheld)</small>' : l.geo_precision === 'town' ? ' <small>(map point: town only)</small>' : ''}</dd></div>
+        <div class="ink"><dt>${isPrivateHome(l) ? 'Area' : 'Address'}</dt><dd>${esc(isPrivateHome(l) ? (publicAreaLabel(l) || l.place) : (l.address || l.place))}${isPrivateHome(l) ? ' <small>(a private home: shown as a neighborhood or area of town, not a street address)</small>' : l.geo_precision === 'town' ? ' <small>(map point: town only)</small>' : ''}</dd></div>
         ${onShelf ? `<div class="ink"><dt>Market</dt><dd>${l.status === 'Sold' ? `Sold${l.soldOn ? ` <small>(${esc(fmtDate(l.soldOn))})</small>` : ''}` : 'Not for sale'}</dd></div>`
           : `<div class="ink quill"><dt>${arch ? 'Last asking' : 'Asking'}</dt><dd><span class="qw">${esc(l.price || 'Price not listed')}</span></dd></div>`}
         <div class="ink"><dt>Status</dt><dd>${onShelf ? 'In the Archive' : esc(l.status)}${l.lastChecked ? ` <small>(checked ${esc(fmtDate(l.lastChecked))})</small>` : ''}</dd></div>
@@ -249,7 +250,7 @@ export async function listing(ctx, q, id) {
     ${l.collection === 'heritage' ? html`<p class="small heritage-crumb"><a href="#/heritage">❦ Heritage Homes</a> · a separate collection: one family, ${l.heritage?.years || '100+'} years${l.heritage?.since ? html` (since ${l.heritage.since})` : ''}</p>` : heritageCrossLink(l) ? html`<p class="small book-badges">${heritageCrossLink(l)}</p>` : ''}
     ${mediaCredit(l)}${crewLine(l)}
   </header>
-  ${isArchiveShelf(l) ? html`<div class="arch-note" role="note"><b>${l.status === 'Sold' ? 'Sold, and no longer on the market.' : 'Not for sale.'}</b> This place is kept in <a href="#/archive">the Archive</a> for its story.${l.townOnly ? ' It is a private home, so only the town is shown on the map and the address is withheld.' : ''}${l.roadOnly ? ' View it from the public road only.' : ''}</div>` : ''}
+  ${isArchiveShelf(l) ? html`<div class="arch-note" role="note"><b>${l.status === 'Sold' ? 'Sold, and no longer on the market.' : 'Not for sale.'}</b> This place is kept in <a href="#/archive">the Archive</a> for its story.${isPrivateHome(l) ? ' It is a private home, so only the neighborhood or area of town is shown on the map, and the address is withheld.' : ''}${l.roadOnly ? ' View it from the public road only.' : ''}</div>` : ''}
   ${arch ? html`<div class="no-longer" role="note"><b>No longer for sale.</b> This property is marked <b>${l.status}</b>${l.statusChangedAt ? html` since ${fmtDate(l.statusChangedAt)}` : ''}${l.lastChecked ? html` (last checked ${fmtDate(l.lastChecked)})` : ''}. The price shown is the last known asking price, not an offer. It stays on the <a href="#/archive?at=sold">Once for sale</a> list for its story; the original listing may be gone.</div>` : ''}
   ${raw(bookFor(ctx, l, imgs, finis))}
   <div class="book-quick">

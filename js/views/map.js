@@ -4,6 +4,7 @@ import { CONFIG } from '../config.js';
 import { LAYERS, layerInfo, storyLabel } from '../taxonomy.js';
 import { displayableImages } from '../feed.js';
 import { applyFilters } from './browse.js';
+import { isPrivateHome, publicAreaLabel, radiusM as privacyRadiusM, TOWN_RADIUS_M } from '../privacy.js';
 
 let maplibreP;
 const loadLib = () => maplibreP ||= new Promise((res, rej) => {
@@ -24,7 +25,7 @@ export async function mapView(ctx, q) {
     </div>
     <div id="map" aria-label="Map of listings"></div>
     <div class="map-card" data-map-card hidden></div>
-    <div class="map-note muted small">Hollow pins are approximate (town centre). Showing properties for sale; <b>The Archive</b> (places not for sale) can be switched on above. A dashed circle is a town area: a private home is never pinned. Sold and off-market ones are in <a href="#/archive?at=sold">Once for sale</a>.</div>
+    <div class="map-note muted small">Hollow pins are approximate (town centre). Showing properties for sale; <b>The Archive</b> (places not for sale) can be switched on above. A dashed circle is a neighborhood or town area: a private home is never pinned to the house. Sold and off-market ones are in <a href="#/archive?at=sold">Once for sale</a>.</div>
   </div>`;
 }
 
@@ -90,12 +91,15 @@ export async function mountMap(ctx, q, root) {
     addArchiveLayers();
     if (!saved && !q.get('focus')) map.fitBounds([[-125, 24], [-66, 49.5]], { padding: 20, duration: 0 });
   };
-  // The Archive (places not for sale). Exact-precision places are bone-coloured wax seals; a town-precision place (a private
-  // home) is NEVER a pin: it is a dashed circle over the whole town area, and its coordinates are already rounded by the feed.
+  // The Archive (places not for sale). Exact-precision places are bone-coloured wax seals; a private
+  // home is NEVER a pin: it is a dashed circle (neighborhood, about 0.25 mi wide, or a town area when
+  // only a town centroid was published). Coordinates on the circle are already offset or coarsened.
   const arch = (ctx.feed.theArchive || []).filter((l) => l.lat != null && l.lon != null);
-  const circle = (lat, lon, km = 3.2, n = 48) => { const dLat = km / 110.57, dLon = km / (111.32 * Math.cos(lat * Math.PI / 180)); return { type: 'Polygon', coordinates: [Array.from({ length: n + 1 }, (_, i) => { const a = (i / n) * Math.PI * 2; return [lon + Math.cos(a) * dLon, lat + Math.sin(a) * dLat]; })] }; };
-  const archData = (kind) => ({ type: 'FeatureCollection', features: arch.filter((l) => (l.geo_precision === 'town') === (kind === 'area')).map((l) => ({ type: 'Feature', id: undefined,
-    geometry: kind === 'area' ? circle(l.lat, l.lon) : { type: 'Point', coordinates: [l.lon, l.lat] }, properties: { id: l.id, color: '#cfc8b8', approx: 0, tier: 0 } })) });
+  const circle = (lat, lon, km, n = 48) => { const dLat = km / 110.57, dLon = km / (111.32 * Math.cos(lat * Math.PI / 180)); return { type: 'Polygon', coordinates: [Array.from({ length: n + 1 }, (_, i) => { const a = (i / n) * Math.PI * 2; return [lon + Math.cos(a) * dLon, lat + Math.sin(a) * dLat]; })] }; };
+  const isArea = (l) => isPrivateHome(l) || l.geo_precision === 'town' || l.geo_precision === 'neighborhood';
+  const areaKm = (l) => (privacyRadiusM(l) || TOWN_RADIUS_M) / 1000;
+  const archData = (kind) => ({ type: 'FeatureCollection', features: arch.filter((l) => isArea(l) === (kind === 'area')).map((l) => ({ type: 'Feature', id: undefined,
+    geometry: kind === 'area' ? circle(l.lat, l.lon, areaKm(l)) : { type: 'Point', coordinates: [l.lon, l.lat] }, properties: { id: l.id, color: '#cfc8b8', approx: 0, tier: 0 } })) });
   let archOn = showArch;
   const archVis = () => { for (const id of ['arc-fill', 'arc-line', 'arc-pt']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', archOn ? 'visible' : 'none'); };
   const addArchiveLayers = () => {
@@ -125,7 +129,7 @@ export async function mountMap(ctx, q, root) {
     card.hidden = false;
     card.innerHTML = `<button class="x" aria-label="Close">×</button><div class="mc-badges">${l.shelf === 'archive' ? '<span class="badge story">From the Archive</span>' : l.tier === 1 ? '<span class="badge ddd" style="--c:#c41e32"><b>Twisted Deed</b></span>' : `<span class="badge story">Strong Story${storyLabel(l) ? `<i>${esc(storyLabel(l))}</i>` : ''}</span>`} <span class="layer" style="--c:${l.layerI.color}"><span class="dot"></span>${esc(l.layerI.label)}</span></div>
       ${(() => { const i = displayableImages(l)[0]; return i ? `<div class="mc-photo" data-ph><img src="${esc(i.src || i.url)}" alt="${esc((i.image_type === 'illustration' ? 'Illustration, not a photo: ' : '') + (i.caption || l.name))}" referrerpolicy="no-referrer" data-ph-img>${i.image_type === 'illustration' ? '<span class="ph-note mc-note"><span class="ph-type illus">Illustration, not a photo</span></span>' : ''}</div>` : ''; })()}
-      <h3>${esc(l.name)}</h3><div class="muted">${esc(l.place)}</div><div class="card-price">${l.shelf === 'archive' ? (l.status === 'Sold' ? 'Sold · in the Archive' : 'Not for sale · in the Archive') : esc(l.price) + ' · ' + esc(l.status)}</div>${l.townOnly ? '<div class="small muted">A private home: shown as a town area, not a pin.</div>' : ''}<p class="clamp2">${esc(truncate(l.preview?.summary || "", 180))}</p><a class="btn sm" href="#/l/${encodeURIComponent(l.id)}">Open</a>`;
+      <h3>${esc(l.name)}</h3><div class="muted">${esc(l.place)}</div><div class="card-price">${l.shelf === 'archive' ? (l.status === 'Sold' ? 'Sold · in the Archive' : 'Not for sale · in the Archive') : esc(l.price) + ' · ' + esc(l.status)}</div>${isPrivateHome(l) ? '<div class="small muted">A private home: shown as ' + esc(publicAreaLabel(l) || 'an area of town') + ', not a pin.</div>' : ''}<p class="clamp2">${esc(truncate(l.preview?.summary || "", 180))}</p><a class="btn sm" href="#/l/${encodeURIComponent(l.id)}">Open</a>`;
     card.querySelector('.x').onclick = () => { card.hidden = true; lantern(''); };
     lantern(l.id);
   };
@@ -140,7 +144,7 @@ export async function mountMap(ctx, q, root) {
   if (showArch && arch.length) archBtn.classList.add('on');
   // #/map?focus=<id>: fly to one listing (from its book) and open its card.
   const focus = q.get('focus') && ctx.feed.byId.get(q.get('focus'));
-  if (focus && focus.lat != null) { if (focus.shelf === 'archive') { archOn = true; archBtn.classList.add('on'); archBtn.setAttribute('aria-pressed', 'true'); archVis(); } map.jumpTo({ center: [focus.lon, focus.lat], zoom: focus.geo_precision === 'town' ? 10.5 : 14 }); showCard(focus); map.once('idle', () => lantern(focus.id)); }
+  if (focus && focus.lat != null) { if (focus.shelf === 'archive') { archOn = true; archBtn.classList.add('on'); archBtn.setAttribute('aria-pressed', 'true'); archVis(); } map.jumpTo({ center: [focus.lon, focus.lat], zoom: focus.areaPrecision === 'neighborhood' || focus.geo_precision === 'neighborhood' ? 14 : (isPrivateHome(focus) || focus.geo_precision === 'town' ? 10.5 : 14) }); showCard(focus); map.once('idle', () => lantern(focus.id)); }
   for (const id of ['pt', 'cl']) { map.on('mouseenter', id, () => { map.getCanvas().style.cursor = 'pointer'; }); map.on('mouseleave', id, () => { map.getCanvas().style.cursor = ''; }); }
   const refresh = () => map.getSource('l')?.setData(data());
   root.querySelectorAll('[data-layer]').forEach((b) => b.onclick = () => { const k = b.dataset.layer; state.layers.has(k) ? state.layers.delete(k) : state.layers.add(k); b.classList.toggle('on'); b.setAttribute('aria-pressed', state.layers.has(k)); refresh(); });

@@ -31,7 +31,21 @@ function bearing(a, b, c, d) { const r = Math.PI / 180, y = Math.sin((d - b) * r
 const COMP = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 const compass = (deg) => COMP[Math.round(deg / 45) % 8];
 function fmtDist(mi) { return mi < 0.1 ? (Math.max(10, Math.round(mi * 5280 / 10) * 10) + ' ft') : (mi < 10 ? mi.toFixed(mi < 1 ? 2 : 1) : Math.round(mi)) + ' mi'; }
-const dirUrl = (p) => 'https://www.google.com/maps/dir/?api=1&destination=' + p.lat + ',' + p.lon + '&travelmode=driving';
+// Private-home neighborhood circle (Grymm t225u). See js/privacy.js. Public data already
+// carries the offset center + radiusM; alerts fire anywhere inside that circle.
+const isPriv = (p) => !!(p && p.privateHome);
+const locLabel = (p) => isPriv(p) ? (p.area || p.areaLabel || 'an area of town') : (p.addr || '');
+const radMi = (p) => isPriv(p) ? ((Number(p.radiusM) || 201.17) / 1609.344) : 0;
+const inPrivArea = (lat, lon, p) => isPriv(p) && hav(lat, lon, p.lat, p.lon) <= radMi(p);
+const dirUrl = (p) => isPriv(p) ? '' : 'https://www.google.com/maps/dir/?api=1&destination=' + p.lat + ',' + p.lon + '&travelmode=driving';
+const dirBtn = (p, cls) => dirUrl(p) ? '<a class="btn ' + (cls || 'p g') + '" target="_blank" rel="noopener" href="' + dirUrl(p) + '">Directions</a>' : '';
+function sanitizePrivacy(p) {
+  if (!isPriv(p)) return p;
+  p.approx = true; p.find = false; p.addr = '';
+  p.area = p.area || p.areaLabel || 'an area of town';
+  p.radiusM = Number(p.radiusM) || 201.17;
+  return p;
+}
 
 // ---------- state
 let PINS = [];
@@ -55,9 +69,13 @@ const inactive = (p) => !!p.off;
 const calm = () => { try { if (localStorage.getItem('td-rm') === '1' || localStorage.getItem('td-fx') === '0') return true; } catch (e) { /* ignore */ } return matchMedia('(prefers-reduced-motion: reduce)').matches; };
 let passed = new Set(sess.get('td-live-passed', []));
 const GRAVE = '<svg viewBox="0 0 20 24" width="20" height="24" aria-hidden="true"><path d="M3 23V9a7 7 0 0 1 14 0v14z" fill="#4a4744" stroke="#cfc8bb" stroke-width="1.4"/><path d="M6.5 11.5l7 7M13.5 11.5l-7 7" stroke="#e8dcc4" stroke-width="1.6" stroke-linecap="round"/><path d="M1 23h18" stroke="#cfc8bb" stroke-width="1.4"/></svg>';
+// Twisted Passport (live/passport-live.js) may draw a stamped place as its stamp, and an unvisited one faded.
+const TDP = () => window.TDPassport || null;
 function pinIcon(p) {
+  const tp = TDP(), sh = tp && tp.pinHtml(p);
+  if (sh) return L.divIcon({ className: '', html: sh, iconSize: [40, 40], iconAnchor: [20, 20] });
   if (passed.has(p.id)) return L.divIcon({ className: '', html: '<div class="pin grave ' + p.cat + (calm() ? '' : ' fade') + '" title="Passed">' + GRAVE + '</div>', iconSize: [22, 26], iconAnchor: [11, 22] });
-  const cls = 'pin ' + p.cat + (inactive(p) ? ' off' : '') + (p.approx ? ' approx' : '');
+  const cls = 'pin ' + p.cat + (inactive(p) ? ' off' : '') + (p.approx ? ' approx' : '') + (tp ? tp.pinClass(p) : '');
   const sz = p.cat === 'context' ? 24 : 34;
   return L.divIcon({ className: '', html: '<div class="' + cls + '">' + LETTER[p.cat] + '</div>', iconSize: [sz, sz], iconAnchor: [sz / 2, sz / 2] });
 }
@@ -90,13 +108,13 @@ async function loadPins() {
   try { jx = (await getJson('jackson_pins.json')).map((p) => Object.assign({}, p, { off: p.cat === 'deed' || p.cat === 'story' ? !/^active|^pending/i.test(p.status) : false })); } catch (e) { /* ignore */ }
   const byId = new Map(feed.map((p) => [p.id, p]));
   for (const p of jx) { const f = byId.get(p.id); byId.set(p.id, Object.assign({}, f || {}, p, f ? { app: true, approx: f.approx } : {})); }
-  PINS = [...byId.values()].map((p) => Object.assign({ src: [], hook: '', price: '', addr: '' }, p, { label: CATS[p.cat] }));
+  PINS = [...byId.values()].map((p) => sanitizePrivacy(Object.assign({ src: [], hook: '', price: '', addr: '' }, p, { label: CATS[p.cat] })));
   return src;
 }
 function visible(p) { return !!S.show[p.cat]; }
 const isLyr = (id) => typeof id === 'string' && id.startsWith('L:');
 function findAny(id) { return isLyr(id) ? LYR.items.get(id) : PINS.find((x) => x.id === id); }
-function alertable(p) { return visible(p) && !inactive(p) && !p.approx; }
+function alertable(p) { return visible(p) && !inactive(p) && (!p.approx || isPriv(p)); }
 function drawPins() {
   layer.clearLayers(); markers.clear();
   for (const p of PINS) {
@@ -104,6 +122,9 @@ function drawPins() {
     const m = L.marker([p.lat, p.lon], { icon: pinIcon(p), keyboard: false, zIndexOffset: p.cat === 'context' ? -500 : 0 });
     m.on('click', () => showDetails(p.id));
     layer.addLayer(m); markers.set(p.id, m);
+    if (isPriv(p)) {
+      L.circle([p.lat, p.lon], { radius: Number(p.radiusM) || 201.17, color: '#c9a96a', weight: 2, dashArray: '6 6', fillColor: '#c9a96a', fillOpacity: 0.12, interactive: false }).addTo(layer);
+    }
   }
   refreshNearby();
 }
@@ -153,10 +174,12 @@ async function lyrLoad(s, w, n, e) {
 function lyrNear(pt) { const d = 0.05; return lyrLoad(pt[0] - d, pt[1] - d * 1.4, pt[0] + d, pt[1] + d * 1.4).catch(() => {}); }
 function lyrOn(x) { return !!S.show[x.kind]; }
 function lyrIcon(x) {
-  const big = x.r >= 2;
+  const big = x.r >= 2, tp = TDP(), sh = tp && tp.pinHtml(x);
+  if (sh) return L.divIcon({ className: '', html: sh, iconSize: [30, 30], iconAnchor: [15, 15] });
+  const un = tp ? tp.pinClass(x) : '';
   return x.t === 'C'
-    ? L.divIcon({ className: '', html: '<div class="lyr cem' + (big ? '' : ' sm') + '" title="Cemetery">' + STONE + '</div>', iconSize: [14, 17], iconAnchor: [7, 16] })
-    : L.divIcon({ className: '', html: '<div class="lyr hm' + (big ? '' : ' sm') + '" title="Historical marker">' + PLAQUE + '</div>', iconSize: [16, 20], iconAnchor: [8, 19] });
+    ? L.divIcon({ className: '', html: '<div class="lyr cem' + (big ? '' : ' sm') + un + '" title="Cemetery">' + STONE + '</div>', iconSize: [14, 17], iconAnchor: [7, 16] })
+    : L.divIcon({ className: '', html: '<div class="lyr hm' + (big ? '' : ' sm') + un + '" title="Historical marker">' + PLAQUE + '</div>', iconSize: [16, 20], iconAnchor: [8, 19] });
 }
 function lyrDraw() {
   lyrLayer.clearLayers();
@@ -229,7 +252,7 @@ function showLyr(id) {
   h += '<div class="row"><a class="btn p g" target="_blank" rel="noopener" href="' + dirUrl(p) + '">Directions</a><button class="btn g" id="ly-here">What’s here?</button></div><div class="row">';
   p.srcs.map(lyrSrc).filter(Boolean).forEach((s) => { h += '<a class="btn sm" target="_blank" rel="noopener" href="' + esc(s.url) + '">' + esc(s.label) + '</a>'; });
   h += '</div><p class="note">Map data: OpenStreetMap contributors (ODbL); Michigan Historical Markers, Michigan History Center / DNR; National Register of Historic Places, National Park Service.</p>';
-  openSheet('details', 'Details', h);
+  openSheet('details', 'Details', h); TDP() && TDP().details(p, $('#sh-body'));
   $('#ly-here').onclick = () => whatsHere([p.lat, p.lon], p.name);
 }
 function lyrNearbyHtml() {
@@ -249,14 +272,16 @@ function nearbyList() {
   const o = origin();
   return PINS.filter(visible).map((p) => ({ p, d: hav(o[0], o[1], p.lat, p.lon), b: bearing(o[0], o[1], p.lat, p.lon) })).sort((a, b) => a.d - b.d);
 }
+function inAlertRange(x, lat, lon, radiusMi) { return isPriv(x.p) ? inPrivArea(lat, lon, x.p) : x.d <= radiusMi; }
+function distText(x, lat, lon) { return (lat != null && isPriv(x.p) && inPrivArea(lat, lon, x.p)) ? 'in this area' : (fmtDist(x.d) + ' ' + compass(x.b)); }
 function refreshNearby() {
-  const n = me ? nearbyList().filter((x) => x.d <= S.radius && !inactive(x.p)).length : 0;
+  const n = me ? nearbyList().filter((x) => inAlertRange(x, me[0], me[1], S.radius) && !inactive(x.p)).length : 0;
   $('#ncount').textContent = n;
   if ($('#sheet').dataset.kind === 'nearby') renderNearby();
 }
 function checkAlerts() {
   if (!me || (meAcc && meAcc > 500)) return;
-  const fresh = nearbyList().filter((x) => x.d <= S.radius && alertable(x.p) && !alerted.has(x.p.id));
+  const fresh = nearbyList().filter((x) => inAlertRange(x, me[0], me[1], S.radius) && alertable(x.p) && !alerted.has(x.p.id));
   for (const x of fresh) { alerted.add(x.p.id); queue.push(x.p.id); }
   if (fresh.length) {
     sess.set('td-live-alerted', [...alerted]); buzz(); speakAlerts(fresh);
@@ -278,13 +303,14 @@ function renderAlert() {
   if (!p) { nextAlert(); return; }
   if (p.lyr) { renderLyrAlert(el, p); return; }
   const o = me || origin(); const d = hav(o[0], o[1], p.lat, p.lon), b = compass(bearing(o[0], o[1], p.lat, p.lon));
+  const dLab = (me && inPrivArea(me[0], me[1], p)) ? 'in this area' : (fmtDist(d) + ' ' + b);
   el.hidden = false;
   const compact = !$('#sheet').hidden; el.classList.toggle('compact', compact); $('#stage').classList.toggle('has-alert', compact);
   el.innerHTML = '<div class="a-top"><span class="a-near">NEARBY</span><span class="tag ' + p.cat + '">' + esc(CATS[p.cat]) + '</span><button class="x" id="a-x" aria-label="Dismiss">×</button></div>'
-    + '<div class="a-name">' + esc(p.name) + '</div><div class="a-dist">' + esc(fmtDist(d)) + ' ' + b + '</div>'
-    + '<div class="a-sub">' + esc(p.addr) + (inactive(p) ? ' · not currently listed' : '') + '</div>'
+    + '<div class="a-name">' + esc(p.name) + '</div><div class="a-dist">' + esc(dLab) + '</div>'
+    + '<div class="a-sub">' + esc(locLabel(p)) + (inactive(p) ? ' · not currently listed' : '') + (isPriv(p) ? ' · private home, area only' : '') + '</div>'
     + (p.hook ? '<p class="a-hook">' + esc(p.hook) + '</p>' : '')
-    + '<div class="a-btns"><a class="btn p g" target="_blank" rel="noopener" href="' + dirUrl(p) + '">Directions</a><button class="btn g" id="a-d">Details</button></div>'
+    + '<div class="a-btns">' + dirBtn(p) + '<button class="btn g" id="a-d">Details</button></div>'
     + (queue.length ? '<div class="a-more">+' + queue.length + ' more nearby</div>' : '');
   $('#a-x').onclick = (e) => { e.stopPropagation(); nextAlert(); };
   el.onclick = () => { if (el.classList.contains('compact')) closeSheet(); };
@@ -341,6 +367,7 @@ function onFix(pos) {
   setGps('GPS ±' + Math.round(meAcc) + ' m', meAcc > 100 ? 'warn' : 'on');
   if (first) map.setView(me, Math.max(map.getZoom(), 15)); else if (follow) map.panTo(me, { animate: true });
   lyrNear(me).then(() => { checkAlerts(); refreshNearby(); }); checkAlerts(); markPassed(); refreshNearby();
+  try { TDP() && TDP().onFix(pos); } catch (e) { console.warn('passport', e); }
 }
 function markPassed() {
   if (!me || (meAcc && meAcc > 500)) return;
@@ -383,6 +410,7 @@ function stop() {
   if (me) setGps('Stopped', 'off'); else setGps('GPS off', 'off');
   try { if (wakeLock) wakeLock.release(); } catch (e) { /* ignore */ } wakeLock = null;
   $('#recenter').hidden = true;
+  TDP() && TDP().onStop();
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && running && !wakeLock) lockScreen(); });
 $('#start').onclick = () => (running ? stop() : start());
@@ -414,10 +442,11 @@ $('#sh-close').onclick = closeSheet;
 function tagHtml(p) { return '<span class="tag ' + p.cat + '">' + esc(CATS[p.cat]) + '</span>' + (inactive(p) ? ' <span class="tag off">Not currently listed</span>' : '') + (p.approx ? ' <span class="tag off">Area only</span>' : ''); }
 function renderNearby() {
   const list = nearbyList().slice(0, 40);
-  const inR = me ? list.filter((x) => x.d <= S.radius && !inactive(x.p)).length : 0;
-  const head = me ? '<p class="note">Sorted by distance from you. ' + inR + ' inside your ' + S.radius + ' mi alert radius.</p>' : '<p class="note">Tap <b>Start</b> to measure from your GPS. For now this is sorted from the middle of the map.</p>';
-  const card = (x) => '<div class="item"><div>' + tagHtml(x.p) + '</div><div class="t">' + esc(x.p.name) + '</div><div class="m"><span class="dist">' + esc(fmtDist(x.d)) + ' ' + compass(x.b) + '</span> · ' + esc(x.p.addr) + '</div>'
-    + '<div class="it-act"><a class="btn p sm g" target="_blank" rel="noopener" href="' + dirUrl(x.p) + '">Directions</a><button class="btn sm g" data-det="' + esc(x.p.id) + '">Details</button><button class="btn sm" data-see="' + esc(x.p.id) + '">Map</button></div></div>';
+  const o = me || origin();
+  const inR = me ? list.filter((x) => inAlertRange(x, me[0], me[1], S.radius) && !inactive(x.p)).length : 0;
+  const head = me ? '<p class="note">Sorted by distance from you. ' + inR + ' inside your alert radius (a private home alerts only inside its area circle).</p>' : '<p class="note">Tap <b>Start</b> to measure from your GPS. For now this is sorted from the middle of the map.</p>';
+  const card = (x) => '<div class="item"><div>' + tagHtml(x.p) + '</div><div class="t">' + esc(x.p.name) + '</div><div class="m"><span class="dist">' + esc(distText(x, o[0], o[1])) + '</span> · ' + esc(locLabel(x.p)) + '</div>'
+    + '<div class="it-act">' + dirBtn(x.p, 'p sm g') + '<button class="btn sm g" data-det="' + esc(x.p.id) + '">Details</button><button class="btn sm" data-see="' + esc(x.p.id) + '">Map</button></div></div>';
   // markers and cemeteries go after the listings within 3 mi, before the farther ones
   const cut = list.findIndex((x) => x.d > 3), k = cut < 0 ? list.length : cut;
   $('#sh-body').innerHTML = head + (list.length ? list.slice(0, k).map(card).join('') + lyrNearbyHtml() + list.slice(k).map(card).join('') : lyrNearbyHtml() || '<p>Nothing to show with these filters.</p>');
@@ -425,13 +454,14 @@ function renderNearby() {
 }
 function bindItems() {
   document.querySelectorAll('[data-det]').forEach((b) => { b.onclick = () => showDetails(b.dataset.det); });
-  document.querySelectorAll('[data-see]').forEach((b) => { b.onclick = () => { const p = findAny(b.dataset.see); closeSheet(); follow = false; if (running) $('#recenter').hidden = false; map.setView([p.lat, p.lon], 17); }; });
+  document.querySelectorAll('[data-see]').forEach((b) => { b.onclick = () => { const p = findAny(b.dataset.see); closeSheet(); follow = false; if (running) $('#recenter').hidden = false; map.setView([p.lat, p.lon], isPriv(p) ? 15 : 17); }; });
 }
 $('#nearby').onclick = () => { openSheet('nearby', 'Nearby', ''); renderNearby(); };
 function showDetails(id) {
   if (isLyr(id)) { showLyr(id); return; }
   const p = PINS.find((x) => x.id === id); if (!p) return;
-  let h = '<div>' + tagHtml(p) + '</div><div class="addr" style="margin-top:8px">' + esc(p.name) + '</div><p class="muted">' + esc(p.addr) + '</p>';
+  let h = '<div>' + tagHtml(p) + '</div><div class="addr" style="margin-top:8px">' + esc(p.name) + '</div><p class="muted">' + esc(locLabel(p)) + '</p>';
+  if (isPriv(p)) h += '<p class="note">A private home: shown as a neighborhood area about a quarter mile across, not an exact pin or street address.</p>';
   if (p.price) h += '<p><b>' + esc(p.price) + '</b></p>';
   h += '<p class="muted">Status: ' + esc(p.status) + '</p>';
   if (p.hook) h += '<p>' + esc(p.hook) + '</p>';
@@ -440,13 +470,13 @@ function showDetails(id) {
   if (p.cat === 'lead' || p.cat === 'unverified') h += '<p class="note">Unverified: needs a second story source and a live listing check before it counts as a Twisted Deed or Strong Story.' + (p.conf ? ' Confidence: ' + esc(p.conf) + '.' : '') + '</p>';
   if (p.cat === 'context') h += '<p class="note">Context only: not for sale and not part of the archive.</p>';
   if (p.asof) h += '<p class="note">Checked ' + esc(p.asof) + '.</p>';
-  h += '<div class="row"><a class="btn p g" target="_blank" rel="noopener" href="' + dirUrl(p) + '">Directions</a>';
+  h += '<div class="row">' + dirBtn(p);
   if (p.app) h += '<a class="btn g" href="../#/l/' + encodeURIComponent(p.id) + '">Open in app</a>';
   h += '</div><div class="row">';
-  if (p.find) h += '<a class="btn sm" target="_blank" rel="noopener" href="https://www.google.com/search?q=' + encodeURIComponent(p.addr + ' for sale') + '">Find listing</a>';
+  if (p.find && !isPriv(p) && p.addr) h += '<a class="btn sm" target="_blank" rel="noopener" href="https://www.google.com/search?q=' + encodeURIComponent(p.addr + ' for sale') + '">Find listing</a>';
   (p.src || []).slice(0, 3).forEach((s, i) => { h += '<a class="btn sm" target="_blank" rel="noopener" href="' + esc(s) + '">Source ' + (i + 1) + '</a>'; });
   h += '</div>';
-  openSheet('details', 'Details', h);
+  openSheet('details', 'Details', h); TDP() && TDP().details(p, $('#sh-body'));
 }
 
 // ---------- What's here?
@@ -503,7 +533,7 @@ async function whatsHere(pt, how) {
   if (hereBusy) return; hereBusy = true;
   const [lat, lon] = pt;
   openSheet('here', 'What’s here?', '<p>Looking up ' + esc(how) + '…</p><p class="note">Checking the address, our own files, Wikipedia and Wikidata.</p>');
-  const own = PINS.map((p) => ({ p, m: hav(lat, lon, p.lat, p.lon) * 1609.34 })).filter((x) => x.m <= 150 && !x.p.approx).sort((a, b) => a.m - b.m);
+  const own = PINS.map((p) => ({ p, m: hav(lat, lon, p.lat, p.lon) * 1609.34 })).filter((x) => isPriv(x.p) ? x.m <= (Number(x.p.radiusM) || 201.17) : (x.m <= 150 && !x.p.approx)).sort((a, b) => a.m - b.m);
   const [nom, wiki, wd] = await Promise.allSettled([nominatim(lat, lon), wikiNear(lat, lon), wikidataNear(lat, lon)]);
   hereBusy = false;
   const j = nom.status === 'fulfilled' ? nom.value : null;
@@ -525,7 +555,7 @@ async function whatsHere(pt, how) {
   }
   if (own.length) {
     facts += own.length; h += '<h4>In our files (within 150 m)</h4>';
-    own.forEach((x) => { h += '<div class="item"><div>' + tagHtml(x.p) + '</div><div class="t">' + esc(x.p.name) + '</div><div class="m"><span class="dist">' + Math.round(x.m) + ' m</span> · ' + esc(x.p.addr) + '</div><p style="margin:6px 0 0">' + esc(x.p.hook) + '</p><div class="it-act"><button class="btn sm g" data-det="' + esc(x.p.id) + '">Details</button></div></div>'; });
+    own.forEach((x) => { h += '<div class="item"><div>' + tagHtml(x.p) + '</div><div class="t">' + esc(x.p.name) + '</div><div class="m"><span class="dist">' + (isPriv(x.p) ? 'in this area' : (Math.round(x.m) + ' m')) + '</span> · ' + esc(locLabel(x.p)) + '</div><p style="margin:6px 0 0">' + esc(x.p.hook) + '</p><div class="it-act"><button class="btn sm g" data-det="' + esc(x.p.id) + '">Details</button></div></div>'; });
   }
   const lyrHere = lyrAround(lat, lon, 150 / 1609.34).slice(0, 6);
   if (lyrHere.length) {
@@ -609,5 +639,10 @@ if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && (!LOC
 paintLeads();
 map.fire('moveend');
 loadPins().then((src) => { drawPins(); window.__tdLive = { pins: PINS.length, src }; document.documentElement.dataset.ready = '1'; });
+// For live/passport-live.js (Twisted Passport): read-only views of the map state plus the sheet/toast helpers.
+window.__tdLiveApi = { map, get pins() { return PINS; }, get lyr() { return LYR.items; }, get me() { return me; }, get meAcc() { return meAcc; }, get running() { return running; },
+  isPriv, inPrivArea, locLabel, radMi,
+  redraw() { drawPins(); lyrDraw(); }, openSheet, closeSheet, toast, showDetails };
+window.dispatchEvent(new Event('td-live-api'));
 window.__tdLiveDebug = { get state() { return { running, me, alerted: [...alerted], queue: [...queue], showing, lyrItems: LYR.items.size, lyrTiles: [...LYR.tiles.keys()], lyrLast }; } };
 })();

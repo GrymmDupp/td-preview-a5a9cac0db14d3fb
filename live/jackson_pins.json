@@ -58,10 +58,10 @@
   "id": "fire-damaged-clinton-st-jackson",
   "cat": "unverified",
   "label": "Unverified",
-  "name": "Fire-damaged house (324 Clinton St)",
-  "addr": "324 Clinton St, Jackson, MI 49201",
-  "lat": 42.249377,
-  "lon": -84.4133033,
+  "name": "Fire-damaged house",
+  "addr": "",
+  "lat": 42.24889,
+  "lon": -84.412268,
   "status": "Unverified (not on the RE/MAX list when opened)",
   "price": "$7,500",
   "hook": "Fire-damaged 1910 house sold as-is, entry not permitted; cause and any casualties not documented.",
@@ -69,7 +69,10 @@
   "conf": "Low",
   "asof": "Nov 11, 2026",
   "jackson": true,
-  "find": true
+  "area": "west side of Jackson, near downtown",
+  "privateHome": true,
+  "radiusM": 201.17,
+  "approx": true
  },
  {
   "id": "old-prison-armory-arts",

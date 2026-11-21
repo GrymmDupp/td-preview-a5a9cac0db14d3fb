@@ -3,6 +3,7 @@
 // unknown keys are kept on the object and otherwise ignored.
 import { CONFIG } from './config.js';
 import { gradeInfo, layerInfo, GRADES, LAYERS } from './taxonomy.js';
+import { applyArchivePrivacy } from './privacy.js';
 
 const SEEN_KEY = 'td-feed-seen-v1';     // last price/status this browser saw, per listing
 const EVENTS_KEY = 'td-feed-events-v1'; // detected changes (price, status, new)
@@ -129,7 +130,9 @@ export function normalize(raw) {
   l.shelf = l.collection === 'archive' || raw.shelf === 'archive' || l.status === 'Archive' ? 'archive' : 'sale';
   l.media = cleanMedia(raw.media);
   l.crewFeatured = raw.crew_featured === true || raw.crewFeatured === true;
-  l.roadOnly = raw.roadOnly === true;
+  l.roadOnly = raw.roadOnly === true || raw.public_road_only === true;
+  l.privateHome = raw.private_home === true || raw.privateHome === true;
+  if (raw.area || raw.areaLabel) l.areaLabel = raw.area || raw.areaLabel;
   l.images = Array.isArray(l.images) ? l.images.filter((i) => i && typeof i === 'object') : [];
   l.extra = l.extra && typeof l.extra === 'object' ? l.extra : {};
   l.priority = Number.isFinite(+l.priority) ? +l.priority : 50;
@@ -152,7 +155,7 @@ export function normalize(raw) {
   }
   delete l.summary; delete l.loreTeaser; delete l.crew_featured;
   l.blurb = l.preview.summary;
-  if (l.shelf === 'archive') archivePrivacy(l);
+  if (l.shelf === 'archive' || l.privateHome) applyArchivePrivacy(l);
   return l;
 }
 
@@ -170,16 +173,10 @@ export function cleanMedia(list) {
   }
   return out;
 }
-// Defence in depth (the publisher enforces this too): an Archive record at town precision never shows a street address,
-// an exact pin or photos of the house, whatever the feed says.
-function archivePrivacy(l) {
-  if (l.geo_precision !== 'town') return;
-  l.address = l.place;
-  l.url = '';
-  l.images = [];
-  if (l.lat != null) { l.lat = Math.round(l.lat * 100) / 100; l.lon = Math.round(l.lon * 100) / 100; }
-  l.townOnly = true;
-}
+// Defence in depth (the publisher enforces this too): a private home never shows a street
+// address, an exact pin or photos of the house, whatever the feed says. See js/privacy.js
+// (neighborhood circle when the pin is still precise; a town-area circle when only a town
+// centroid was published).
 // Optional Heritage Homes object: { tier, since, years, family?, structureType, sourceCount }. Anything odd -> null.
 const H_TIERS = ['century', 'sesquicentennial', 'bicentennial'];
 function cleanHeritage(h) {

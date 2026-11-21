@@ -2,7 +2,7 @@
  * Scope is the folder this file is served from ('./'), so it works on a GitHub Pages subpath.
  * Bump VERSION on every deploy (the preview deploy script stamps it automatically); the old
  * caches are deleted when the new worker activates. See _build/PWA_NOTES.md. */
-const VERSION = 'td-pwa-20261121-010737';
+const VERSION = 'td-pwa-20261121-012240';
 const SHELL = `${VERSION}-shell`;      // precached app shell
 const RUNTIME = `${VERSION}-runtime`;  // static assets + data seen while browsing
 const OFFLINE = 'offline.html';
@@ -23,13 +23,14 @@ const PRECACHE = [
   'assets/fonts/Cinzel-500.woff2', 'assets/fonts/Cinzel-700.woff2', 'assets/fonts/CormorantGaramond-500.woff2',
   'assets/fonts/CormorantGaramond-500i.woff2', 'assets/fonts/CormorantGaramond-600.woff2',
   'assets/fonts/Inter-400.woff2', 'assets/fonts/Inter-600.woff2',
-  'js/app.js', 'js/config.js', 'js/feed.js', 'js/util.js', 'js/components.js', 'js/taxonomy.js', 'js/notify.js', 'js/install.js',
+  'js/app.js', 'js/config.js', 'js/feed.js', 'js/privacy.js', 'js/util.js', 'js/components.js', 'js/taxonomy.js', 'js/notify.js', 'js/install.js',
   'js/backend/adapter.js', 'js/backend/local.js', 'js/backend/supabase.js',
   'js/views/home.js', 'js/views/browse.js', 'js/views/listing.js', 'js/views/map.js', 'js/views/board.js', 'js/views/unlock.js',
   'js/views/membership.js', 'js/views/account.js', 'js/views/contribute.js', 'js/views/moderation.js', 'js/views/pages.js',
   'js/views/packs.js', 'js/views/archive.js', 'js/views/heritage.js', 'js/views/research.js',
   'js/pricing.js', 'js/analytics.js', 'js/sync.js', 'js/views/patronage.js', 'js/views/legal.js', 'js/views/admin_panels.js', 'assets/css/launch.css',
   'data/listings.snapshot.json', 'data/packs.json',
+  'jackson/', 'jackson/index.html',
   'live/', 'live/index.html', 'live/live.js', 'live/live.css', 'live/jackson_pins.json', 'live/layers/index.json', 'live/vendor/leaflet.js', 'live/vendor/leaflet.css',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-192.png', 'icons/maskable-512.png',
   'icons/apple-touch-icon.png', 'icons/favicon-32.png', 'icons/favicon.ico',
