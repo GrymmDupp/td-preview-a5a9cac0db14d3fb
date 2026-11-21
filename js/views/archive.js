@@ -7,6 +7,7 @@ import { statusPill, gradeBadge, listingCard, shelfTabs } from '../components.js
 import { sortListings, sortShelf } from '../feed.js';
 import { STATES } from '../taxonomy.js';
 import { web } from '../reveals.js';
+import { isUnwritten, unwrittenCard } from '../unwritten.js';
 
 // The locked glass museum case. Pure CSS + inline SVG; the padlock rattles when tapped (see app.js, data-caselock).
 export const glassCase = () => html`<section class="glass-case" aria-labelledby="gc-h">
@@ -67,7 +68,7 @@ export async function archive(ctx, q) {
         ${shows.map((x) => chip(x, show === x, href({ show: show === x ? '' : x })))}
         ${S.some((l) => l.crewFeatured) ? chip('✦ With the Twisted History crew', crew, href({ crew: crew ? '' : '1' })) : ''}</div>` : ''}
       <p class="result-bar"><strong>${plural(list.length, 'place')}</strong> <span class="muted small">in the Archive${list.length !== S.length ? ` (of ${S.length})` : ''}</span> <a class="small" href="#/map?shelf=archive">Show them on the map →</a></p>
-      <div class="arch-cabinet"><div class="grid">${list.map((l) => listingCard(l, { ...ctx, compact: false }))}</div></div>
+      <div class="arch-cabinet"><div class="grid">${list.map((l) => isUnwritten(l) ? unwrittenCard(l, { compact: true }) : listingCard(l, { ...ctx, compact: false }))}</div></div>
       ${list.length ? '' : html`<div class="empty-state"><p>Nothing in the Archive matches. <a href="#/archive">See all of it</a>.</p></div>`}
     </section>` : glassCase()}
   ${onceForSale(ctx)}`;

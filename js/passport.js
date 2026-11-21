@@ -62,7 +62,11 @@ export function townOf(s) {
   return { town, county, state: st };
 }
 const LTYPE = { M: 'Michigan historical marker', N: 'National Register site', U: 'Museum', K: 'Historical marker', P: 'Plaque', B: 'History board', C: 'Cemetery' };
+const unw = (l) => [l.story_status, l.storyStatus].some((v) => String(v || '').toLowerCase() === 'unwritten');
 export function metaFromListing(l, shelf) {
+  const m = metaFromListing0(l, shelf); m.unwritten = unw(l); return m;
+}
+function metaFromListing0(l, shelf) {
   const t = townOf(l.place || l.address || l.addr || '');
   const archive = shelf === 'archive' || l.collection === 'archive' || l.shelf === 'archive';
   if (archive) {   // private homes on the Archive shelf (js/privacy.js): offset area circle, area label, never the house point
@@ -340,7 +344,7 @@ export const countLine = (n) => n > 0 ? `${n.toLocaleString()} ${n === 1 ? 'trav
 
 // Suggestions: insert-only, signed in, rate limited here and on the server.
 const SUGKEY = 'td-passport-sug';
-export async function suggest({ lat, lon, name, story, source_url, public_road }) {
+export async function suggest({ lat, lon, name, story, source_url, public_road, place_id }) {
   name = String(name || '').trim(); story = String(story || '').trim(); source_url = String(source_url || '').trim();
   if (!public_road) throw new Error('Please confirm you saw it from a public road.');
   if (name.length < 3 || name.length > 120) throw new Error('Give the place a name (3 to 120 characters).');
@@ -352,7 +356,7 @@ export async function suggest({ lat, lon, name, story, source_url, public_road }
   if (hist.length >= 5) throw new Error('That is the limit for today (5 suggestions). Thank you!');
   const sb = await backend(); if (!sb) throw new Error('Suggestions open soon.');
   if (!remote.uid) throw new Error('Sign in first.');
-  const r = await sb.from('place_suggestions').insert({ lat: Math.round(lat * 1e6) / 1e6, lon: Math.round(lon * 1e6) / 1e6, name, story, source_url: source_url || null, public_road: true });
+  const r = await sb.from('place_suggestions').insert({ lat: Math.round(lat * 1e6) / 1e6, lon: Math.round(lon * 1e6) / 1e6, name, story, source_url: source_url || null, public_road: true, ...(place_id ? { place_id: String(place_id).slice(0, 160) } : {}) });
   if (r.error) throw new Error(r.error.message);
   hist.push(Date.now()); ls.set(SUGKEY, hist);
   return true;

@@ -5,6 +5,7 @@ import { STATES, ratingLabel, leatherFor, layerInfo } from '../taxonomy.js';
 import { displayableImages, updateLine, isArchived, isArchiveShelf } from '../feed.js';
 import { isPrivateHome, publicAreaLabel } from '../privacy.js';
 import { isSaved } from '../reveals.js';
+import { isUnwritten, unwrittenCard } from '../unwritten.js';
 import { bookShell, bookCover, pageHead, folio, rule, wordmark, statusSeal, scrollShell } from '../tome.js';
 
 const SIG = { landmark: 'National Historic Landmark', register: 'National Register of Historic Places', district: 'Historic district', local: 'Local record' };
@@ -252,7 +253,7 @@ export async function listing(ctx, q, id) {
   </header>
   ${isArchiveShelf(l) ? html`<div class="arch-note" role="note"><b>${l.status === 'Sold' ? 'Sold, and no longer on the market.' : 'Not for sale.'}</b> This place is kept in <a href="#/archive">the Archive</a> for its story.${isPrivateHome(l) ? ' It is a private home, so only the neighborhood or area of town is shown on the map, and the address is withheld.' : ''}${l.roadOnly ? ' View it from the public road only.' : ''}</div>` : ''}
   ${arch ? html`<div class="no-longer" role="note"><b>No longer for sale.</b> This property is marked <b>${l.status}</b>${l.statusChangedAt ? html` since ${fmtDate(l.statusChangedAt)}` : ''}${l.lastChecked ? html` (last checked ${fmtDate(l.lastChecked)})` : ''}. The price shown is the last known asking price, not an offer. It stays on the <a href="#/archive?at=sold">Once for sale</a> list for its story; the original listing may be gone.</div>` : ''}
-  ${raw(bookFor(ctx, l, imgs, finis))}
+  ${isUnwritten(l) ? unwrittenCard(l) : raw(bookFor(ctx, l, imgs, finis))}
   <div class="book-quick">
     ${isArchiveShelf(l) ? '' : full ? html`<a class="btn" href="#/l/${enc}?at=file">${unlocked ? 'Your full file' : 'Full file (moderator)'} ↓</a>` : html`<a class="btn" href="#/unlock/${enc}" data-unlock-link>Unlock full file · ${unlockPrice(ctx)}</a>`}
     ${isArchiveShelf(l) ? '' : html`<a class="btn ghost" href="${findListingUrl(l)}" target="_blank" rel="noopener">Find listing</a>`}

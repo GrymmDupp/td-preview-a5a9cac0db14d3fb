@@ -58,7 +58,7 @@ export async function suggestionsPanel(ctx) {
   const waiting = rows.filter((r) => r.status === 'new'), done = rows.filter((r) => r.status !== 'new').slice(0, 30), ok = rows.filter((r) => r.status === 'approved').length;
   const osm = (r) => `https://www.openstreetmap.org/?mlat=${r.lat}&mlon=${r.lon}#map=18/${r.lat}/${r.lon}`;
   const card = (r) => html`<div class="mod-item sug-item"><div class="post-meta"><span class="kind ${r.status === 'new' ? '' : r.status === 'approved' ? 'ok' : 'warn'}">${SUG[r.status] || r.status}</span> · sent ${ago(r.created_at)}${r.public_road ? html` · seen from a public road` : ''}</div>
-      <h4>${r.name}</h4><blockquote>${r.story}</blockquote>
+      <h4>${r.name}</h4>${r.place_id ? html`<p class="small">A tip about ${ctx.feed.byId.get(r.place_id) ? html`<a href="#/l/${encodeURIComponent(r.place_id)}">${ctx.feed.byId.get(r.place_id).name}</a>` : r.place_id}, already in the app</p>` : ''}<blockquote>${r.story}</blockquote>
       <p class="small">${r.source_url ? html`<a href="${r.source_url}" target="_blank" rel="noopener nofollow ugc">Their source link</a> · ` : html`<span class="muted">No source link</span> · `}<a href="${osm(r)}" target="_blank" rel="noopener">See the spot on a map</a></p>
       ${r.admin_note ? html`<p class="small muted">Your note: ${r.admin_note}</p>` : ''}
       <form class="mod-actions" data-place-suggestion="${r.id}"><input name="note" placeholder="Private note (optional)" maxlength="300">
@@ -71,7 +71,7 @@ export async function suggestionsPanel(ctx) {
 }
 export async function exportSuggestions(ctx) {
   const rows = (await ctx.be.listPlaceSuggestions()).filter((r) => r.status === 'approved')
-    .map((r) => ({ id: r.id, name: r.name, lat: r.lat, lon: r.lon, story: r.story, source_url: r.source_url || null, seen_from_public_road: !!r.public_road, approved_at: r.reviewed_at, note: r.admin_note || null }));
+    .map((r) => ({ id: r.id, name: r.name, lat: r.lat, lon: r.lon, story: r.story, source_url: r.source_url || null, about_place_id: r.place_id || null, seen_from_public_road: !!r.public_road, approved_at: r.reviewed_at, note: r.admin_note || null }));
   const doc = { kind: 'twisted-passport-suggestions', note: 'Traveler suggestions approved for research. Not verified: check every one against public records before it goes anywhere.', exported_at: new Date().toISOString(), count: rows.length, places: rows };
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' }));
   a.download = 'passport-suggestions-' + new Date().toISOString().slice(0, 10) + '.json'; document.body.appendChild(a); a.click(); a.remove();

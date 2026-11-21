@@ -67,9 +67,11 @@ function drawArchive() {
   }
 }
 function archDetails(m) {
-  let h = '<div><span class="tag archive">The Archive</span></div><div class="addr" style="margin-top:8px">' + esc(m.name) + '</div><p class="muted">' + esc([m.town, m.county, m.state].filter(Boolean).join(', ')) + '</p>'
+  let h = '<div><span class="tag archive">The Archive</span>' + (m.unwritten ? ' <span class="tag off">Unwritten story</span>' : '') + '</div><div class="addr" style="margin-top:8px">' + esc(m.name) + '</div><p class="muted">' + esc([m.town, m.county, m.state].filter(Boolean).join(', ')) + '</p>'
+    + (m.unwritten ? '<p><b>We haven’t found this place’s story yet.</b></p><div class="row"><button class="btn p g" id="tdp-tell">Know this place? Tell us</button></div>' : '')
     + '<div class="row"><a class="btn p g" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=' + m.lat + ',' + m.lon + '&travelmode=driving">Directions</a><a class="btn g" href="../#/l/' + encodeURIComponent(m.id) + '">Open in app</a></div>';
   api.openSheet('details', 'Details', h); details({ id: m.id, arch: true, meta: m }, $('#sh-body'));
+  const t = $('#tdp-tell'); if (t) t.onclick = () => suggestForm(m);
 }
 function redraw() { refreshSet(); api.redraw(); drawArchive(); }
 
@@ -188,19 +190,22 @@ function passportSheet() {
     '<p class="note">Drive past a place with <b>Start</b> on and it is stamped automatically. Never leave the road for a stamp: many of these are private homes.</p>'
     + (list.length ? '<div class="tdp-grid">' + list.slice(0, 6).map((s) => '<figure>' + P.stampSvg(s, { size: 100 }) + '<figcaption>' + esc(P.noAddr(s.name)) + '</figcaption></figure>').join('') + '</div>' : '<p>No stamps yet.</p>')
     + '<div class="row"><a class="btn p g" href="../passport/">Open my passport</a><button class="btn g" id="tdp-sug">Suggest a place</button></div>');
-  $('#tdp-sug').onclick = suggestForm;
+  $('#tdp-sug').onclick = () => suggestForm();
 }
-function suggestForm() {
+function suggestForm(about) {
+  about = about && about.id ? about : null;
   const st = P.remote.status;
   if (st === 'off' || st === 'local') { api.openSheet('suggest', 'Suggest a place', '<p>Suggestions open soon. For now, tell us through <a href="../#/stories">Stories &amp; Corrections</a>.</p>'); return; }
   if (st === 'signed-out') { api.openSheet('suggest', 'Suggest a place', '<p>Sign in to suggest a place, so we can thank you with a Scout stamp when it’s approved.</p><div class="row"><a class="btn p g" href="../#/account">Sign in</a></div>'); return; }
   const me = api.me, c = api.map.getCenter();
-  let pt = me ? [me[0], me[1]] : [c.lat, c.lng], how = me ? 'your GPS position' : 'the middle of the map';
+  let pt = about && isFinite(about.lat) ? [about.lat, about.lon] : me ? [me[0], me[1]] : [c.lat, c.lng];
+  let how = about ? (about.area ? 'the place’s area' : 'the place') : me ? 'your GPS position' : 'the middle of the map';
   api.openSheet('suggest', 'Suggest a place',
     '<p class="note">Know a place with a dark past? Tell us. Every suggestion is checked by hand against public records before anything appears, and it stays private until then.</p>'
     + '<p class="note"><b>Please never trespass, knock, or bother the people who live there.</b> Only suggest what you saw from a public road.</p>'
+    + (about ? '<p class="note">About: <b>' + esc(about.areaLabel && about.priv ? about.areaLabel : about.name) + '</b>' + (about.unwritten ? ' (an Unwritten story: we haven’t found its story yet)' : '') + '</p>' : '')
     + '<form id="tdp-form" class="tdp-form"><p class="muted">Spot: <span id="tdp-pt"></span> <button type="button" class="btn sm" id="tdp-mid">Use map middle</button></p>'
-    + '<label>Name of the place<input name="name" required minlength="3" maxlength="120" placeholder="e.g. the old county poor farm"></label>'
+    + '<label>Name of the place<input name="name" required minlength="3" maxlength="120" placeholder="e.g. the old county poor farm" value="' + esc(about ? (about.priv ? '' : about.name) : '') + '"></label>'
     + '<label>The story, briefly<textarea name="story" required minlength="20" maxlength="1500" rows="4" placeholder="What happened here, and when?"></textarea></label>'
     + '<label>Source link (optional)<input name="source_url" type="url" maxlength="500" placeholder="https://…"></label>'
     + '<label class="check"><input type="checkbox" name="public_road" required> I saw it from a public road and didn’t go onto the property.</label>'
@@ -213,7 +218,7 @@ function suggestForm() {
     e.preventDefault(); const d = Object.fromEntries(new FormData(e.target));
     if (d.website) { api.closeSheet(); api.toast('Thank you. It’s in the review queue.'); return; }   // honeypot
     const btn = e.target.querySelector('button.p'); btn.disabled = true;
-    try { await P.suggest({ lat: pt[0], lon: pt[1], name: d.name, story: d.story, source_url: d.source_url, public_road: !!d.public_road }); api.closeSheet(); api.toast('Thank you. It’s in the private review queue. If it’s approved you’ll get a Scout stamp.', 6000); }
+    try { await P.suggest({ lat: pt[0], lon: pt[1], name: d.name, story: d.story, source_url: d.source_url, public_road: !!d.public_road, place_id: about ? about.id : null }); api.closeSheet(); api.toast('Thank you. It’s in the private review queue. If it’s approved you’ll get a Scout stamp.', 6000); }
     catch (err) { api.toast(err.message, 5000); btn.disabled = false; }
   };
 }
@@ -232,7 +237,8 @@ async function boot() {
   await P.backend();
   if (P.remote.status === 'on') { await P.sync().catch(() => null); redraw(); paintCount(); }
   document.documentElement.dataset.passport = P.remote.status;
-  if (location.hash === '#suggest') { history.replaceState(null, '', location.pathname); suggestForm(); }
+  const sg = location.hash.match(/^#suggest(?:=(.+))?$/);
+  if (sg) { history.replaceState(null, '', location.pathname); const id = sg[1] ? decodeURIComponent(sg[1]) : ''; suggestForm(id ? (catalog.get(id) || { id, name: '' }) : null); }
 }
 if (window.__tdLiveApi) boot(); else window.addEventListener('td-live-api', boot, { once: true });
-window.__tdPassportDebug = { get state() { return { stamps: P.stamps(), driving, pending: pending.length, cand: [...cand.keys()], remote: { ...P.remote }, catalog: catalog.size }; } };
+window.__tdPassportDebug = { get state() { return { stamps: P.stamps(), driving, pending: pending.length, cand: [...cand.keys()], remote: { ...P.remote }, catalog: catalog.size }; }, P, get catalog() { return catalog; }, suggestForm };

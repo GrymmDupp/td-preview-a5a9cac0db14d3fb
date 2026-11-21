@@ -122,3 +122,12 @@
 /* map: Archive chip */
 .map-tools .chip.arch-chip[aria-pressed=true]{border-color:#cfc8b8;color:#f2efe8;background:rgba(207,200,184,.14)}
 .map-tools .chip.arch-chip small{color:var(--dim)}
+/* Unwritten story card (story_status: unwritten). js/unwritten.js */
+.unwritten-card{position:relative;padding:18px 18px 14px;border-radius:8px;border:1px dashed rgba(201,164,92,.55);background:radial-gradient(ellipse at 30% 0%,rgba(255,226,186,.06),transparent 60%),#15110f;color:var(--bone,#f0e6d0);margin:14px 0}
+.unwritten-card .uw-kicker{font:700 .72rem/1 var(--th-display,Cinzel,serif);letter-spacing:.2em;text-transform:uppercase;color:#c9a45c}
+.unwritten-card .uw-name{margin:8px 0 2px;font:400 1.35rem/1.2 var(--th-display,Cinzel,serif)}
+.unwritten-card .uw-name a{color:inherit;text-decoration:none}
+.unwritten-card .uw-where{color:#cdb58a;font-style:italic}
+.unwritten-card .uw-line{font-size:1.08rem;margin:12px 0}
+.unwritten-card .uw-road{border-left:3px solid #b21226;padding:6px 10px;background:rgba(178,18,38,.08);border-radius:4px}
+.unwritten-card .uw-tell{font-size:1.05rem;padding:12px 20px;background:#c9a227;color:#1a1200;border-color:#e6c352}
