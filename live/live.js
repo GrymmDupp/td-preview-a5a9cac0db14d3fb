@@ -131,21 +131,37 @@ function drawPins() {
 
 // ---------- Markers + Cemeteries layers (static tiles in layers/, built from open data: OpenStreetMap
 // contributors (ODbL), Michigan History Center / DNR historical markers (public record), National Park
-// Service National Register (public domain). Name, spot, type and source link only; no marker text.
+// Service National Register (public domain), state marker programs (Texas Historical Commission, Maryland
+// MDOT SHA, Montana DOT, Vermont DHP open data). Name, spot, type and source link only; no marker text.
 // Cemeteries also from USGS GNIS + National Structures Dataset (public domain) and Oakland / Barry County MI
-// open data, merged with OSM into one pin each (live_nav/cem_sources.py). Find a Grave is a link-out only.)
-const FAG_LOC = { MI: 'state_24', OH: 'state_37', IN: 'state_17', Canada: 'state_830' };
-const LYR = { idx: null, tiles: new Map(), loading: new Map(), items: new Map() };
-const LTYPE = { M: 'Michigan historical marker', N: 'National Register site', U: 'Museum', K: 'Historical marker', P: 'Plaque', B: 'History board', C: 'Cemetery' };
-const LSAY = { M: 'Michigan historical marker', N: 'Historic place', U: 'Museum', K: 'Historical marker', P: 'Historical plaque', B: 'History board', C: 'Cemetery' };
-const LPRI = { M: 0, N: 0, U: 0, K: 0, P: 1, B: 1, C: 2 };
+// open data, merged with OSM into one pin each (live_nav/cem_sources.py). Find a Grave is a link-out only.
+// Nationwide (US + Canada from OSM): 0.25° tiles, loaded only for the map view and the GPS spot; per-5° block
+// files give tile counts for the zoomed-out cluster bubbles (live_nav/build_national.py).)
+// Find a Grave location ids, each checked on findagrave.com (Nunavut not checked: no link there)
+const FAG_US = 'AK AL AR AZ CA CO CT DC DE FL GA HI IA ID IL IN KS KY LA MA MD ME MI MN MO MS MT NC ND NE NH NJ NM NV NY OH OK OR PA PR RI SC SD TN TX UT VA VT WA WI WV WY'.split(' ');
+const FAG_CA = ['Alberta', 'British Columbia', 'Manitoba', 'New Brunswick', 'Newfoundland and Labrador', 'Northwest Territories', 'Nova Scotia', 'Ontario', 'Prince Edward Island', 'Quebec', 'Saskatchewan', 'Yukon'];
+const FAG_LOC = {}; FAG_US.forEach((a, i) => { FAG_LOC[a] = 'state_' + (i + 2); }); FAG_CA.forEach((a, i) => { FAG_LOC[a] = 'state_' + (823 + i); });
+const ST_NAME = { AK: 'Alaska', AL: 'Alabama', AR: 'Arkansas', AZ: 'Arizona', CA: 'California', CO: 'Colorado', CT: 'Connecticut', DC: 'the District of Columbia', DE: 'Delaware', FL: 'Florida', GA: 'Georgia', HI: 'Hawaii', IA: 'Iowa', ID: 'Idaho', IL: 'Illinois', IN: 'Indiana', KS: 'Kansas', KY: 'Kentucky', LA: 'Louisiana', MA: 'Massachusetts', MD: 'Maryland', ME: 'Maine', MI: 'Michigan', MN: 'Minnesota', MO: 'Missouri', MS: 'Mississippi', MT: 'Montana', NC: 'North Carolina', ND: 'North Dakota', NE: 'Nebraska', NH: 'New Hampshire', NJ: 'New Jersey', NM: 'New Mexico', NV: 'Nevada', NY: 'New York', OH: 'Ohio', OK: 'Oklahoma', OR: 'Oregon', PA: 'Pennsylvania', PR: 'Puerto Rico', RI: 'Rhode Island', SC: 'South Carolina', SD: 'South Dakota', TN: 'Tennessee', TX: 'Texas', UT: 'Utah', VA: 'Virginia', VT: 'Vermont', WA: 'Washington', WI: 'Wisconsin', WV: 'West Virginia', WY: 'Wyoming' };
+const LYR = { idx: null, tiles: new Map(), loading: new Map(), items: new Map(), blk: new Map(), blkLoading: new Map() };
+const LTYPE = { M: 'Michigan historical marker', S: 'State historical marker', N: 'National Register site', U: 'Museum', K: 'Historical marker', P: 'Plaque', B: 'History board', C: 'Cemetery' };
+const LSAY = { M: 'Michigan historical marker', S: 'Historical marker', N: 'Historic place', U: 'Museum', K: 'Historical marker', P: 'Historical plaque', B: 'History board', C: 'Cemetery' };
+const LPRI = { M: 0, S: 0, N: 0, U: 0, K: 0, P: 1, B: 1, C: 2 };
+const HIST_LINE = 'Historical record; the cemetery may no longer be visible.';
+const APPROX_LINE = 'Approximate location; the exact spot isn’t known.';
+const XSRC = { tx: ['Texas Historical Commission marker', (v) => 'https://atlas.thc.texas.gov/Details/' + encodeURIComponent(v)],
+  md: ['Maryland roadside marker list (MDOT SHA)', () => 'https://www.arcgis.com/home/item.html?id=082e58dd45f941fda1cdfc33a5b91d81'],
+  mt: ['Montana highway marker list (MDT)', () => 'https://www.arcgis.com/home/item.html?id=b9b601302cfa4cada68caad1150e081e'],
+  vt: ['Vermont roadside marker list (Division for Historic Preservation)', () => 'https://www.arcgis.com/home/item.html?id=9f1c255148b3411296e549849ea7f342'] };
 const MI_MARKERS_MAP = 'https://experience.arcgis.com/experience/0810844003f149faa1a3aeaa64d7d42e';
 const lyrLayer = L.layerGroup().addTo(map);
 const PLAQUE = '<svg viewBox="0 0 16 20" width="16" height="20" aria-hidden="true"><path d="M7 12h2v7H7z" fill="#8a7a5c"/><rect x="1" y="1" width="14" height="11" rx="2" fill="#2f3a2c" stroke="#c9a96a" stroke-width="1.4"/><path d="M4 5h8M4 8h6" stroke="#c9a96a" stroke-width="1.2" stroke-linecap="round"/></svg>';
+const STONE_H = '<svg viewBox="0 0 14 17" width="14" height="17" aria-hidden="true"><path d="M2 16V7a5 5 0 0 1 10 0v9z" fill="rgba(20,20,20,.35)" stroke="#b9a6d6" stroke-width="1.3" stroke-dasharray="2 1.6"/><path d="M7 6v6M5 8h4" stroke="#b9a6d6" stroke-width="1.1" stroke-linecap="round"/></svg>';
 const STONE = '<svg viewBox="0 0 14 17" width="14" height="17" aria-hidden="true"><path d="M2 16V7a5 5 0 0 1 10 0v9z" fill="#55605a" stroke="#c7cdc4" stroke-width="1.2"/><path d="M7 6v6M5 8h4" stroke="#dfe4dc" stroke-width="1.2" stroke-linecap="round"/><path d="M0.5 16h13" stroke="#c7cdc4" stroke-width="1.2"/></svg>';
 function lyrKind(t) { return t === 'C' ? 'cem' : 'hmark'; }
-function lyrSrc(code) {
+function lyrSrc(code, srcs) {
   const k = code.slice(0, 1), v = code.slice(2);
+  if (code === 'u') { const g = (srcs || []).find((c) => c.slice(0, 2) === 'g:'); code = g ? 'u:' + g.slice(2) : ''; return code ? lyrSrc(code) : null; }
+  if (k === 'x') { const x = XSRC[v.slice(0, 2)]; return x ? { label: x[0], url: x[1](v.slice(2)) } : null; }
   if (k === 'o') { const ty = { n: 'node', w: 'way', r: 'relation' }[v[0]]; return { label: 'OpenStreetMap', url: 'https://www.openstreetmap.org/' + ty + '/' + v.slice(1) }; }
   if (k === 'm') return { label: 'Michigan Historical Markers map (' + v + ')', url: MI_MARKERS_MAP };
   if (k === 'n') return { label: 'National Register file', url: 'https://npgallery.nps.gov/AssetDetail/NRIS/' + encodeURIComponent(v) };
@@ -159,23 +175,58 @@ async function lyrIndex() {
   if (!LYR.idxP) LYR.idxP = getJson('layers/index.json', 10000).then((j) => (LYR.idx = j)).catch(() => { LYR.idxP = null; return null; });
   return LYR.idxP;
 }
+// block index (one small file per 5° square that has anything), used for tile existence and cluster counts
+function lyrBlkKeys(s, w, n, e) {
+  const B = LYR.idx.block || 5, out = [];
+  for (let a = Math.floor(s / B) * B; a <= n; a += B) for (let o = Math.floor(w / B) * B; o <= e; o += B) { const k = a + '_' + o; if (LYR.idx.blocks[k]) out.push(k); }
+  return out;
+}
+async function lyrBlocks(s, w, n, e) {
+  const idx = await lyrIndex(); if (!idx || !idx.blocks) return [];
+  const keys = lyrBlkKeys(s, w, n, e);
+  if (keys.length > 40) return keys.filter((k) => LYR.blk.has(k));
+  await Promise.all(keys.filter((k) => !LYR.blk.has(k)).map((k) => {
+    if (!LYR.blkLoading.has(k)) LYR.blkLoading.set(k, getJson('layers/i/' + k + '.json?v=' + idx.v, 15000).then((j) => { LYR.blk.set(k, j.t || {}); }).catch(() => {}).finally(() => LYR.blkLoading.delete(k)));
+    return LYR.blkLoading.get(k);
+  }));
+  return keys.filter((k) => LYR.blk.has(k));
+}
+function lyrTileExists(k) {
+  const B = LYR.idx.block || 5, [a, o] = k.split('_').map(Number);
+  const t = LYR.blk.get(Math.floor(a / B) * B + '_' + Math.floor(o / B) * B);
+  return !!(t && t[k]);
+}
+// keep memory bounded while browsing the whole country: forget tiles far from the view and from GPS
+function lyrEvict() {
+  if (LYR.items.size < 60000) return;
+  const c = map.getCenter();
+  for (const [k, ids] of LYR.tiles) {
+    const [a, o] = k.split('_').map(Number);
+    const far = (p) => Math.abs(a - p[0]) > 1.5 || Math.abs(o - p[1]) > 2;
+    if (far([c.lat, c.lng]) && (!me || far(me))) { for (const id of ids) LYR.items.delete(id); LYR.tiles.delete(k); }
+  }
+}
 async function lyrLoad(s, w, n, e) {
   const idx = await lyrIndex(); if (!idx) return;
-  const T = idx.tile || 0.5, jobs = [];
+  await lyrBlocks(s, w, n, e);
+  const T = idx.tile || 0.25, jobs = [];
   for (let a = Math.floor(s / T) * T; a <= n; a += T) for (let o = Math.floor(w / T) * T; o <= e; o += T) {
-    const k = a.toFixed(1) + '_' + o.toFixed(1);
-    if (!idx.tiles[k] || LYR.tiles.has(k)) continue;
+    const k = a.toFixed(2) + '_' + o.toFixed(2);
+    if (LYR.tiles.has(k) || !lyrTileExists(k)) continue;
+    if (jobs.length >= 48) break;     // never a whole region at once
     if (!LYR.loading.has(k)) LYR.loading.set(k, getJson('layers/t/' + k + '.json?v=' + idx.v, 15000).then((j) => {
+      const ids = [];
       for (const r of j.f || []) {
         const srcs = String(r[5]).split('|');
         const id = 'L:' + srcs[0];
-        LYR.items.set(id, { id, lyr: true, t: r[3], kind: lyrKind(r[3]), name: r[2], lat: r[0], lon: r[1], r: r[4], rad: r[6] || 0, srcs, place: (idx.places || [])[r[7]] || '', fl: r[8] || 0 });
+        LYR.items.set(id, { id, lyr: true, t: r[3], kind: lyrKind(r[3]), name: r[2], lat: r[0], lon: r[1], r: r[4], rad: r[6] || 0, srcs, place: (j.p || [])[r[7]] || '', fl: r[8] || 0 });
+        ids.push(id);
       }
-      LYR.tiles.set(k, true);
+      LYR.tiles.set(k, ids);
     }).catch(() => { /* offline and not cached: try again later */ }).finally(() => LYR.loading.delete(k)));
     jobs.push(LYR.loading.get(k));
   }
-  if (jobs.length) { await Promise.all(jobs); lyrDraw(); }
+  if (jobs.length) { await Promise.all(jobs); lyrEvict(); lyrDraw(); }
 }
 function lyrNear(pt) { const d = 0.05; return lyrLoad(pt[0] - d, pt[1] - d * 1.4, pt[0] + d, pt[1] + d * 1.4).catch(() => {}); }
 function lyrOn(x) { return !!S.show[x.kind]; }
@@ -183,13 +234,39 @@ function lyrIcon(x) {
   const big = x.r >= 2, tp = TDP(), sh = tp && tp.pinHtml(x);
   if (sh) return L.divIcon({ className: '', html: sh, iconSize: [30, 30], iconAnchor: [15, 15] });
   const un = tp ? tp.pinClass(x) : '';
+  if (x.t === 'C' && (x.fl & 3)) return L.divIcon({ className: '', html: '<div class="lyr cem hist' + (big ? '' : ' sm') + un + '" title="' + ((x.fl & 1) ? 'Historical cemetery record' : 'Cemetery, approximate spot') + '">' + STONE_H + '</div>', iconSize: [14, 17], iconAnchor: [7, 16] });
   return x.t === 'C'
     ? L.divIcon({ className: '', html: '<div class="lyr cem' + (big ? '' : ' sm') + un + '" title="Cemetery">' + STONE + '</div>', iconSize: [14, 17], iconAnchor: [7, 16] })
     : L.divIcon({ className: '', html: '<div class="lyr hm' + (big ? '' : ' sm') + un + '" title="Historical marker">' + PLAQUE + '</div>', iconSize: [16, 20], iconAnchor: [8, 19] });
 }
+// zoomed out: count bubbles (per tile at z9-10, ~1° at z7-8, ~2.5° at z5-6, per 5° block below that)
+function lyrCount(v) { return (S.show.hmark ? v[0] : 0) + (S.show.cem ? v[1] : 0); }
+function lyrClusters(z) {
+  if (!LYR.idx || !LYR.idx.blocks || !(S.show.hmark || S.show.cem)) return;
+  const b = map.getBounds().pad(0.2), cells = new Map();
+  const add = (key, la, lo, n) => { if (!n) return; const c = cells.get(key) || [0, 0, 0]; c[0] += n; c[1] += la * n; c[2] += lo * n; cells.set(key, c); };
+  if (z < 5) {
+    for (const [k, v] of Object.entries(LYR.idx.blocks)) if (b.contains([v[2], v[3]])) add(k, v[2], v[3], lyrCount(v));
+  } else {
+    const C = z >= 9 ? 0.25 : z >= 7 ? 1 : 2.5;
+    const keys = lyrBlkKeys(b.getSouth(), b.getWest(), b.getNorth(), b.getEast());
+    for (const bk of keys) {
+      const t = LYR.blk.get(bk);
+      if (!t) { const v = LYR.idx.blocks[bk]; add('B' + bk, v[2], v[3], lyrCount(v)); continue; }
+      for (const [k, v] of Object.entries(t)) { if (!b.contains([v[2], v[3]])) continue; const [a, o] = k.split('_').map(Number); add(Math.floor(a / C) + '_' + Math.floor(o / C), v[2], v[3], lyrCount(v)); }
+    }
+  }
+  for (const [, c] of cells) {
+    const n = c[0], la = c[1] / n, lo = c[2] / n, d = Math.round(Math.min(56, 24 + Math.log10(n) * 9));
+    const txt = n >= 10000 ? Math.round(n / 1000) + 'k' : n >= 1000 ? (n / 1000).toFixed(1).replace('.0', '') + 'k' : String(n);
+    const m = L.marker([la, lo], { icon: L.divIcon({ className: '', html: '<div class="lyr-cl" style="width:' + d + 'px;height:' + d + 'px">' + txt + '</div>', iconSize: [d, d], iconAnchor: [d / 2, d / 2] }), keyboard: false, zIndexOffset: -900, title: n + ' markers and cemeteries here: tap to zoom in' });
+    m.on('click', () => map.setView([la, lo], Math.min(11, z + (z < 5 ? 3 : 2))));
+    lyrLayer.addLayer(m);
+  }
+}
 function lyrDraw() {
   lyrLayer.clearLayers();
-  const z = map.getZoom(); if (z < 11) return;
+  const z = map.getZoom(); if (z < 11) { lyrClusters(z); return; }
   const b = map.getBounds().pad(0.15); let n = 0;
   for (const x of LYR.items.values()) {
     if (!lyrOn(x) || !b.contains([x.lat, x.lon])) continue;
@@ -202,11 +279,21 @@ function lyrDraw() {
 }
 let lyrAttrOn = false;
 function lyrAttr() {
-  const want = S.show.hmark || S.show.cem, t = 'Markers: Michigan History Center, NPS · Cemeteries: USGS, Oakland &amp; Barry Co.';
+  const want = S.show.hmark || S.show.cem, t = 'Markers: NPS, Michigan History Center, Texas Historical Commission, MDOT SHA, Montana DOT, Vermont DHP · Cemeteries: USGS, Oakland &amp; Barry Co.';
   if (want && !lyrAttrOn) map.attributionControl.addAttribution(t); else if (!want && lyrAttrOn) map.attributionControl.removeAttribution(t);
   lyrAttrOn = want;
 }
-map.on('moveend', () => { if (map.getZoom() >= 10 && (S.show.hmark || S.show.cem)) { const b = map.getBounds(); lyrLoad(b.getSouth(), b.getWest(), b.getNorth(), b.getEast()); } lyrDraw(); });
+// browse anywhere: the view's own tiles load wherever the map is (alerts still use the real GPS spot)
+function lyrRefresh() {
+  const z = map.getZoom(), b = map.getBounds();
+  if (S.show.hmark || S.show.cem) {
+    if (z >= 10) lyrLoad(b.getSouth(), b.getWest(), b.getNorth(), b.getEast()).catch(() => {});
+    else if (z >= 5) lyrIndex().then((i) => i && lyrBlocks(b.getSouth(), b.getWest(), b.getNorth(), b.getEast())).then(() => { if (map.getZoom() < 11) lyrDraw(); }).catch(() => {});
+    else lyrIndex().then(() => { if (map.getZoom() < 5) lyrDraw(); });
+  }
+  lyrDraw();
+}
+map.on('moveend', lyrRefresh);
 // distance to the edge of a cemetery (inner radius), not its middle
 function lyrDist(o, x) { return Math.max(0, hav(o[0], o[1], x.lat, x.lon) - (x.rad || 0) / 1609.34); }
 function lyrAround(lat, lon, mi) {
@@ -226,7 +313,7 @@ function lyrCheck() {
   if (queue.length || showing) return;     // something more important (or another marker) is on screen
   const now = Date.now();
   if (lyrLast) { const gap = now - lyrLast.ts, moved = hav(me[0], me[1], lyrLast.lat, lyrLast.lon); if (gap < 45000 || (moved < 0.3 && gap < 180000)) return; }
-  const c = lyrAround(me[0], me[1], 0.5).filter((x) => x.p.r >= 1 && !(x.p.fl & 3) && !alerted.has(x.p.id) && x.d <= Math.min(S.radius, lyrCap(x.p)));
+  const c = lyrAround(me[0], me[1], 0.5).filter((x) => x.p.r >= 1 && !alerted.has(x.p.id) && x.d <= Math.min(S.radius, lyrCap(x.p)));
   if (!c.length) return;
   c.sort((a, b) => (LPRI[a.p.t] + (a.p.t === 'C' && a.p.r < 2 ? 1 : 0)) - (LPRI[b.p.t] + (b.p.t === 'C' && b.p.r < 2 ? 1 : 0)) || a.d - b.d);
   const x = c[0];
@@ -234,15 +321,17 @@ function lyrCheck() {
   lyrLast = { ts: now, lat: me[0], lon: me[1] }; sess.set('td-live-lyr-last', lyrLast);
   queue.push(x.p.id);
   try { if (navigator.vibrate) navigator.vibrate(120); } catch (e) { /* ignore */ }
-  if (speakOn() && now - lyrSpoke >= 90000) { lyrSpoke = now; const dir = sayDir(x.b); say(LSAY[x.p.t] + ' ' + (dir ? dir + ', ' : 'nearby, ') + sayDist(x.d) + '. ' + x.p.name + '.', 0, { id: x.p.id, prio: 2 }); }
+  if (speakOn() && now - lyrSpoke >= 90000) { lyrSpoke = now; const dir = sayDir(x.b); say(LSAY[x.p.t] + ' ' + (dir ? dir + ', ' : 'nearby, ') + sayDist(x.d) + '. ' + x.p.name + '.' + lyrCaveat(x.p, ' '), 0, { id: x.p.id, prio: 2 }); }
 }
-function lyrTag(x) { return '<span class="tag lyr-' + x.kind + '">' + esc(LTYPE[x.t] || 'Marker') + '</span>'; }
+function lyrCaveat(p, pre) { return p.t !== 'C' ? '' : (p.fl & 1) ? pre + HIST_LINE : (p.fl & 2) ? pre + APPROX_LINE : ''; }
+function lyrTag(x) { return '<span class="tag lyr-' + x.kind + (x.t === 'C' && (x.fl & 3) ? ' hist' : '') + '">' + esc(x.t === 'C' && (x.fl & 1) ? 'Historical cemetery' : x.t === 'C' && (x.fl & 2) ? 'Cemetery (approx.)' : (LTYPE[x.t] || 'Marker')) + '</span>'; }
 function renderLyrAlert(el, p) {
   const o = me || origin(); const d = lyrDist(o, p), b = compass(bearing(o[0], o[1], p.lat, p.lon));
   el.hidden = false;
   const compact = !$('#sheet').hidden; el.classList.toggle('compact', compact); $('#stage').classList.toggle('has-alert', compact);
   el.innerHTML = '<div class="a-top"><span class="a-near">NEARBY</span>' + lyrTag(p) + '<button class="x" id="a-x" aria-label="Dismiss">×</button></div>'
     + '<div class="a-name">' + esc(p.name) + '</div><div class="a-dist">' + esc(d === 0 ? 'You are here' : fmtDist(d) + ' ' + b) + '</div>'
+    + (lyrCaveat(p, '') ? '<div class="a-hist">' + esc(lyrCaveat(p, '')) + '</div>' : '')
     + '<div class="a-btns"><a class="btn p g" target="_blank" rel="noopener" href="' + dirUrl(p) + '">Directions</a><button class="btn g" id="a-d">Details</button></div>'
     + (queue.length ? '<div class="a-more">+' + queue.length + ' more nearby</div>' : '');
   $('#a-x').onclick = (e) => { e.stopPropagation(); nextAlert(); };
@@ -288,17 +377,18 @@ function lyrCard(p, e) {
   if (facts.length) h += '<div class="ly-facts">' + facts.map((f) => '<div class="ly-fact' + (String(f[1]).length > 26 ? ' w' : '') + '"><span>' + esc(f[0]) + '</span><b>' + esc(f[1]) + '</b></div>').join('') + '</div>';
   if (e && e.bu && e.bu.length) h += '<h4>Notable burials</h4><ul class="ly-bur">' + e.bu.map((b) => '<li><b>' + esc(b[0]) + '</b>' + (b[1] ? ' <span class="muted">' + esc(b[1]) + '</span>' : '') + '</li>').join('') + '</ul>'
     + (e.bn > e.bu.length ? '<p class="note">' + e.bn + ' people with a Wikidata record are buried here.</p>' : '');
+  if (p.t !== 'C' && p.place) h += '<p class="muted" style="margin-top:2px">' + esc(p.place) + '</p>';
   if (p.t === 'N') h += '<p class="note">' + (e && e.pv === 0 ? 'Listed on the National Register of Historic Places.' : 'Listed on the National Register of Historic Places. Many are private homes: please view from the road.') + '</p>';
   if (p.t === 'C') {
     if (p.place) h += '<p class="muted" style="margin-top:2px">' + esc(p.place) + '</p>';
-    if (p.fl & 1) h += '<p class="note">Listed as a historical cemetery: it may be gone, moved or hard to see today.</p>';
-    if (p.fl & 2) h += '<p class="note">Approximate spot: the county lists this as a suspected location.</p>';
+    if (p.fl & 1) h += '<p class="note hist">' + HIST_LINE + ' It is listed in the records but may be gone, moved or hard to see today.</p>';
+    if (p.fl & 2) h += '<p class="note hist">' + APPROX_LINE + ' The record gives only a suspected spot.</p>';
     if (p.fl & 4) h += '<p class="note">A small family or pioneer burial ground. Many are on private land: please view from the road.</p>';
     h += '<p class="note">Please respect posted hours and visitors.</p>';
   }
   h += '<div class="row"><a class="btn p g" target="_blank" rel="noopener" href="' + dirUrl(p) + '">Directions</a><button class="btn g" id="ly-here">What’s here?</button></div><div class="row ly-links">';
   (e && e.lk ? e.lk : []).forEach((l) => { if (linkUrl(l[1])) h += '<a class="btn sm" target="_blank" rel="noopener" href="' + esc(l[1]) + '">' + esc(l[0]) + '</a>'; });
-  p.srcs.map(lyrSrc).filter(Boolean).forEach((s) => { h += '<a class="btn sm" target="_blank" rel="noopener" href="' + esc(s.url) + '">' + esc(s.label) + '</a>'; });
+  p.srcs.map((c) => lyrSrc(c, p.srcs)).filter(Boolean).forEach((s) => { h += '<a class="btn sm" target="_blank" rel="noopener" href="' + esc(s.url) + '">' + esc(s.label) + '</a>'; });
   const fag = p.t === 'C' ? fagUrl(p) : '';
   if (fag) h += '</div><div class="row"><a class="btn sm g" id="ly-fag" target="_blank" rel="noopener" href="' + esc(fag) + '">Look it up on Find a Grave</a>';
   h += '</div>' + (fag ? '<p class="note">Opens a Find a Grave search for “' + esc(fagName(p.name)) + '” in ' + esc(fagWhere(p)) + '. Find a Grave is a separate site; nothing is copied from it.</p>' : '');
@@ -306,6 +396,8 @@ function lyrCard(p, e) {
   if (p.t === 'C') cr.push('cemeteries also from USGS GNIS and The National Map (public domain) and Oakland and Barry County MI open data');
   if (p.srcs.some((x) => x.startsWith('m:'))) cr.push('Michigan Historical Markers, Michigan History Center / DNR (public record)');
   if (p.srcs.some((x) => x.startsWith('n:'))) cr.push('National Register of Historic Places, National Park Service (public domain)');
+  if (p.srcs.some((x) => x.startsWith('x:tx'))) cr.push('marker data courtesy of the Texas Historical Commission');
+  if (p.srcs.some((x) => /^x:(md|mt|vt)/.test(x))) cr.push('state roadside marker lists: Maryland MDOT SHA, Montana DOT, Vermont Division for Historic Preservation (provided as is)');
   if (e && (e.d || (e.lk || []).some((l) => l[0] === 'Wikidata') || e.bu)) cr.push('Wikidata (CC0)');
   if (ph && ph.src === 'Wikimedia Commons') cr.push('Photo: Wikimedia Commons, ' + ph.lic);
   if (e && e.wx) cr.push('Wikipedia (CC BY-SA 4.0)');
@@ -324,9 +416,10 @@ function showLyr(id) {
 }
 // Find a Grave link-out (never copied): its own cemetery search, by name within the state (or Canada)
 function fagName(n) { return String(n || '').replace(/\s*\/.*$/, '').replace(/\(.*?\)/g, '').replace(/\b(cemetery|cemetary|graveyard)\b/ig, '').replace(/\s+/g, ' ').trim(); }
-function fagWhere(p) { const st = String(p.place || '').split(', ').pop(); return st === 'Canada' ? 'Ontario' : ({ MI: 'Michigan', OH: 'Ohio', IN: 'Indiana' }[st] || ''); }
+function fagSt(p) { const a = String(p.place || '').split(', '); return a[a.length - 1] === 'Canada' ? a[a.length - 2] : a[a.length - 1]; }
+function fagWhere(p) { const st = fagSt(p); return ST_NAME[st] || st || ''; }
 function fagUrl(p) {
-  const n = fagName(p.name), st = String(p.place || '').split(', ').pop(), loc = FAG_LOC[st];
+  const n = fagName(p.name), loc = FAG_LOC[fagSt(p)];
   if (!n || p.r < 1 || !loc) return '';
   return 'https://www.findagrave.com/cemetery/search?cemetery-name=' + encodeURIComponent(n) + '&locationId=' + loc;
 }
@@ -338,6 +431,42 @@ function lyrNearbyHtml() {
     + '<div class="it-act"><a class="btn p sm g" target="_blank" rel="noopener" href="' + dirUrl(x.p) + '">Directions</a><button class="btn sm g" data-det="' + esc(x.p.id) + '">Details</button><button class="btn sm" data-see="' + esc(x.p.id) + '">Map</button></div></div>').join('');
 }
 lyrAttr();
+// ---------- Find a place: town, county, state or ZIP (US + Canada) via OpenStreetMap Nominatim, at most one
+// request every 1.1 s, results cached for the session. Browsing does not move the GPS spot or its alerts.
+const FIND = { last: 0, busy: false };
+async function findPlace(q) {
+  q = String(q || '').trim(); if (!q || FIND.busy) return null;
+  const key = 'td-find:' + q.toLowerCase(); const hit = sess.get(key, null); if (hit) return hit;
+  const wait = FIND.last + 1100 - Date.now(); if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  FIND.busy = true; FIND.last = Date.now();
+  try {
+    const zip = /^\d{5}(-\d{4})?$/.test(q);
+    const u = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=0&countrycodes=' + (zip ? 'us&postalcode=' + encodeURIComponent(q.slice(0, 5)) : 'us,ca&q=' + encodeURIComponent(q));
+    const j = await getJson(u, 10000);
+    const r = j && j[0]; if (!r) return { none: true };
+    const out = { name: r.display_name, lat: +r.lat, lon: +r.lon, bb: (r.boundingbox || []).map(Number), town: zip || /^(city|town|village|hamlet|suburb|neighbourhood|quarter|postcode|municipality|locality)$/.test(r.addresstype || r.type || '') };
+    sess.set(key, out); return out;
+  } catch (e) { return { err: true }; } finally { FIND.busy = false; FIND.last = Date.now(); }
+}
+function findGo(r) {
+  follow = false; if (running) $('#recenter').hidden = false;
+  if (r.town) map.setView([r.lat, r.lon], 13);     // a town or ZIP: close enough to see its pins
+  else if (r.bb && r.bb.length === 4 && r.bb.every(isFinite)) {
+    map.fitBounds([[r.bb[0], r.bb[2]], [r.bb[1], r.bb[3]]], { maxZoom: 14, padding: [10, 10] });
+  } else map.setView([r.lat, r.lon], 13);
+  toast('Showing ' + r.name.split(', ').slice(0, 3).join(', '), 3500);
+}
+$('#findbtn').onclick = () => { const f = $('#find'); f.hidden = !f.hidden; if (!f.hidden) $('#find-q').focus(); };
+$('#find-x').onclick = () => { $('#find').hidden = true; };
+$('#find').onsubmit = async (e) => {
+  e.preventDefault();
+  const q = $('#find-q').value, st = $('#find-st'); st.textContent = 'Searching…';
+  const r = await findPlace(q);
+  if (!r) { st.textContent = ''; return; }
+  if (r.none) { st.textContent = 'No place found for “' + q + '”.'; return; }
+  if (r.err) { st.textContent = 'Search is not reachable right now.'; return; }
+  st.textContent = ''; $('#find').hidden = true; $('#find-q').blur(); findGo(r);
+};
 
 // ---------- nearby + alerts
 let alerted = new Set(sess.get('td-live-alerted', []));
@@ -525,7 +654,7 @@ document.querySelectorAll('.rad button').forEach((b) => {
 });
 document.querySelectorAll('.chip').forEach((b) => {
   const k = b.dataset.k; b.classList.toggle('on', !!S.show[k]); b.setAttribute('aria-pressed', !!S.show[k]);
-  b.onclick = () => { S.show[k] = !S.show[k]; saveS(); b.classList.toggle('on', S.show[k]); b.setAttribute('aria-pressed', S.show[k]); if (k === 'hmark' || k === 'cem') { lyrDraw(); lyrAttr(); refreshNearby(); toast((k === 'hmark' ? 'Historical markers' : 'Cemeteries') + (S.show[k] ? ' on' : ' off'), 1500); } else drawPins(); checkAlerts(); };
+  b.onclick = () => { S.show[k] = !S.show[k]; saveS(); b.classList.toggle('on', S.show[k]); b.setAttribute('aria-pressed', S.show[k]); if (k === 'hmark' || k === 'cem') { lyrRefresh(); lyrAttr(); refreshNearby(); toast((k === 'hmark' ? 'Historical markers' : 'Cemeteries') + (S.show[k] ? ' on' : ' off'), 1500); } else drawPins(); checkAlerts(); };
 });
 $('#speak') && ($('#speak').onclick = () => {
   S.speak = !S.speak; saveS(); paintSpeak();
@@ -752,5 +881,5 @@ window.__tdLiveApi = { map, get pins() { return PINS; }, get lyr() { return LYR.
   isPriv, inPrivArea, locLabel, radMi,
   redraw() { drawPins(); lyrDraw(); }, openSheet, closeSheet, toast, showDetails };
 window.dispatchEvent(new Event('td-live-api'));
-window.__tdLiveDebug = { view: (la, lo, z) => map.setView([la, lo], z), lyr: () => [...LYR.items.values()], get state() { return { running, me, alerted: [...alerted], queue: [...queue], showing, lyrItems: LYR.items.size, lyrTiles: [...LYR.tiles.keys()], lyrLast }; } };
+window.__tdLiveDebug = { center: () => { const c = map.getCenter(); return [+c.lat.toFixed(4), +c.lng.toFixed(4)]; }, find: (q) => findPlace(q).then((r) => { if (r && !r.none && !r.err) findGo(r); return r; }), lyrStats: () => ({ items: LYR.items.size, tiles: LYR.tiles.size, blocks: LYR.blk.size, drawn: lyrLayer.getLayers().length, zoom: map.getZoom() }),  view: (la, lo, z) => map.setView([la, lo], z), lyr: () => [...LYR.items.values()], get state() { return { running, me, alerted: [...alerted], queue: [...queue], showing, lyrItems: LYR.items.size, lyrTiles: [...LYR.tiles.keys()], lyrLast }; } };
 })();

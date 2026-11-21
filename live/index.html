@@ -22,6 +22,7 @@
   <header id="top">
     <a class="brand" href="../" aria-label="Back to the Twisted Deeds app"><img src="../assets/logo-shield-48.png" width="34" height="35" alt=""><span><b>Twisted</b> <i>Deeds</i> <em>LIVE</em></span></a>
     <button type="button" id="gps" class="gps off" aria-live="polite" aria-label="GPS status. Tap to turn on GPS or try again.">GPS off · tap</button>
+    <button type="button" id="findbtn" class="tl" aria-label="Find a place: town, county, state or ZIP">Find</button>
     <a class="tl" href="../jackson/">Jackson</a>
   </header>
   <div id="chips" class="chips" role="group" aria-label="What to show">
@@ -38,6 +39,11 @@
   <div id="stage">
     <div id="map" aria-label="Map"></div>
     <div id="alert" role="alert" hidden></div>
+    <form id="find" role="search" hidden>
+      <input id="find-q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Town, county, state or ZIP" aria-label="Town, county, state or ZIP">
+      <button type="submit" class="btn p">Go</button><button type="button" id="find-x" class="btn" aria-label="Close search">×</button>
+      <div class="find-m"><span id="find-st" role="status"></span><span class="find-a">Search © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors · Nominatim</span></div>
+    </form>
     <div id="toast" role="status" hidden></div>
     <button id="recenter" class="float" hidden>Recenter</button>
     <button id="pickcancel" class="float" hidden>Cancel: tap the map…</button>

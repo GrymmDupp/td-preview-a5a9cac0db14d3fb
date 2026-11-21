@@ -133,3 +133,15 @@ textarea{width:100%;min-height:76px;background:#100c0c;color:var(--bone);border:
 .ly-fact b{display:block;font-weight:600;font-size:.92rem;overflow-wrap:anywhere}
 .ly-bur{margin:0 0 6px;padding-left:18px}.ly-bur li{margin:3px 0}
 .ly-links{flex-wrap:wrap}.ly-credits{margin-top:10px}
+/* nationwide layers: historical / approximate cemetery records (hollow dashed, muted violet), cluster counts, place search */
+.lyr.cem.hist{opacity:.92;filter:drop-shadow(0 0 1px #000)}
+.tag.lyr-cem.hist{background:transparent;border:1px dashed #b9a6d6;color:#d6c8ec}
+.a-hist,.note.hist{color:#d6c8ec;font-size:.85rem;margin-top:4px}
+.lyr-cl{display:grid;place-items:center;border-radius:50%;background:rgba(43,37,30,.86);border:2px solid #c9a96a;color:#f0e6d0;font:700 12px/1 var(--sans);box-shadow:0 1px 5px rgba(0,0,0,.6)}
+#find{position:absolute;top:8px;left:8px;right:64px;z-index:1200;display:flex;flex-wrap:wrap;gap:6px;background:#171213;border:1px solid var(--bronze);border-radius:12px;padding:8px}
+#find[hidden]{display:none}
+#find input{flex:1;min-width:0;min-height:44px;border-radius:10px;border:1px solid var(--line);background:#0f0b0b;color:var(--bone);padding:0 10px;font:inherit}
+#find .btn{min-height:44px}
+.find-m{flex-basis:100%;display:flex;justify-content:space-between;gap:8px;font-size:.72rem;color:var(--muted)}
+.find-a a{color:var(--muted)}
+#findbtn{background:transparent;margin-left:0}
