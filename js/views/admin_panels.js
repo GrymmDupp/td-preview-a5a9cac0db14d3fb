@@ -44,3 +44,36 @@ export async function correctionsPanel(ctx) {
         <input name="note" placeholder="Private note (optional)" maxlength="300"><button class="btn sm ok">Save</button></form></div>`)
     : html`<p class="muted">No requests yet.</p>`}</section>`;
 }
+
+// Twisted Passport: places travelers suggested from the live map ("Suggest a place"). Admins only (RLS).
+// Approving does NOT publish anything: approved places go on a list for the Research Director (Download for research),
+// who checks them like any Archive Scout find. The traveler who suggested it gets a Scout stamp in their passport.
+const SUG = { new: 'Waiting', approved: 'Approved', rejected: 'Turned down' };
+export async function suggestionsPanel(ctx) {
+  const head = html`<h2>Suggested places</h2>`;
+  if (ctx.be.mode !== 'supabase' || !ctx.be.passportReady) return html`<section>${head}<p class="muted small">Only on the live site.</p></section>`;
+  let rows;
+  try { if (!(await ctx.be.passportReady())) return html`<section>${head}<p class="muted small">Not switched on yet: it needs the Twisted Passport database file (20261121_passport.sql) run once in Supabase.</p></section>`; rows = await ctx.be.listPlaceSuggestions(); }
+  catch (e) { return html`<section>${head}<p class="muted small">Not available yet (${esc(e.message)}).</p></section>`; }
+  const waiting = rows.filter((r) => r.status === 'new'), done = rows.filter((r) => r.status !== 'new').slice(0, 30), ok = rows.filter((r) => r.status === 'approved').length;
+  const osm = (r) => `https://www.openstreetmap.org/?mlat=${r.lat}&mlon=${r.lon}#map=18/${r.lat}/${r.lon}`;
+  const card = (r) => html`<div class="mod-item sug-item"><div class="post-meta"><span class="kind ${r.status === 'new' ? '' : r.status === 'approved' ? 'ok' : 'warn'}">${SUG[r.status] || r.status}</span> · sent ${ago(r.created_at)}${r.public_road ? html` · seen from a public road` : ''}</div>
+      <h4>${r.name}</h4><blockquote>${r.story}</blockquote>
+      <p class="small">${r.source_url ? html`<a href="${r.source_url}" target="_blank" rel="noopener nofollow ugc">Their source link</a> · ` : html`<span class="muted">No source link</span> · `}<a href="${osm(r)}" target="_blank" rel="noopener">See the spot on a map</a></p>
+      ${r.admin_note ? html`<p class="small muted">Your note: ${r.admin_note}</p>` : ''}
+      <form class="mod-actions" data-place-suggestion="${r.id}"><input name="note" placeholder="Private note (optional)" maxlength="300">
+        ${r.status !== 'approved' ? html`<button class="btn sm ok" name="d" value="approved">Approve for research</button>` : ''}${r.status !== 'rejected' ? html`<button class="btn sm ghost" name="d" value="rejected">Turn down</button>` : ''}${r.status !== 'new' ? html`<button class="btn sm ghost" name="d" value="new">Put back in the queue</button>` : ''}</form></div>`;
+  return html`<section class="sug-queue"><h2>Suggested places <small>${waiting.length} waiting</small></h2>
+    <p class="small muted">Places travelers sent from the live map. Nobody else can see these, and nothing here goes on the map or into the Archive by itself. <b>Approve for research</b> if it looks real and worth checking: it goes on the research list, and the traveler gets a Scout stamp. <b>Turn down</b> anything that looks made up, unkind, or asks people to go onto private property.</p>
+    <p><button class="btn sm" data-export-suggestions>Download the research list (${ok})</button></p>
+    ${waiting.length ? waiting.map(card) : html`<p class="muted">Nothing waiting right now.</p>`}
+    ${done.length ? html`<details><summary class="small">Already reviewed (${done.length})</summary>${done.map(card)}</details>` : ''}</section>`;
+}
+export async function exportSuggestions(ctx) {
+  const rows = (await ctx.be.listPlaceSuggestions()).filter((r) => r.status === 'approved')
+    .map((r) => ({ id: r.id, name: r.name, lat: r.lat, lon: r.lon, story: r.story, source_url: r.source_url || null, seen_from_public_road: !!r.public_road, approved_at: r.reviewed_at, note: r.admin_note || null }));
+  const doc = { kind: 'twisted-passport-suggestions', note: 'Traveler suggestions approved for research. Not verified: check every one against public records before it goes anywhere.', exported_at: new Date().toISOString(), count: rows.length, places: rows };
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' }));
+  a.download = 'passport-suggestions-' + new Date().toISOString().slice(0, 10) + '.json'; document.body.appendChild(a); a.click(); a.remove();
+  return rows.length;
+}

@@ -171,6 +171,10 @@ export class SupabaseBackend {
     this.ok(await this.sb.from('correction_requests').update({ status, admin_note: note || null, handled_by: this.uid, handled_at: new Date().toISOString() }).eq('id', id));
   }
   // ---- analytics (first-party counts; no user id) and the admin summary
+  // Twisted Passport "Suggest a place" review queue (migration 20261121_passport.sql). Admin-only by RLS; no submitter ids are read.
+  async passportReady() { if (this._pp === undefined) { const r = await this.sb.from('app_settings').select('value').eq('key', 'passport_enabled').maybeSingle(); this._pp = !r.error && r.data?.value === 'true'; } return this._pp; }
+  async listPlaceSuggestions() { return this.ok(await this.sb.from('place_suggestions').select('id,created_at,lat,lon,name,story,source_url,public_road,status,admin_note,reviewed_at').order('created_at', { ascending: false }).limit(300)) || []; }
+  async reviewPlaceSuggestion(id, decision, note) { return this.ok(await this.sb.rpc('review_place_suggestion', { p_id: id, p_decision: decision, p_note: note || null })); }
   async logEvent(event, ref) { const { error } = await this.sb.from('analytics_events').insert({ event, ref: ref || '' }); if (error) throw new Error(error.message); }
   async analyticsSummary(days) { return this.ok(await this.sb.rpc('analytics_summary', { p_days: days })) || []; }
   // ---- synced saves / reading log / finds (one JSON document per account, RLS owner-only)

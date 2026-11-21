@@ -1,0 +1,33 @@
+/* Twisted Passport on the live map (2026-11-21): stamped pins, unstamped fade, stamp pop, drive summary, suggest form.
+   Loaded by live/passport-live.js. */
+.tdp-pin{width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,#f3e8cc 0 58%,rgba(243,232,204,.85) 66%,rgba(243,232,204,0) 72%);filter:drop-shadow(0 2px 3px rgba(0,0,0,.7))}
+.tdp-pin.sm{width:30px;height:30px}
+.tdp-pin svg{display:block}
+.pin.unstamped{opacity:.55;filter:saturate(.55);box-shadow:0 0 0 2px rgba(0,0,0,.35),0 0 0 4px rgba(240,230,208,.35)}
+.lyr.unstamped{opacity:.6}
+.pin.archive{background:#2c3033;border-color:#9aa3ab;color:#eef1f3;font-family:var(--display)}
+.tag.archive{background:#2c3033;border:1px solid #9aa3ab}
+.lyrs .pchip svg{opacity:.45;filter:grayscale(1)}.lyrs .pchip.on svg{opacity:1;filter:none}
+.tdp-mode{position:absolute;z-index:890;left:10px;bottom:14px;font-size:.8rem;font-weight:800;border-radius:20px;padding:8px 12px;background:#3a2a10;color:#ffd48a;border:1px solid #8a6a31;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.6)}
+.tdp-mode[hidden]{display:none}
+#tdp-pop{position:absolute;z-index:1060;left:8px;right:8px;top:8px;background:radial-gradient(ellipse at 30% 20%,#f4ead0,#e2d3ad);color:#2a1c10;border:3px solid #8a6a31;border-radius:16px;padding:10px 12px;box-shadow:0 6px 24px rgba(0,0,0,.7)}
+#tdp-pop[hidden]{display:none}
+.tdp-pop-in{display:flex;gap:12px;align-items:center}
+.tdp-pop-in .btn{color:#f0e6d0}.tdp-pop-in .btn.p{color:#1a1200}
+.tdp-k{font:700 .78rem var(--display);letter-spacing:.16em;color:#8e1b22;text-transform:uppercase}
+.tdp-n{font:600 1.25rem/1.15 var(--display)}.tdp-t{color:#5a4630;font-size:.92rem}
+.tdp-rare{color:#8a6214;font-weight:800;font-size:.85rem}
+#tdp-pop.thunk .tdp-stamp{animation:tdpThunk .5s cubic-bezier(.2,1.6,.4,1)}
+@keyframes tdpThunk{0%{transform:scale(1.9) rotate(-8deg);opacity:0}60%{opacity:1}100%{transform:none}}
+@media (prefers-reduced-motion:reduce){#tdp-pop.thunk .tdp-stamp{animation:none}}
+.tdp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;padding:10px;background:#e9dcbc;border-radius:10px;margin:8px 0}
+.tdp-grid figure{margin:0;text-align:center;color:#2a1c10;font-size:.8rem;line-height:1.2}
+.tdp-grid figcaption small{color:#6a5640}
+.tdp-det{margin-top:12px;border-top:1px solid var(--line);padding-top:4px}
+.tdp-row{display:flex;gap:12px;align-items:center;background:#e9dcbc;color:#2a1c10;border-radius:10px;padding:6px 10px}
+.tdp-cnt{font-weight:700;color:var(--gold2)}
+.tdp-form label{display:block;margin:10px 0;font-weight:700;font-size:.92rem}
+.tdp-form input:not([type=checkbox]),.tdp-form textarea{display:block;width:100%;margin-top:4px;padding:10px;border-radius:10px;border:1px solid var(--line);background:#100c0c;color:var(--bone);font:inherit;font-weight:400}
+.tdp-form .check{display:flex;gap:8px;align-items:flex-start;font-weight:600}
+.tdp-form .check input{width:22px;height:22px;flex:none}
+.tdp-hp{position:absolute!important;left:-9999px!important;width:1px!important;height:1px!important;opacity:0}

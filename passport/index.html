@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+<meta name="googlebot" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1b1b1a">
+<title>Twisted Deeds · Twisted Passport</title>
+<link rel="icon" href="../icons/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="stylesheet" href="../assets/fonts/fonts.css">
+<link rel="stylesheet" href="../assets/fonts/shadow-fonts.css">
+<link rel="stylesheet" href="passport.css">
+</head>
+<body>
+<header class="pp-top">
+  <a class="brand" href="../" aria-label="Back to the Twisted Deeds app"><img src="../assets/logo-shield-48.png" width="34" height="35" alt=""><span><b>Twisted</b> <i>Deeds</i></span></a>
+  <nav><a href="../live/">Live map</a><a href="../">Listings</a></nav>
+</header>
+<main id="pp" aria-live="polite">
+  <section class="pp-cover" aria-label="Twisted Passport">
+    <div class="pp-book">
+      <div class="pp-tool"></div>
+      <h1><span>Twisted</span><span>Passport</span></h1>
+      <p class="pp-sub">Twisted History Tours · since the paper days</p>
+      <div class="pp-stats" id="pp-stats"></div>
+    </div>
+    <div class="pp-intro">
+      <p>Remember the little passport we stamped on every tour? It’s back. Turn on <a href="../live/">the live map</a>, press <b>Start</b>, and drive past a twisted place. Within about 300 feet, its stamp lands here, and its pin on the map turns into the stamp.</p>
+      <p class="pp-warn"><b>Never leave the road for a stamp.</b> Many of these places are private homes with people living in them. Don’t stop, park, knock or trespass. A drive-by is all it takes.</p>
+      <p id="pp-tonight" class="pp-tonight"></p>
+    </div>
+  </section>
+  <nav class="pp-tabs" role="tablist" aria-label="Passport pages" id="pp-tabs"></nav>
+  <section id="pp-pages"></section>
+  <section class="pp-foot">
+    <h2>Your passport</h2>
+    <p id="pp-sync" class="muted"></p>
+    <label class="pp-check"><input type="checkbox" id="pp-show"> Show my stamps on the live map</label>
+    <p class="row"><a class="btn" href="../live/#suggest">Suggest a place</a> <button class="btn ghost" id="pp-clear">Clear stamps on this phone</button></p>
+    <p class="muted small">Your stamps are yours. Nobody else can see which places you stamped or when. Places show only a total of travelers, and that total is updated once a day, so it never tells anyone that someone is there right now.</p>
+  </section>
+</main>
+<dialog id="pp-share" class="pp-dlg"><div class="pp-dlg-in"><img id="pp-share-img" alt="Share card"><p class="row"><button class="btn p" id="pp-share-go">Share</button><a class="btn" id="pp-share-dl" download="twisted-passport.png">Save image</a><button class="btn ghost" id="pp-share-x">Close</button></p></div></dialog>
+<div id="pp-toast" role="status" hidden></div>
+<script type="module" src="book.js"></script>
+</body>
+</html>

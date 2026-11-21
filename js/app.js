@@ -20,6 +20,7 @@ import { syncStart } from './sync.js';
 import { account } from './views/account.js';
 import { contribute } from './views/contribute.js';
 import { moderation } from './views/moderation.js';
+import { exportSuggestions } from './views/admin_panels.js';
 import { rules, about, DISCLAIMER } from './views/pages.js';
 import { packs } from './views/packs.js';
 import { archive } from './views/archive.js';
@@ -96,7 +97,7 @@ function startPoll(ms = 120000) {
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && hasPending()) { checkPayments(); startPoll(60000); } });
 
 function renderChrome(path) {
-  const nav = [['#/', 'Listings', /^\/?$/], ['#/browse', 'Browse', /^\/browse/], ['#/map', 'Map', /^\/map/], ['live/', 'Live', /^$/], ...(CONFIG.show?.packs ? [['#/packs', 'Dossier Packs', /^\/packs/]] : []), ...(CONFIG.show?.heritage || (feed.heritage || []).length ? [['#/heritage', 'Heritage Homes', /^\/heritage/]] : []), ['#/board', 'Board', /^\/board/]];
+  const nav = [['#/', 'Listings', /^\/?$/], ['#/browse', 'Browse', /^\/browse/], ['#/map', 'Map', /^\/map/], ['live/', 'Live', /^$/], ['passport/', 'Passport', /^$/], ...(CONFIG.show?.packs ? [['#/packs', 'Dossier Packs', /^\/packs/]] : []), ...(CONFIG.show?.heritage || (feed.heritage || []).length ? [['#/heritage', 'Heritage Homes', /^\/heritage/]] : []), ['#/board', 'Board', /^\/board/]];
   $('#nav').innerHTML = nav.map(([h, t, re]) => `<a href="${h}" class="${re.test(path) ? 'on' : ''}">${t}</a>`).join('') + `<a href="#/contribute" class="nav-cta ${/contribute|suggest/.test(path) ? 'on' : ''}">Submit</a>`;
   $('#who').innerHTML = (ctx.me
     ? `${['moderator', 'admin'].includes(ctx.me.role) ? '<a class="modlink" href="#/moderate" title="Moderation queue">⚖</a>' : ''}
@@ -217,6 +218,7 @@ document.addEventListener('click', async (e) => {
     if ('filtersToggle' in ds) { const f = t.closest('form'); const open = !f.classList.contains('f-open'); f.classList.toggle('f-open', open); filterPanel.open = open; t.setAttribute('aria-expanded', String(open)); if (open) f.querySelector('#f-panel select')?.focus({ preventScroll: true }); }
     else if ('filtersDone' in ds) { const f = t.closest('form'); f.classList.remove('f-open'); filterPanel.open = false; const b = f.querySelector('[data-filters-toggle]'); b?.setAttribute('aria-expanded', 'false'); document.getElementById('results')?.scrollIntoView({ block: 'start' }); b?.focus({ preventScroll: true }); }
     else if ('signin' in ds) { e.preventDefault(); signInModal(); }
+    else if ('exportSuggestions' in ds) { const n = await exportSuggestions(ctx); toast(n ? `Downloaded ${n} approved place${n === 1 ? '' : 's'} for research.` : 'Nothing approved yet.'); }
     else if ('signout' in ds) { await ctx.be.signOut(); await refreshCtx(); route(); }
     else if (ds.checkout) { e.preventDefault(); if (!needMe()) return; t.disabled = true;
       // Payment Link: open the tab synchronously (popup blockers), then point it at Stripe.
@@ -286,6 +288,7 @@ document.addEventListener('submit', async (e) => {
       await ctx.be.submitCorrection({ kind: d.kind, page: d.page, listing_id: hit ? hit.id : null, message: d.message, reply_to: d.reply_to, relation: d.relation });
       f.reset(); toast('Thank you. Your note has been sent to the curator.'); }
     else if (ds.correctionStatus) { e.preventDefault(); const d = data(); await ctx.be.setCorrectionStatus(ds.correctionStatus, d.status, d.note || ''); toast('Updated.'); route(); }
+    else if (ds.placeSuggestion) { e.preventDefault(); const d = e.submitter?.value; await ctx.be.reviewPlaceSuggestion(ds.placeSuggestion, d, data().note || ''); toast(d === 'approved' ? 'Approved. It’s on the research list, and the traveler gets a Scout stamp.' : d === 'rejected' ? 'Turned down. Nothing was published.' : 'Back in the queue.'); route(); }
     else if (ds.researchStatus) { e.preventDefault(); const d = data(); await ctx.be.setResearchStatus(ds.researchStatus, d.status, d.note || ''); toast('Research request updated.'); route(); }
     else if (ds.moderate) { e.preventDefault(); const [table, id] = ds.moderate.split(':'); const decision = e.submitter?.value; await ctx.be.moderate(table, id, decision, data().note || '', { is_sample: !!data().is_sample }); toast(decision === 'approved' ? (table === 'submissions' ? 'Approved. It’s now part of the full file.' : 'Approved. It’s public now.') : 'Rejected.'); await refreshCtx(); route(); }
     else if (ds.submit) {
