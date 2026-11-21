@@ -1,0 +1,50 @@
+/* Driving mode (live/drive.js): big, high-contrast, glanceable. Phone mounted; no reading or tapping needed while moving. */
+#modes{display:flex;gap:6px;padding:6px 8px;background:#141413;border-bottom:1px solid #4a4a47}
+#modes button{flex:1;min-height:44px;border-radius:12px;border:2px solid #4a4a47;background:#232322;color:#a19d95;font-weight:800;font-size:.95rem;line-height:1.05}
+#modes button small{display:block;font-weight:600;font-size:.68rem;opacity:.8}
+#modes button[aria-pressed=true]{background:#f2efe8;color:#141413;border-color:#f2efe8}
+#app.driving .chips,#app.driving .lyrs,#app.driving #dock,#app.driving #alert,#app.driving #recenter,#app.driving .tl{display:none!important}
+#app.driving #stage{display:flex;flex-direction:column}
+#app.driving #map{position:relative;inset:auto;flex:1 1 22%;min-height:90px}
+#drive{position:relative;flex:0 0 auto;max-height:80%;display:flex;flex-direction:column;gap:10px;padding:12px 12px calc(env(safe-area-inset-bottom) + 10px);background:#000;color:#fff;overflow-y:auto}
+#drive[hidden]{display:none}
+.dv-card{flex:0 0 auto;border-radius:20px;padding:10px 16px 12px;background:#141414;border:4px solid #555}
+.dv-card.deed{border-color:#e0313d}.dv-card.story{border-color:#ffd23f}.dv-card.lead{border-color:#ff9f2e}.dv-card.unverified{border-color:#b48cff}.dv-card.arch{border-color:#9fd3c7}.dv-card.lyr{border-color:#c9a96a}.dv-card.context{border-color:#9aa3ad}
+.dv-lab{font:800 1rem/1.1 system-ui,-apple-system,Roboto,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#ffd23f}
+.dv-name{font:800 clamp(1.6rem,7.5vw,2.6rem)/1.08 system-ui,-apple-system,Roboto,sans-serif;margin:6px 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.dv-dist{display:flex;align-items:center;gap:14px;font:900 clamp(2.4rem,13vw,4.2rem)/1 system-ui,-apple-system,Roboto,sans-serif;color:#fff}
+.dv-arrow{display:inline-flex;color:#ffd23f;transition:transform .4s}
+.dv-sub{font-size:1.15rem;font-weight:700;color:#d6d6d6;margin-top:4px;min-height:1.4em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dv-sub.heard{color:#9fd3ff}
+.dv-state{text-align:center;font-weight:800;font-size:1.1rem;color:#bdbdbd;min-height:1.4em}
+#drive[data-st=listening] .dv-state{color:#7dffb0}#drive[data-st=speaking] .dv-state{color:#ffd23f}
+.dv-mic{align-self:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:min(40vw,150px);height:min(40vw,150px);flex:0 0 auto;border-radius:50%;border:6px solid #ffd23f;background:#2a2200;color:#ffd23f;font:900 1.15rem system-ui,-apple-system,sans-serif;box-shadow:0 0 0 6px #000,0 0 0 9px #3a3000}
+.dv-mic.on{background:#0f5a2c;border-color:#7dffb0;color:#fff;animation:dvpulse 1.2s ease-in-out infinite}
+.dv-mic.wake{border-style:dashed}
+@keyframes dvpulse{50%{box-shadow:0 0 0 6px #000,0 0 0 18px rgba(125,255,176,.35)}}
+.dv-btns{display:flex;gap:10px}
+.dv-btns button{flex:1;min-height:76px;border-radius:18px;border:3px solid #fff;background:#1d1d1d;color:#fff;font:900 1.45rem system-ui,-apple-system,sans-serif}
+.dv-foot{display:flex;gap:10px}
+.dv-foot button{flex:1;min-height:48px;border-radius:12px;border:1px solid #555;background:#111;color:#cfcfcf;font-weight:800}
+.dv-go{display:flex}.dv-go[hidden]{display:none}
+.dv-gobtn{flex:1;display:flex;align-items:center;justify-content:center;min-height:64px;border-radius:16px;background:#ffd23f;color:#141000;font:900 1.25rem system-ui,sans-serif;text-decoration:none;text-align:center;padding:0 12px}
+.dv-over{position:absolute;inset:0;z-index:20;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;padding:16px}
+.dv-over[hidden]{display:none}
+.dv-box{max-width:520px;width:100%;max-height:100%;overflow:auto;background:#161616;border:3px solid #ffd23f;border-radius:20px;padding:18px}
+.dv-box h2{margin:0 0 10px;font:900 1.6rem system-ui,sans-serif;color:#ffd23f}
+.dv-box p{font-size:1.08rem;line-height:1.4;margin:0 0 12px}
+.dv-ok{width:100%;min-height:60px;border-radius:14px;border:0;background:#ffd23f;color:#141000;font:900 1.2rem system-ui,sans-serif}
+.dv-setbox h2{font-size:1.3rem}
+.dv-support{background:#222;border-radius:12px;padding:10px 12px;font-size:1rem!important}
+.dv-tg{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid #333;font-weight:800}
+.dv-tg input{width:28px;height:28px;flex:0 0 auto;accent-color:#ffd23f}
+.dv-tg small{display:block;font-weight:500;color:#aaa;font-size:.88rem;margin-top:2px}
+.dv-rate{display:flex;gap:8px;align-items:center;padding:10px 0;border-top:1px solid #333}
+.dv-rate span{font-weight:800;flex:0 0 auto;margin-right:4px}
+.dv-rate button{flex:1;min-height:44px;border-radius:10px;border:2px solid #555;background:#222;color:#ddd;font-weight:800}
+.dv-rate button.on{border-color:#ffd23f;background:#ffd23f;color:#141000}
+.dv-help{font-size:.95rem!important;color:#ccc;border-top:1px solid #333;padding-top:10px}
+.dv-row{display:flex;gap:10px}.dv-row button{flex:1;min-height:56px;border-radius:14px;border:2px solid #555;background:#222;color:#fff;font-weight:900;font-size:1.05rem}
+.dv-row .dv-ok{border:0;background:#ffd23f;color:#141000}
+@media (max-height:700px){#app.driving #map{min-height:60px}.dv-name{-webkit-line-clamp:1}.dv-mic{width:120px;height:120px}.dv-btns button{min-height:62px}}
+@media (prefers-reduced-motion:reduce){.dv-mic.on{animation:none}.dv-arrow{transition:none}}

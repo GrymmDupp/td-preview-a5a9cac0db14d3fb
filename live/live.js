@@ -228,7 +228,7 @@ function lyrCheck() {
   lyrLast = { ts: now, lat: me[0], lon: me[1] }; sess.set('td-live-lyr-last', lyrLast);
   queue.push(x.p.id);
   try { if (navigator.vibrate) navigator.vibrate(120); } catch (e) { /* ignore */ }
-  if (S.speak && now - lyrSpoke >= 90000) { lyrSpoke = now; const dir = sayDir(x.b); say(LSAY[x.p.t] + ' ' + (dir ? dir + ', ' : 'nearby, ') + sayDist(x.d) + '. ' + x.p.name + '.'); }
+  if (speakOn() && now - lyrSpoke >= 90000) { lyrSpoke = now; const dir = sayDir(x.b); say(LSAY[x.p.t] + ' ' + (dir ? dir + ', ' : 'nearby, ') + sayDist(x.d) + '. ' + x.p.name + '.', 0, { id: x.p.id, prio: 2 }); }
 }
 function lyrTag(x) { return '<span class="tag lyr-' + x.kind + '">' + esc(LTYPE[x.t] || 'Marker') + '</span>'; }
 function renderLyrAlert(el, p) {
@@ -345,11 +345,15 @@ function speakLine(x) {
   const dir = sayDir(x.b);
   return CATS[x.p.cat] + ' ' + (dir ? dir + ', ' : 'nearby, ') + sayDist(x.d) + '. ' + (x.p.name || '') + '.';
 }
-function say(text, delay) {
+// Driving mode (live/drive.js) takes over speech when it is on: its own queue, priority and privacy-safe wording.
+const DRV = () => (window.TDDrive && window.TDDrive.on()) ? window.TDDrive : null;
+const speakOn = () => S.speak || !!DRV();
+function say(text, delay, ctx) {
+  const dv = DRV(); if (dv) { if (ctx) dv.alert(ctx); return; }
   if (!S.speak || !canSpeak) return;
   setTimeout(() => { if (!S.speak) return; try { const u = new SpeechSynthesisUtterance(text); u.rate = 1; u.pitch = 1; u.volume = 1; u.lang = 'en-US'; speechSynthesis.speak(u); } catch (e) { /* ignore */ } }, delay || 0);
 }
-function speakAlerts(fresh) { if (!S.speak) return; fresh.forEach((x, i) => say(speakLine(x), (S.chime ? 700 : 0) + i * 50)); }
+function speakAlerts(fresh) { if (!speakOn()) return; fresh.forEach((x, i) => say(speakLine(x), (S.chime ? 700 : 0) + i * 50, { id: x.p.id, prio: 0 })); }
 function paintSpeak() { const b = $('#speak'); if (!b) return; b.hidden = !canSpeak; b.textContent = 'Speak: ' + (S.speak ? 'on' : 'off'); b.setAttribute('aria-pressed', S.speak); }
 function buzz() { try { if (navigator.vibrate) navigator.vibrate([300, 120, 300]); } catch (e) { /* ignore */ } chime(); }
 
@@ -634,6 +638,13 @@ if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && (!LOC
     reg.addEventListener('updatefound', () => { const w = reg.installing; if (w) w.addEventListener('statechange', () => { if (w.state === 'installed' && navigator.serviceWorker.controller) updateBar(); }); });
   }).catch(() => {});
 }
+
+// For live/drive.js (Driving mode): read-only map state, the shared distance/direction wording, and a few actions.
+window.__tdLiveDriveApi = { get pins() { return PINS; }, get lyr() { return LYR.items; }, get me() { return me; }, get meAcc() { return meAcc; }, get meHead() { return meHead; },
+  get running() { return running; }, get showing() { return showing; }, get queue() { return queue.slice(); }, get alerted() { return alerted; }, get show() { return S.show; }, get radius() { return S.radius; },
+  invalidate() { map.invalidateSize(); if (me) map.panTo(me); },
+  CATS, LTYPE, LSAY, hav, bearing, lyrDist, sayDist, sayDir, dirUrl, findAny, inactive, start, stop, toast, skip() { nextAlert(); },
+  setLayer(k, on) { const b = document.querySelector('#lyrs [data-k="' + k + '"]'); if (b && !!S.show[k] !== !!on) b.click(); return !!S.show[k]; } };
 
 // ---------- boot
 paintLeads();
