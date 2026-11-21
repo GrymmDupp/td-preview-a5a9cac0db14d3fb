@@ -20,8 +20,8 @@ const sess = {
 };
 
 // ---------- settings
-const S = Object.assign({ radius: 0.5, chime: false, speak: false, show: { deed: true, story: true, lead: true, unverified: true, context: false } }, store.get('td-live-settings', {}));
-S.show = Object.assign({ deed: true, story: true, lead: true, unverified: true, context: false }, S.show);
+const S = Object.assign({ radius: 0.5, chime: false, speak: false, show: { deed: true, story: true, lead: true, unverified: true, context: false, hmark: true, cem: true } }, store.get('td-live-settings', {}));
+S.show = Object.assign({ deed: true, story: true, lead: true, unverified: true, context: false, hmark: true, cem: true }, S.show);
 const saveS = () => store.set('td-live-settings', S);
 
 // ---------- geometry
@@ -94,6 +94,8 @@ async function loadPins() {
   return src;
 }
 function visible(p) { return !!S.show[p.cat]; }
+const isLyr = (id) => typeof id === 'string' && id.startsWith('L:');
+function findAny(id) { return isLyr(id) ? LYR.items.get(id) : PINS.find((x) => x.id === id); }
 function alertable(p) { return visible(p) && !inactive(p) && !p.approx; }
 function drawPins() {
   layer.clearLayers(); markers.clear();
@@ -105,6 +107,139 @@ function drawPins() {
   }
   refreshNearby();
 }
+
+// ---------- Markers + Cemeteries layers (static tiles in layers/, built from open data: OpenStreetMap
+// contributors (ODbL), Michigan History Center / DNR historical markers (public record), National Park
+// Service National Register (public domain). Name, spot, type and source link only; no marker text.)
+const LYR = { idx: null, tiles: new Map(), loading: new Map(), items: new Map() };
+const LTYPE = { M: 'Michigan historical marker', N: 'National Register site', U: 'Museum', K: 'Historical marker', P: 'Plaque', B: 'History board', C: 'Cemetery' };
+const LSAY = { M: 'Michigan historical marker', N: 'Historic place', U: 'Museum', K: 'Historical marker', P: 'Historical plaque', B: 'History board', C: 'Cemetery' };
+const LPRI = { M: 0, N: 0, U: 0, K: 0, P: 1, B: 1, C: 2 };
+const MI_MARKERS_MAP = 'https://experience.arcgis.com/experience/0810844003f149faa1a3aeaa64d7d42e';
+const lyrLayer = L.layerGroup().addTo(map);
+const PLAQUE = '<svg viewBox="0 0 16 20" width="16" height="20" aria-hidden="true"><path d="M7 12h2v7H7z" fill="#8a7a5c"/><rect x="1" y="1" width="14" height="11" rx="2" fill="#2f3a2c" stroke="#c9a96a" stroke-width="1.4"/><path d="M4 5h8M4 8h6" stroke="#c9a96a" stroke-width="1.2" stroke-linecap="round"/></svg>';
+const STONE = '<svg viewBox="0 0 14 17" width="14" height="17" aria-hidden="true"><path d="M2 16V7a5 5 0 0 1 10 0v9z" fill="#55605a" stroke="#c7cdc4" stroke-width="1.2"/><path d="M7 6v6M5 8h4" stroke="#dfe4dc" stroke-width="1.2" stroke-linecap="round"/><path d="M0.5 16h13" stroke="#c7cdc4" stroke-width="1.2"/></svg>';
+function lyrKind(t) { return t === 'C' ? 'cem' : 'hmark'; }
+function lyrSrc(code) {
+  const k = code.slice(0, 1), v = code.slice(2);
+  if (k === 'o') { const ty = { n: 'node', w: 'way', r: 'relation' }[v[0]]; return { label: 'OpenStreetMap', url: 'https://www.openstreetmap.org/' + ty + '/' + v.slice(1) }; }
+  if (k === 'm') return { label: 'Michigan Historical Markers map (' + v + ')', url: MI_MARKERS_MAP };
+  if (k === 'n') return { label: 'National Register file', url: 'https://npgallery.nps.gov/AssetDetail/NRIS/' + encodeURIComponent(v) };
+  return null;
+}
+async function lyrIndex() {
+  if (LYR.idx) return LYR.idx;
+  if (!LYR.idxP) LYR.idxP = getJson('layers/index.json', 10000).then((j) => (LYR.idx = j)).catch(() => { LYR.idxP = null; return null; });
+  return LYR.idxP;
+}
+async function lyrLoad(s, w, n, e) {
+  const idx = await lyrIndex(); if (!idx) return;
+  const T = idx.tile || 0.5, jobs = [];
+  for (let a = Math.floor(s / T) * T; a <= n; a += T) for (let o = Math.floor(w / T) * T; o <= e; o += T) {
+    const k = a.toFixed(1) + '_' + o.toFixed(1);
+    if (!idx.tiles[k] || LYR.tiles.has(k)) continue;
+    if (!LYR.loading.has(k)) LYR.loading.set(k, getJson('layers/t/' + k + '.json?v=' + idx.v, 15000).then((j) => {
+      for (const r of j.f || []) {
+        const srcs = String(r[5]).split('|');
+        const id = 'L:' + srcs[0];
+        LYR.items.set(id, { id, lyr: true, t: r[3], kind: lyrKind(r[3]), name: r[2], lat: r[0], lon: r[1], r: r[4], rad: r[6] || 0, srcs });
+      }
+      LYR.tiles.set(k, true);
+    }).catch(() => { /* offline and not cached: try again later */ }).finally(() => LYR.loading.delete(k)));
+    jobs.push(LYR.loading.get(k));
+  }
+  if (jobs.length) { await Promise.all(jobs); lyrDraw(); }
+}
+function lyrNear(pt) { const d = 0.05; return lyrLoad(pt[0] - d, pt[1] - d * 1.4, pt[0] + d, pt[1] + d * 1.4).catch(() => {}); }
+function lyrOn(x) { return !!S.show[x.kind]; }
+function lyrIcon(x) {
+  const big = x.r >= 2;
+  return x.t === 'C'
+    ? L.divIcon({ className: '', html: '<div class="lyr cem' + (big ? '' : ' sm') + '" title="Cemetery">' + STONE + '</div>', iconSize: [14, 17], iconAnchor: [7, 16] })
+    : L.divIcon({ className: '', html: '<div class="lyr hm' + (big ? '' : ' sm') + '" title="Historical marker">' + PLAQUE + '</div>', iconSize: [16, 20], iconAnchor: [8, 19] });
+}
+function lyrDraw() {
+  lyrLayer.clearLayers();
+  const z = map.getZoom(); if (z < 11) return;
+  const b = map.getBounds().pad(0.15); let n = 0;
+  for (const x of LYR.items.values()) {
+    if (!lyrOn(x) || !b.contains([x.lat, x.lon])) continue;
+    if (z < 13 && x.r < 2) continue;          // zoomed out: only the bigger / official ones
+    if (z < 14 && x.r < 1) continue;          // unnamed cemeteries only when close in
+    if (++n > 600) break;
+    const m = L.marker([x.lat, x.lon], { icon: lyrIcon(x), keyboard: false, zIndexOffset: -800, title: x.name });
+    m.on('click', () => showLyr(x.id)); lyrLayer.addLayer(m);
+  }
+}
+let lyrAttrOn = false;
+function lyrAttr() {
+  const want = S.show.hmark || S.show.cem, t = 'Markers: Michigan History Center, NPS';
+  if (want && !lyrAttrOn) map.attributionControl.addAttribution(t); else if (!want && lyrAttrOn) map.attributionControl.removeAttribution(t);
+  lyrAttrOn = want;
+}
+map.on('moveend', () => { if (map.getZoom() >= 10 && (S.show.hmark || S.show.cem)) { const b = map.getBounds(); lyrLoad(b.getSouth(), b.getWest(), b.getNorth(), b.getEast()); } lyrDraw(); });
+// distance to the edge of a cemetery (inner radius), not its middle
+function lyrDist(o, x) { return Math.max(0, hav(o[0], o[1], x.lat, x.lon) - (x.rad || 0) / 1609.34); }
+function lyrAround(lat, lon, mi) {
+  const out = [];
+  for (const x of LYR.items.values()) { if (!lyrOn(x) || Math.abs(x.lat - lat) > 0.1 || Math.abs(x.lon - lon) > 0.14) continue; const d = lyrDist([lat, lon], x); if (d <= mi) out.push({ p: x, d, b: bearing(lat, lon, x.lat, x.lon) }); }
+  return out.sort((a, b) => a.d - b.d);
+}
+// Alerts: quieter than the Twisted Deeds pins. Named places only; official markers, National Register
+// sites and museums within ½ mi (or your radius if smaller), plaques and boards within ¼ mi, big or
+// notable cemeteries within ½ mi, other named cemeteries within 0.2 mi. One at a time, never ahead of a
+// listing or Archive place, at least 45 s apart and 0.3 mi of travel apart (or 3 min), spoken at most
+// once every 90 s.
+let lyrLast = sess.get('td-live-lyr-last', null), lyrSpoke = 0;
+function lyrCap(x) { return x.t === 'C' ? (x.r >= 2 ? 0.5 : 0.2) : (LPRI[x.t] === 0 ? 0.5 : 0.25); }
+function lyrCheck() {
+  if (!me || (meAcc && meAcc > 500) || !(S.show.hmark || S.show.cem)) return;
+  if (queue.length || showing) return;     // something more important (or another marker) is on screen
+  const now = Date.now();
+  if (lyrLast) { const gap = now - lyrLast.ts, moved = hav(me[0], me[1], lyrLast.lat, lyrLast.lon); if (gap < 45000 || (moved < 0.3 && gap < 180000)) return; }
+  const c = lyrAround(me[0], me[1], 0.5).filter((x) => x.p.r >= 1 && !alerted.has(x.p.id) && x.d <= Math.min(S.radius, lyrCap(x.p)));
+  if (!c.length) return;
+  c.sort((a, b) => (LPRI[a.p.t] + (a.p.t === 'C' && a.p.r < 2 ? 1 : 0)) - (LPRI[b.p.t] + (b.p.t === 'C' && b.p.r < 2 ? 1 : 0)) || a.d - b.d);
+  const x = c[0];
+  alerted.add(x.p.id); sess.set('td-live-alerted', [...alerted]);
+  lyrLast = { ts: now, lat: me[0], lon: me[1] }; sess.set('td-live-lyr-last', lyrLast);
+  queue.push(x.p.id);
+  try { if (navigator.vibrate) navigator.vibrate(120); } catch (e) { /* ignore */ }
+  if (S.speak && now - lyrSpoke >= 90000) { lyrSpoke = now; const dir = sayDir(x.b); say(LSAY[x.p.t] + ' ' + (dir ? dir + ', ' : 'nearby, ') + sayDist(x.d) + '. ' + x.p.name + '.'); }
+}
+function lyrTag(x) { return '<span class="tag lyr-' + x.kind + '">' + esc(LTYPE[x.t] || 'Marker') + '</span>'; }
+function renderLyrAlert(el, p) {
+  const o = me || origin(); const d = lyrDist(o, p), b = compass(bearing(o[0], o[1], p.lat, p.lon));
+  el.hidden = false;
+  const compact = !$('#sheet').hidden; el.classList.toggle('compact', compact); $('#stage').classList.toggle('has-alert', compact);
+  el.innerHTML = '<div class="a-top"><span class="a-near">NEARBY</span>' + lyrTag(p) + '<button class="x" id="a-x" aria-label="Dismiss">×</button></div>'
+    + '<div class="a-name">' + esc(p.name) + '</div><div class="a-dist">' + esc(d === 0 ? 'You are here' : fmtDist(d) + ' ' + b) + '</div>'
+    + '<div class="a-btns"><a class="btn p g" target="_blank" rel="noopener" href="' + dirUrl(p) + '">Directions</a><button class="btn g" id="a-d">Details</button></div>'
+    + (queue.length ? '<div class="a-more">+' + queue.length + ' more nearby</div>' : '');
+  $('#a-x').onclick = (e) => { e.stopPropagation(); nextAlert(); };
+  el.onclick = () => { if (el.classList.contains('compact')) closeSheet(); };
+  $('#a-d').onclick = (e) => { e.stopPropagation(); showing = null; $('#alert').hidden = true; showLyr(p.id); };
+}
+function showLyr(id) {
+  const p = LYR.items.get(id); if (!p) return;
+  const o = me; let h = '<div>' + lyrTag(p) + '</div><div class="addr" style="margin-top:8px">' + esc(p.name) + '</div>';
+  if (o) h += '<p class="muted">' + esc(fmtDist(lyrDist(o, p)) + ' ' + compass(bearing(o[0], o[1], p.lat, p.lon))) + ' from you</p>';
+  if (p.t === 'N') h += '<p class="note">Listed on the National Register of Historic Places. Many are private homes: please view from the road.</p>';
+  if (p.t === 'C') h += '<p class="note">Please respect posted hours and visitors.</p>';
+  h += '<div class="row"><a class="btn p g" target="_blank" rel="noopener" href="' + dirUrl(p) + '">Directions</a><button class="btn g" id="ly-here">What’s here?</button></div><div class="row">';
+  p.srcs.map(lyrSrc).filter(Boolean).forEach((s) => { h += '<a class="btn sm" target="_blank" rel="noopener" href="' + esc(s.url) + '">' + esc(s.label) + '</a>'; });
+  h += '</div><p class="note">Map data: OpenStreetMap contributors (ODbL); Michigan Historical Markers, Michigan History Center / DNR; National Register of Historic Places, National Park Service.</p>';
+  openSheet('details', 'Details', h);
+  $('#ly-here').onclick = () => whatsHere([p.lat, p.lon], p.name);
+}
+function lyrNearbyHtml() {
+  if (!(S.show.hmark || S.show.cem)) return '';
+  const o = origin(); const list = lyrAround(o[0], o[1], 3).filter((x) => x.p.r >= 1).slice(0, 15);
+  if (!list.length) return '';
+  return '<h4 style="margin:14px 0 6px">Markers and cemeteries</h4>' + list.map((x) => '<div class="item"><div>' + lyrTag(x.p) + '</div><div class="t">' + esc(x.p.name) + '</div><div class="m"><span class="dist">' + esc(fmtDist(x.d)) + ' ' + compass(x.b) + '</span></div>'
+    + '<div class="it-act"><a class="btn p sm g" target="_blank" rel="noopener" href="' + dirUrl(x.p) + '">Directions</a><button class="btn sm g" data-det="' + esc(x.p.id) + '">Details</button><button class="btn sm" data-see="' + esc(x.p.id) + '">Map</button></div></div>').join('');
+}
+lyrAttr();
 
 // ---------- nearby + alerts
 let alerted = new Set(sess.get('td-live-alerted', []));
@@ -123,7 +258,13 @@ function checkAlerts() {
   if (!me || (meAcc && meAcc > 500)) return;
   const fresh = nearbyList().filter((x) => x.d <= S.radius && alertable(x.p) && !alerted.has(x.p.id));
   for (const x of fresh) { alerted.add(x.p.id); queue.push(x.p.id); }
-  if (fresh.length) { sess.set('td-live-alerted', [...alerted]); buzz(); speakAlerts(fresh); }
+  if (fresh.length) {
+    sess.set('td-live-alerted', [...alerted]); buzz(); speakAlerts(fresh);
+    // Twisted Deeds listings and Archive places always go ahead of markers and cemeteries
+    queue = queue.filter((id) => !isLyr(id)).concat(queue.filter(isLyr));
+    if (showing && isLyr(showing)) { showing = null; }
+  }
+  if (!fresh.length) lyrCheck();
   if (!showing && queue.length) nextAlert();
   else if (showing) renderAlert();
 }
@@ -133,8 +274,9 @@ function nextAlert() {
   renderAlert(); lantern();
 }
 function renderAlert() {
-  const el = $('#alert'); const p = PINS.find((x) => x.id === showing);
+  const el = $('#alert'); const p = findAny(showing);
   if (!p) { nextAlert(); return; }
+  if (p.lyr) { renderLyrAlert(el, p); return; }
   const o = me || origin(); const d = hav(o[0], o[1], p.lat, p.lon), b = compass(bearing(o[0], o[1], p.lat, p.lon));
   el.hidden = false;
   const compact = !$('#sheet').hidden; el.classList.toggle('compact', compact); $('#stage').classList.toggle('has-alert', compact);
@@ -198,7 +340,7 @@ function onFix(pos) {
   } else { meMarker.setLatLng(me); meCircle.setLatLng(me).setRadius(meAcc); }
   setGps('GPS ±' + Math.round(meAcc) + ' m', meAcc > 100 ? 'warn' : 'on');
   if (first) map.setView(me, Math.max(map.getZoom(), 15)); else if (follow) map.panTo(me, { animate: true });
-  checkAlerts(); markPassed(); refreshNearby();
+  lyrNear(me).then(() => { checkAlerts(); refreshNearby(); }); checkAlerts(); markPassed(); refreshNearby();
 }
 function markPassed() {
   if (!me || (meAcc && meAcc > 500)) return;
@@ -254,7 +396,7 @@ document.querySelectorAll('.rad button').forEach((b) => {
 });
 document.querySelectorAll('.chip').forEach((b) => {
   const k = b.dataset.k; b.classList.toggle('on', !!S.show[k]); b.setAttribute('aria-pressed', !!S.show[k]);
-  b.onclick = () => { S.show[k] = !S.show[k]; saveS(); b.classList.toggle('on', S.show[k]); b.setAttribute('aria-pressed', S.show[k]); drawPins(); checkAlerts(); };
+  b.onclick = () => { S.show[k] = !S.show[k]; saveS(); b.classList.toggle('on', S.show[k]); b.setAttribute('aria-pressed', S.show[k]); if (k === 'hmark' || k === 'cem') { lyrDraw(); lyrAttr(); refreshNearby(); toast((k === 'hmark' ? 'Historical markers' : 'Cemeteries') + (S.show[k] ? ' on' : ' off'), 1500); } else drawPins(); checkAlerts(); };
 });
 $('#speak') && ($('#speak').onclick = () => {
   S.speak = !S.speak; saveS(); paintSpeak();
@@ -275,15 +417,17 @@ function renderNearby() {
   const inR = me ? list.filter((x) => x.d <= S.radius && !inactive(x.p)).length : 0;
   const head = me ? '<p class="note">Sorted by distance from you. ' + inR + ' inside your ' + S.radius + ' mi alert radius.</p>' : '<p class="note">Tap <b>Start</b> to measure from your GPS. For now this is sorted from the middle of the map.</p>';
   $('#sh-body').innerHTML = head + (list.map((x) => '<div class="item"><div>' + tagHtml(x.p) + '</div><div class="t">' + esc(x.p.name) + '</div><div class="m"><span class="dist">' + esc(fmtDist(x.d)) + ' ' + compass(x.b) + '</span> · ' + esc(x.p.addr) + '</div>'
-    + '<div class="it-act"><a class="btn p sm g" target="_blank" rel="noopener" href="' + dirUrl(x.p) + '">Directions</a><button class="btn sm g" data-det="' + esc(x.p.id) + '">Details</button><button class="btn sm" data-see="' + esc(x.p.id) + '">Map</button></div></div>').join('') || '<p>Nothing to show with these filters.</p>');
+    + '<div class="it-act"><a class="btn p sm g" target="_blank" rel="noopener" href="' + dirUrl(x.p) + '">Directions</a><button class="btn sm g" data-det="' + esc(x.p.id) + '">Details</button><button class="btn sm" data-see="' + esc(x.p.id) + '">Map</button></div></div>').join('') || '<p>Nothing to show with these filters.</p>')
+    + lyrNearbyHtml();
   bindItems();
 }
 function bindItems() {
   document.querySelectorAll('[data-det]').forEach((b) => { b.onclick = () => showDetails(b.dataset.det); });
-  document.querySelectorAll('[data-see]').forEach((b) => { b.onclick = () => { const p = PINS.find((x) => x.id === b.dataset.see); closeSheet(); follow = false; if (running) $('#recenter').hidden = false; map.setView([p.lat, p.lon], 17); }; });
+  document.querySelectorAll('[data-see]').forEach((b) => { b.onclick = () => { const p = findAny(b.dataset.see); closeSheet(); follow = false; if (running) $('#recenter').hidden = false; map.setView([p.lat, p.lon], 17); }; });
 }
 $('#nearby').onclick = () => { openSheet('nearby', 'Nearby', ''); renderNearby(); };
 function showDetails(id) {
+  if (isLyr(id)) { showLyr(id); return; }
   const p = PINS.find((x) => x.id === id); if (!p) return;
   let h = '<div>' + tagHtml(p) + '</div><div class="addr" style="margin-top:8px">' + esc(p.name) + '</div><p class="muted">' + esc(p.addr) + '</p>';
   if (p.price) h += '<p><b>' + esc(p.price) + '</b></p>';
@@ -381,6 +525,11 @@ async function whatsHere(pt, how) {
     facts += own.length; h += '<h4>In our files (within 150 m)</h4>';
     own.forEach((x) => { h += '<div class="item"><div>' + tagHtml(x.p) + '</div><div class="t">' + esc(x.p.name) + '</div><div class="m"><span class="dist">' + Math.round(x.m) + ' m</span> · ' + esc(x.p.addr) + '</div><p style="margin:6px 0 0">' + esc(x.p.hook) + '</p><div class="it-act"><button class="btn sm g" data-det="' + esc(x.p.id) + '">Details</button></div></div>'; });
   }
+  const lyrHere = lyrAround(lat, lon, 150 / 1609.34).slice(0, 6);
+  if (lyrHere.length) {
+    facts += lyrHere.length; h += '<h4>Markers and cemeteries (within 150 m)</h4>';
+    lyrHere.forEach((x) => { h += '<div class="item"><div>' + lyrTag(x.p) + '</div><div class="t">' + esc(x.p.name) + '</div><div class="m"><span class="dist">' + Math.round(x.d * 1609.34) + ' m</span></div><div class="it-act"><button class="btn sm g" data-det="' + esc(x.p.id) + '">Details</button></div></div>'; });
+  }
   if (wiki.status === 'fulfilled' && wiki.value.length) {
     facts += wiki.value.length; h += '<h4>Wikipedia, closest first</h4><p class="note">These are articles about places near this spot. An article may be about a neighbor, not this exact building.</p>';
     wiki.value.forEach((a) => { h += '<div class="fact"><span class="badge">Reported (Wikipedia)</span><b>' + esc(a.title) + '</b>' + (a.m != null ? ' <span class="dist">' + Math.round(a.m) + ' m away</span>' : '') + '<div>' + esc(a.text.length > 380 ? a.text.slice(0, 380).replace(/\s+\S*$/, '') + '…' : a.text) + '</div><div class="src"><a target="_blank" rel="noopener" href="https://en.wikipedia.org/?curid=' + a.id + '">Source: Wikipedia</a></div></div>'; });
@@ -456,6 +605,7 @@ if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && (!LOC
 
 // ---------- boot
 paintLeads();
+map.fire('moveend');
 loadPins().then((src) => { drawPins(); window.__tdLive = { pins: PINS.length, src }; document.documentElement.dataset.ready = '1'; });
-window.__tdLiveDebug = { get state() { return { running, me, alerted: [...alerted], queue: [...queue], showing }; } };
+window.__tdLiveDebug = { get state() { return { running, me, alerted: [...alerted], queue: [...queue], showing, lyrItems: LYR.items.size, lyrTiles: [...LYR.tiles.keys()], lyrLast }; } };
 })();

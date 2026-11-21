@@ -107,3 +107,12 @@ textarea{width:100%;min-height:76px;background:#100c0c;color:var(--bone);border:
 .pin.grave.fade{animation:grave-in .9s ease-out 1}
 @keyframes grave-in{from{opacity:0;transform:scale(.6)}to{opacity:.78;transform:none}}
 @media (prefers-reduced-motion:reduce){#alert.lantern::after,.pin.grave.fade{animation:none}}
+/* Markers + Cemeteries layers: quiet, small, below the Twisted Deeds pins */
+.lyrs{display:flex;gap:6px;padding:0 8px 6px;background:#141413;border-bottom:1px solid var(--line)}
+.chips{border-bottom:0}
+.lyrs .chip{flex:1;flex-direction:row;min-height:34px;gap:7px;border-radius:10px;font-size:.76rem}
+.lyrs .chip svg{opacity:.45;filter:grayscale(1)}.lyrs .chip.on svg{opacity:1;filter:none}
+.lyr{filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.85));opacity:.95}.lyr svg{display:block}
+.lyr.sm{transform:scale(.8);transform-origin:50% 100%;opacity:.8}
+.tag.lyr-hmark{background:#2f3a2c;color:#ecdcb2;box-shadow:inset 0 0 0 1px #c9a96a}.tag.lyr-cem{background:#55605a;color:#eef1ec}
+@media (max-height:700px){.lyrs .chip{min-height:30px}}

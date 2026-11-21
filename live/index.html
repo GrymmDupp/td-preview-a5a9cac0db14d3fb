@@ -29,6 +29,10 @@
     <button class="chip c-unv on" data-k="unverified" aria-label="Unverified" aria-pressed="true"><i>?</i><span>Unverified</span></button>
     <button class="chip c-ctx" data-k="context" aria-label="Context" aria-pressed="false"><i>C</i><span>Context</span></button>
   </div>
+  <div id="lyrs" class="lyrs" role="group" aria-label="Map layers">
+    <button class="chip lchip on" data-k="hmark" aria-label="Historical markers" aria-pressed="true"><svg viewBox="0 0 16 20" width="16" height="20" aria-hidden="true"><path d="M7 12h2v7H7z" fill="#8a7a5c"/><rect x="1" y="1" width="14" height="11" rx="2" fill="#2f3a2c" stroke="#c9a96a" stroke-width="1.4"/><path d="M4 5h8M4 8h6" stroke="#c9a96a" stroke-width="1.2" stroke-linecap="round"/></svg><span>Markers</span></button>
+    <button class="chip lchip on" data-k="cem" aria-label="Cemeteries" aria-pressed="true"><svg viewBox="0 0 14 17" width="14" height="17" aria-hidden="true"><path d="M2 16V7a5 5 0 0 1 10 0v9z" fill="#55605a" stroke="#c7cdc4" stroke-width="1.2"/><path d="M7 6v6M5 8h4" stroke="#dfe4dc" stroke-width="1.2" stroke-linecap="round"/><path d="M0.5 16h13" stroke="#c7cdc4" stroke-width="1.2"/></svg><span>Cemeteries</span></button>
+  </div>
   <div id="stage">
     <div id="map" aria-label="Map"></div>
     <div id="alert" role="alert" hidden></div>
