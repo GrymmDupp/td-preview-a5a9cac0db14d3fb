@@ -131,7 +131,10 @@ function drawPins() {
 
 // ---------- Markers + Cemeteries layers (static tiles in layers/, built from open data: OpenStreetMap
 // contributors (ODbL), Michigan History Center / DNR historical markers (public record), National Park
-// Service National Register (public domain). Name, spot, type and source link only; no marker text.)
+// Service National Register (public domain). Name, spot, type and source link only; no marker text.
+// Cemeteries also from USGS GNIS + National Structures Dataset (public domain) and Oakland / Barry County MI
+// open data, merged with OSM into one pin each (live_nav/cem_sources.py). Find a Grave is a link-out only.)
+const FAG_LOC = { MI: 'state_24', OH: 'state_37', IN: 'state_17', Canada: 'state_830' };
 const LYR = { idx: null, tiles: new Map(), loading: new Map(), items: new Map() };
 const LTYPE = { M: 'Michigan historical marker', N: 'National Register site', U: 'Museum', K: 'Historical marker', P: 'Plaque', B: 'History board', C: 'Cemetery' };
 const LSAY = { M: 'Michigan historical marker', N: 'Historic place', U: 'Museum', K: 'Historical marker', P: 'Historical plaque', B: 'History board', C: 'Cemetery' };
@@ -146,6 +149,9 @@ function lyrSrc(code) {
   if (k === 'o') { const ty = { n: 'node', w: 'way', r: 'relation' }[v[0]]; return { label: 'OpenStreetMap', url: 'https://www.openstreetmap.org/' + ty + '/' + v.slice(1) }; }
   if (k === 'm') return { label: 'Michigan Historical Markers map (' + v + ')', url: MI_MARKERS_MAP };
   if (k === 'n') return { label: 'National Register file', url: 'https://npgallery.nps.gov/AssetDetail/NRIS/' + encodeURIComponent(v) };
+  if (k === 'g') return { label: 'USGS place names (GNIS ' + v + ')', url: 'https://www.usgs.gov/us-board-on-geographic-names/download-gnis-data' };
+  if (k === 'u') return { label: 'USGS National Map record', url: 'https://carto.nationalmap.gov/arcgis/rest/services/structures/MapServer/2/query?outFields=name,city,state,gnis_id&returnGeometry=true&outSR=4326&f=html&where=' + encodeURIComponent(v[0] === 'p' ? "permanent_identifier='" + v.slice(1) + "'" : "gnis_id='" + v + "'") };
+  if (k === 'c') { const oak = v.slice(0, 3) === 'oak'; return { label: (oak ? 'Oakland' : 'Barry') + ' County cemetery list', url: 'https://www.arcgis.com/home/item.html?id=' + (oak ? '4eb0bf9a2bb340dbbba2c80bd53d05dc' : 'ffebf574a0e94f0cb53a59e66c9080ec') }; }
   return null;
 }
 async function lyrIndex() {
@@ -163,7 +169,7 @@ async function lyrLoad(s, w, n, e) {
       for (const r of j.f || []) {
         const srcs = String(r[5]).split('|');
         const id = 'L:' + srcs[0];
-        LYR.items.set(id, { id, lyr: true, t: r[3], kind: lyrKind(r[3]), name: r[2], lat: r[0], lon: r[1], r: r[4], rad: r[6] || 0, srcs });
+        LYR.items.set(id, { id, lyr: true, t: r[3], kind: lyrKind(r[3]), name: r[2], lat: r[0], lon: r[1], r: r[4], rad: r[6] || 0, srcs, place: (idx.places || [])[r[7]] || '', fl: r[8] || 0 });
       }
       LYR.tiles.set(k, true);
     }).catch(() => { /* offline and not cached: try again later */ }).finally(() => LYR.loading.delete(k)));
@@ -188,7 +194,7 @@ function lyrDraw() {
   for (const x of LYR.items.values()) {
     if (!lyrOn(x) || !b.contains([x.lat, x.lon])) continue;
     if (z < 13 && x.r < 2) continue;          // zoomed out: only the bigger / official ones
-    if (z < 14 && x.r < 1) continue;          // unnamed cemeteries only when close in
+    if (z < 14 && (x.r < 1 || (x.fl & 4))) continue;   // unnamed cemeteries and small family / pioneer plots only when close in
     if (++n > 600) break;
     const m = L.marker([x.lat, x.lon], { icon: lyrIcon(x), keyboard: false, zIndexOffset: -800, title: x.name });
     m.on('click', () => showLyr(x.id)); lyrLayer.addLayer(m);
@@ -196,7 +202,7 @@ function lyrDraw() {
 }
 let lyrAttrOn = false;
 function lyrAttr() {
-  const want = S.show.hmark || S.show.cem, t = 'Markers: Michigan History Center, NPS';
+  const want = S.show.hmark || S.show.cem, t = 'Markers: Michigan History Center, NPS · Cemeteries: USGS, Oakland &amp; Barry Co.';
   if (want && !lyrAttrOn) map.attributionControl.addAttribution(t); else if (!want && lyrAttrOn) map.attributionControl.removeAttribution(t);
   lyrAttrOn = want;
 }
@@ -220,7 +226,7 @@ function lyrCheck() {
   if (queue.length || showing) return;     // something more important (or another marker) is on screen
   const now = Date.now();
   if (lyrLast) { const gap = now - lyrLast.ts, moved = hav(me[0], me[1], lyrLast.lat, lyrLast.lon); if (gap < 45000 || (moved < 0.3 && gap < 180000)) return; }
-  const c = lyrAround(me[0], me[1], 0.5).filter((x) => x.p.r >= 1 && !alerted.has(x.p.id) && x.d <= Math.min(S.radius, lyrCap(x.p)));
+  const c = lyrAround(me[0], me[1], 0.5).filter((x) => x.p.r >= 1 && !(x.p.fl & 3) && !alerted.has(x.p.id) && x.d <= Math.min(S.radius, lyrCap(x.p)));
   if (!c.length) return;
   c.sort((a, b) => (LPRI[a.p.t] + (a.p.t === 'C' && a.p.r < 2 ? 1 : 0)) - (LPRI[b.p.t] + (b.p.t === 'C' && b.p.r < 2 ? 1 : 0)) || a.d - b.d);
   const x = c[0];
@@ -248,12 +254,29 @@ function showLyr(id) {
   const o = me; let h = '<div>' + lyrTag(p) + '</div><div class="addr" style="margin-top:8px">' + esc(p.name) + '</div>';
   if (o) h += '<p class="muted">' + esc(fmtDist(lyrDist(o, p)) + ' ' + compass(bearing(o[0], o[1], p.lat, p.lon))) + ' from you</p>';
   if (p.t === 'N') h += '<p class="note">Listed on the National Register of Historic Places. Many are private homes: please view from the road.</p>';
-  if (p.t === 'C') h += '<p class="note">Please respect posted hours and visitors.</p>';
+  if (p.t === 'C') {
+    if (p.place) h += '<p class="muted" style="margin-top:2px">' + esc(p.place) + '</p>';
+    if (p.fl & 1) h += '<p class="note">Listed as a historical cemetery: it may be gone, moved or hard to see today.</p>';
+    if (p.fl & 2) h += '<p class="note">Approximate spot: the county lists this as a suspected location.</p>';
+    if (p.fl & 4) h += '<p class="note">A small family or pioneer burial ground. Many are on private land: please view from the road.</p>';
+    h += '<p class="note">Please respect posted hours and visitors.</p>';
+  }
   h += '<div class="row"><a class="btn p g" target="_blank" rel="noopener" href="' + dirUrl(p) + '">Directions</a><button class="btn g" id="ly-here">What’s here?</button></div><div class="row">';
   p.srcs.map(lyrSrc).filter(Boolean).forEach((s) => { h += '<a class="btn sm" target="_blank" rel="noopener" href="' + esc(s.url) + '">' + esc(s.label) + '</a>'; });
-  h += '</div><p class="note">Map data: OpenStreetMap contributors (ODbL); Michigan Historical Markers, Michigan History Center / DNR; National Register of Historic Places, National Park Service.</p>';
+  const fag = p.t === 'C' ? fagUrl(p) : '';
+  if (fag) h += '</div><div class="row"><a class="btn sm g" id="ly-fag" target="_blank" rel="noopener" href="' + esc(fag) + '">Look it up on Find a Grave</a>';
+  h += '</div>' + (fag ? '<p class="note">Opens a Find a Grave search for “' + esc(fagName(p.name)) + '” in ' + esc(fagWhere(p)) + '. Find a Grave is a separate site; nothing is copied from it.</p>' : '')
+    + '<p class="note">Map data: OpenStreetMap contributors (ODbL); Michigan Historical Markers, Michigan History Center / DNR; National Register of Historic Places, National Park Service' + (p.t === 'C' ? '; cemeteries also from USGS GNIS and The National Map (public domain) and Oakland and Barry County MI open data' : '') + '.</p>';
   openSheet('details', 'Details', h); TDP() && TDP().details(p, $('#sh-body'));
   $('#ly-here').onclick = () => whatsHere([p.lat, p.lon], p.name);
+}
+// Find a Grave link-out (never copied): its own cemetery search, by name within the state (or Canada)
+function fagName(n) { return String(n || '').replace(/\s*\/.*$/, '').replace(/\(.*?\)/g, '').replace(/\b(cemetery|cemetary|graveyard)\b/ig, '').replace(/\s+/g, ' ').trim(); }
+function fagWhere(p) { const st = String(p.place || '').split(', ').pop(); return st === 'Canada' ? 'Ontario' : ({ MI: 'Michigan', OH: 'Ohio', IN: 'Indiana' }[st] || ''); }
+function fagUrl(p) {
+  const n = fagName(p.name), st = String(p.place || '').split(', ').pop(), loc = FAG_LOC[st];
+  if (!n || p.r < 1 || !loc) return '';
+  return 'https://www.findagrave.com/cemetery/search?cemetery-name=' + encodeURIComponent(n) + '&locationId=' + loc;
 }
 function lyrNearbyHtml() {
   if (!(S.show.hmark || S.show.cem)) return '';
@@ -655,5 +678,5 @@ window.__tdLiveApi = { map, get pins() { return PINS; }, get lyr() { return LYR.
   isPriv, inPrivArea, locLabel, radMi,
   redraw() { drawPins(); lyrDraw(); }, openSheet, closeSheet, toast, showDetails };
 window.dispatchEvent(new Event('td-live-api'));
-window.__tdLiveDebug = { get state() { return { running, me, alerted: [...alerted], queue: [...queue], showing, lyrItems: LYR.items.size, lyrTiles: [...LYR.tiles.keys()], lyrLast }; } };
+window.__tdLiveDebug = { view: (la, lo, z) => map.setView([la, lo], z), lyr: () => [...LYR.items.values()], get state() { return { running, me, alerted: [...alerted], queue: [...queue], showing, lyrItems: LYR.items.size, lyrTiles: [...LYR.tiles.keys()], lyrLast }; } };
 })();
