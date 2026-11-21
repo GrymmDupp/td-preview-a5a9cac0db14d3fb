@@ -384,7 +384,7 @@ function buzz() { try { if (navigator.vibrate) navigator.vibrate([300, 120, 300]
 function setGps(txt, cls) { const g = $('#gps'); g.textContent = txt; g.className = 'gps ' + (cls || 'off'); }
 function toast(t, ms) { const el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true; }, ms || 4000); }
 function onFix(pos) {
-  me = [pos.coords.latitude, pos.coords.longitude]; meAcc = pos.coords.accuracy || 0; meTs = Date.now();
+  gpsErr = 0; me = [pos.coords.latitude, pos.coords.longitude]; meAcc = pos.coords.accuracy || 0; meTs = Date.now();
   meHead = (pos.coords.heading != null && !isNaN(pos.coords.heading) && (pos.coords.speed == null || pos.coords.speed > 0.5)) ? pos.coords.heading : null;
   const first = !meMarker;
   if (first) {
@@ -412,10 +412,31 @@ function lantern() {
   el.classList.remove('lantern'); void el.offsetWidth; el.classList.add('lantern');
   clearTimeout(lantern.t); lantern.t = setTimeout(() => el.classList.remove('lantern'), 1400);
 }
+// GPS problems are always shown: the status pill says what is wrong (tap it to try again) and a toast says how to fix it.
+let gpsErr = 0;
+const GPS_MSG = {
+  1: 'Location is blocked for this site. Turn it on in your browser or phone settings (Android Chrome: long-press the app icon › App info, or Chrome › Settings › Site settings › Location; iPhone: Settings › Privacy › Location Services), then tap GPS to try again.',
+  2: 'Your phone isn’t giving a location. Check that Location is turned on in your phone settings (swipe down from the top, tap Location), then tap GPS to try again.',
+  3: 'Still looking for GPS… check you are outdoors or near a window. Tap GPS to try again.',
+};
+function gpsMsg() { return GPS_MSG[gpsErr] || ''; }
 function onErr(err) {
-  const msg = err.code === 1 ? 'Location is blocked. Allow location for this site in the browser or phone settings, then tap Start.' : err.code === 3 ? 'Still looking for GPS… check you are outdoors or near a window.' : 'Location error' + (err.message ? ': ' + err.message : '') + '. Still trying.';
-  if (err.code === 1) { stop(); setGps('Location blocked', 'err'); toast(msg, 7000); }
-  else { setGps(me ? 'GPS weak' : 'Searching…', 'warn'); if (!me) toast(msg, 5000); }
+  gpsErr = err && err.code ? err.code : 2;
+  const msg = GPS_MSG[gpsErr] || ('Location error' + (err && err.message ? ': ' + err.message : '') + '. Tap GPS to try again.');
+  if (gpsErr === 1) { stop(); setGps('Location blocked · tap', 'err'); toast(msg, 12000); }
+  else if (gpsErr === 2 && !me) { setGps('No location · tap', 'err'); toast(msg, 9000); }
+  else { setGps(me ? 'GPS weak' : 'Searching…', 'warn'); if (!me) toast(msg, 6000); }
+}
+// Tapping the GPS pill (or the Driving card when it has no fix): turn GPS on, retry after an error, or recenter.
+function gpsTap() {
+  if (running && me && !gpsErr) { follow = true; $('#recenter').hidden = true; map.panTo(me, { animate: true }); return; }
+  if (running) stop();
+  start();
+  try {
+    if (navigator.permissions && navigator.permissions.query) navigator.permissions.query({ name: 'geolocation' }).then((st) => {
+      if (st && st.state === 'denied') { gpsErr = 1; if (running) stop(); setGps('Location blocked · tap', 'err'); toast(GPS_MSG[1], 12000); }
+    }).catch(() => {});
+  } catch (e) { /* ignore */ }
 }
 async function lockScreen() {
   try { if ('wakeLock' in navigator && running && document.visibilityState === 'visible') { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } } catch (e) { /* not allowed */ }
@@ -423,7 +444,7 @@ async function lockScreen() {
 function start() {
   if (!navigator.geolocation) { toast('This browser cannot share location.'); return; }
   if (running) return;
-  running = true; follow = true; $('#recenter').hidden = true;
+  running = true; follow = true; gpsErr = 0; $('#recenter').hidden = true;
   const b = $('#start'); b.textContent = '■ Stop'; b.classList.add('running'); setGps('Finding you…', 'warn');
   watchId = navigator.geolocation.watchPosition(onFix, onErr, { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
   lockScreen();
@@ -434,13 +455,14 @@ function stop() {
   watchId = null; running = false;
   try { if (canSpeak) speechSynthesis.cancel(); } catch (e) { /* ignore */ }
   const b = $('#start'); b.textContent = '▶ Start'; b.classList.remove('running');
-  if (me) setGps('Stopped', 'off'); else setGps('GPS off', 'off');
+  if (me) setGps('Stopped · tap', 'off'); else setGps('GPS off · tap', 'off');
   try { if (wakeLock) wakeLock.release(); } catch (e) { /* ignore */ } wakeLock = null;
   $('#recenter').hidden = true;
   TDP() && TDP().onStop();
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && running && !wakeLock) lockScreen(); });
 $('#start').onclick = () => (running ? stop() : start());
+$('#gps').onclick = gpsTap;
 map.on('dragstart', () => { if (running && follow) { follow = false; $('#recenter').hidden = false; } });
 $('#recenter').onclick = () => { follow = true; $('#recenter').hidden = true; if (me) map.setView(me, Math.max(map.getZoom(), 15)); };
 
@@ -666,7 +688,7 @@ if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && (!LOC
 window.__tdLiveDriveApi = { get pins() { return PINS; }, get lyr() { return LYR.items; }, get me() { return me; }, get meAcc() { return meAcc; }, get meHead() { return meHead; },
   get running() { return running; }, get showing() { return showing; }, get queue() { return queue.slice(); }, get alerted() { return alerted; }, get show() { return S.show; }, get radius() { return S.radius; },
   invalidate() { map.invalidateSize(); if (me) map.panTo(me); },
-  CATS, LTYPE, LSAY, hav, bearing, lyrDist, sayDist, sayDir, dirUrl, findAny, inactive, start, stop, toast, skip() { nextAlert(); },
+  CATS, LTYPE, LSAY, hav, bearing, lyrDist, sayDist, sayDir, dirUrl, findAny, inactive, start, stop, toast, gpsTap, gpsMsg, get gpsErr() { return gpsErr; }, skip() { nextAlert(); },
   setLayer(k, on) { const b = document.querySelector('#lyrs [data-k="' + k + '"]'); if (b && !!S.show[k] !== !!on) b.click(); return !!S.show[k]; } };
 
 // ---------- boot

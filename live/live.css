@@ -7,7 +7,7 @@ a{color:var(--gold2)}
 #top{display:flex;align-items:center;gap:8px;padding:calc(env(safe-area-inset-top) + 6px) 10px 6px;background:#100c0c;border-bottom:1px solid var(--bronze)}
 .brand{display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--bone);font-family:var(--display);font-size:1.02rem;letter-spacing:.05em;min-height:44px}
 .brand b{font-weight:600}.brand i{font-style:normal;color:var(--ember)}.brand em{font-style:normal;color:var(--gold);border:1px solid var(--gold);border-radius:4px;padding:0 5px;font-size:.78rem;margin-left:2px;vertical-align:2px}
-.gps{margin-left:auto;font-size:.8rem;font-weight:700;border-radius:20px;padding:6px 10px;background:#2a2222;color:var(--muted);white-space:nowrap}
+.gps{margin-left:auto;border:0;cursor:pointer;font-family:inherit;min-height:32px;font-size:.8rem;font-weight:700;border-radius:20px;padding:6px 10px;background:#2a2222;color:var(--muted);white-space:nowrap}
 .gps.on{background:#1d4a2c;color:#b9f0c8}.gps.warn{background:#5a3b0d;color:#ffd48a}.gps.err{background:#5a0f18;color:#ffb4bc}
 .tl{color:var(--parch);text-decoration:none;font-weight:700;font-size:.85rem;border:1px solid var(--line);border-radius:10px;padding:0 10px;min-height:44px;display:flex;align-items:center}
 .chips{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding:6px 8px;background:#100c0c;border-bottom:1px solid var(--line)}

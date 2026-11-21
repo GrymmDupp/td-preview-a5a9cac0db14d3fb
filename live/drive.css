@@ -15,6 +15,8 @@
 .dv-dist{display:flex;align-items:center;gap:14px;font:900 clamp(2.4rem,13vw,4.2rem)/1 system-ui,-apple-system,Roboto,sans-serif;color:#fff}
 .dv-arrow{display:inline-flex;color:#ffd23f;transition:transform .4s}
 .dv-sub{font-size:1.15rem;font-weight:700;color:#d6d6d6;margin-top:4px;min-height:1.4em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dv-sub.gpsmsg{white-space:normal;font-size:.95rem;line-height:1.3;color:#ffb4bc}
+#dv-card{cursor:pointer}
 .dv-sub.heard{color:#9fd3ff}
 .dv-state{text-align:center;font-weight:800;font-size:1.1rem;color:#bdbdbd;min-height:1.4em}
 #drive[data-st=listening] .dv-state{color:#7dffb0}#drive[data-st=speaking] .dv-state{color:#ffd23f}

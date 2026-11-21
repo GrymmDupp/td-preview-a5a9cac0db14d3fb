@@ -573,6 +573,8 @@ function build() {
   $('#dv-skip').onclick = () => { unlockAudio(); handle(['skip']); };
   $('#dv-next').onclick = () => { unlockAudio(); handle(['what is next']); };
   $('#dv-exit').onclick = exit;
+  // No fix (GPS off, blocked or failing): the big card is the GPS button, since the Start button is hidden while driving.
+  $('#dv-card').onclick = () => { if (!A.me && (!A.running || A.gpsErr) && A.gpsTap) { A.gpsTap(); setTimeout(paintAll, 300); } };
   $('#dv-set').onclick = () => { paintSettings(); $('#dv-settings').hidden = false; };
   $('#dv-setclose').onclick = () => { $('#dv-settings').hidden = true; };
   $('#dv-follow').onchange = (e) => { D.follow = e.target.checked; saveD(); };
@@ -614,10 +616,13 @@ function paintAll() {
   const card = $('#dv-card');
   if (!t) {
     $('#dv-lab').textContent = A.me ? 'Nothing close' : (A.running ? 'Finding you…' : 'GPS off');
-    $('#dv-name').textContent = A.me ? 'Keep driving' : 'Waiting for GPS'; $('#dv-d').textContent = ''; $('#dv-arrow').style.visibility = 'hidden';
-    if (!$('#dv-sub').classList.contains('heard')) $('#dv-sub').textContent = '';
+    const gpsBad = !A.me && (!A.running || A.gpsErr);
+    if (gpsBad) $('#dv-lab').textContent = A.gpsErr === 1 ? 'Location blocked' : A.gpsErr === 2 ? 'No location' : 'GPS off';
+    $('#dv-name').textContent = A.me ? 'Keep driving' : gpsBad ? 'Tap here to turn on GPS' : 'Waiting for GPS'; $('#dv-d').textContent = ''; $('#dv-arrow').style.visibility = 'hidden';
+    if (!$('#dv-sub').classList.contains('heard')) { $('#dv-sub').textContent = gpsBad && A.gpsMsg ? A.gpsMsg() : ''; $('#dv-sub').classList.toggle('gpsmsg', !!(gpsBad && A.gpsErr)); }
     card.className = 'dv-card';
   } else {
+    $('#dv-sub').classList.remove('gpsmsg');
     $('#dv-lab').textContent = (nextUp ? 'Next up · ' : (sh && sh === t) || (dist(t) || 0) < A.radius ? 'Nearby · ' : '') + screenLabel(t);
     $('#dv-name').textContent = spokenName(t);
     const d = dist(t), b = brg(t);
