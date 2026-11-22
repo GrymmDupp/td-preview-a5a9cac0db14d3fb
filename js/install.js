@@ -135,7 +135,9 @@ function registerSW() {
   let shown = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController && !shown) { shown = true; updateNotice(); } });
   const go = () => navigator.serviceWorker.register('./sw.js', { scope: './' })
-    .then((reg) => { setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000); })
+    .then((reg) => { setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000);
+      // installed apps resume without reloading: check for a new version whenever the app comes back on screen
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); }); })
     .catch((e) => console.warn('Service worker not registered', e));
   if (document.readyState === 'complete') go(); else window.addEventListener('load', go, { once: true });
 }

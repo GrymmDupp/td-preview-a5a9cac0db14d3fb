@@ -1,19 +1,17 @@
 // Twisted Passport on the live map (2026-11-21, Grymm t219u-t221u).
-// Drive-by stamps: within ~90 m (300 ft) of a place, after a GPS dwell / accuracy check, once per place. Nothing asks you
+// Drive-by stamps: within ~90 m (300 ft) walking, up to 200 m at 45 mph, by closest approach along the track, once per place. Nothing asks you
 // to leave the road. Driving (moving faster than ~15 mph) stamps silently and shows what you collected once you slow or stop.
 // Stamped places turn into their stamp on the map; unvisited ones fade. "Stamps" chip hides them for a clean map.
 import * as P from '../js/passport.js';
 (() => { if (!document.querySelector('link[href="passport.css"]')) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = 'passport.css'; document.head.appendChild(l); } })();
 
-const STAMP_M = 91;            // 300 ft
-const MAX_ACC = 60;            // ignore fixes worse than ±60 m
+const MAX_ACC = 100;           // ignore fixes worse than ±100 m (phones in town are usually 5-30 m)
 const DRIVE_MS = 6.7;          // 15 mph
 const SLOW_MS = 2.2;           // 5 mph
 const SLOW_FOR = 15000;        // slowed / stopped this long -> show the drive summary
 const $ = (s) => document.querySelector(s);
 const esc = P.esc;
 let api = null, catalog = new Map(), stamped = new Set(), archLayer = null;
-const cand = new Map();        // id -> { t0, n, last }
 let lastFix = null, speeds = [], driving = false, slowSince = 0, pending = [];
 // Driving mode (live/drive.js, phone mounted) always stamps quietly; the summary waits until you leave Driving mode or stop.
 const driveMode = () => !!(window.TDDrive && window.TDDrive.on());
@@ -82,7 +80,7 @@ function details(p, el) {
   const box = document.createElement('div'); box.className = 'tdp-det';
   box.innerHTML = '<h4>Twisted Passport</h4>' + (s
     ? '<div class="tdp-row">' + P.stampSvg(s, { size: 86 }) + '<div><b>Stamped ' + esc(P.fmtDate(s.at)) + '</b>' + ((s.rare || []).length ? '<br><span class="tdp-rare">Rare: ' + esc(s.rare.map((r) => P.RARE[r]).join(', ')) + '</span>' : '') + (s.first ? '<br><span class="tdp-rare">First to find</span>' : '') + '</div></div>'
-    : '<p class="note">Not stamped yet. ' + (m.area ? 'Drive through its area with <b>Start</b> on and it lands in your passport.' : 'Pass within about 300 ft with <b>Start</b> on and it lands in your passport.') + ' ' + (m.priv ? 'This is a private home: stamp it from the road, and please don’t stop, park or approach.' : 'Stamp it from the road or the public grounds.') + '</p>')
+    : '<p class="note">Not stamped yet. ' + (m.area ? 'Drive through its area with <b>Start</b> on and it lands in your passport.' : 'Pass within about 300 ft (farther at driving speed) with <b>Start</b> on and the live map on screen, and it lands in your passport.') + ' ' + (m.priv ? 'This is a private home: stamp it from the road, and please don’t stop, park or approach.' : 'Stamp it from the road or the public grounds.') + '</p>')
     + '<p class="tdp-cnt" hidden></p>'
     + (m.firstOk && P.remote.ready && !s ? '<p class="note tdp-first">The first traveler to stamp this public place gets a rare “first to find” seal.</p>' : '')
     + '<div class="row"><a class="btn sm g" href="../passport/">Open my passport</a></div>';
@@ -99,6 +97,22 @@ async function townFor(lat, lon) {
     return { town: a.city || a.town || a.village || a.hamlet || a.municipality || '', county: a.county || '', state: st };
   } catch { return null; }
 }
+// Drive-by stamping (t245u rework): the stamp radius grows with speed (about 90 m walking to 200 m at 45 mph), and each
+// new fix is joined to the last one so a place counts if the closest point of that stretch of road came within the radius.
+// No dwell needed, so a 1-per-second GPS at 45 mph (20 m between fixes) can't skip past a house set back from the road.
+const RAD_WALK = 91, RAD_FAST = 200, FAST_MS = 20.1;   // 45 mph
+const MAX_SEG_M = 600, MAX_SEG_S = 45;                  // longer jumps (tunnel, app in background) only check the new fix
+function radiusFor(v) { const f = Math.max(0, Math.min(1, ((v || 0) - 1.3) / (FAST_MS - 1.3))); return RAD_WALK + f * (RAD_FAST - RAD_WALK); }
+// closest distance (m) from target t to segment a->b, plus the closest point; flat-earth is fine at this scale
+function closest(a, b, t) {
+  const kx = 111320 * Math.cos(t[0] * Math.PI / 180), ky = 110540;
+  const ax = (a[1] - t[1]) * kx, ay = (a[0] - t[0]) * ky, bx = (b[1] - t[1]) * kx, by = (b[0] - t[0]) * ky;
+  const dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy;
+  const u = L2 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / L2)) : 0;
+  const px = ax + u * dx, py = ay + u * dy;
+  return { d: Math.hypot(px, py), p: [t[0] + py / ky, t[1] + px / kx] };
+}
+let lastGood = null;   // last fix good enough to stamp from: { p, t }
 function onFix(pos) {
   if (!api) return;
   const c = pos.coords, now = pos.timestamp || Date.now(), here = [c.latitude, c.longitude], acc = c.accuracy || 999;
@@ -114,25 +128,44 @@ function onFix(pos) {
     else slowSince = 0;
   }
   if (acc > MAX_ACC) return;                                             // too fuzzy to stamp anything
-  for (const [id, x] of cand) if (now - x.last > 60000) cand.delete(id);
+  const from = lastGood && now - lastGood.t <= MAX_SEG_S * 1000 && meters(lastGood.p[0], lastGood.p[1], here[0], here[1]) <= MAX_SEG_M ? lastGood.p : here;
+  lastGood = { p: here, t: now };
+  const lim = radiusFor(Math.max(v || 0, avg));
+  const pad = meters(from[0], from[1], here[0], here[1]);
   for (const m of targets()) {
-    const reach = m.area || (STAMP_M + (m.rad || 0));
-    if (stamped.has(m.id) || Math.abs(m.lat - here[0]) > 0.001 + reach / 111000 || Math.abs(m.lon - here[1]) > 0.0014 + reach / 80000) continue;
-    const dc = meters(here[0], here[1], m.lat, m.lon);
-    const d = m.area ? dc : Math.max(0, dc - (m.rad || 0)), lim = m.area || STAMP_M;   // area circle: anywhere inside it
-    if (m.area ? !(m.inArea ? m.inArea(here[0], here[1]) : d <= lim) : d > lim) continue;
-    const x = cand.get(m.id) || { t0: now, n: 0, last: now }; x.n++; x.last = now; cand.set(m.id, x);
-    const sure = (d + acc <= lim && acc <= 25) || (x.n >= 2 && now - x.t0 >= 2000);   // dwell or a tight fix
-    if (sure) stamp(m, new Date(now));
+    if (stamped.has(m.id)) continue;
+    const reach = (m.area || (lim + (m.rad || 0))) + pad;
+    if (Math.abs(m.lat - here[0]) > 0.001 + reach / 111000 || Math.abs(m.lon - here[1]) > 0.0014 + reach / 80000) continue;
+    const cl = closest(from, here, [m.lat, m.lon]);
+    let hit;
+    if (m.area) {   // private home: anywhere inside its public area circle, checked along the stretch every ~20 m
+      const n = Math.min(30, Math.ceil(pad / 20));
+      hit = false;
+      for (let i = 0; i <= n && !hit; i++) { const f = n ? i / n : 1, la = from[0] + (here[0] - from[0]) * f, lo = from[1] + (here[1] - from[1]) * f; hit = m.inArea ? m.inArea(la, lo) : meters(la, lo, m.lat, m.lon) <= m.area; }
+    } else hit = Math.max(0, cl.d - (m.rad || 0)) <= lim;
+    if (hit) stamp(m, new Date(now));
   }
 }
 function stamp(m, at) {
-  const s = P.addStamp(m, at); cand.delete(m.id); if (!s) return;
+  const s = P.addStamp(m, at); if (!s) return;
   refreshSet(); redraw();
   if (!s.town && (m.layer === 'marker' || m.layer === 'cemetery')) townFor(m.lat, m.lon).then((t) => { if (t) { P.patchStamp(s.id, t); } });
-  if (quiet()) { pending.push(s); paintMode(); }
-  else { showStamp(s); try { if (navigator.vibrate) navigator.vibrate([60, 40, 60]); } catch { /* ignore */ } }
+  if (quiet()) { pending.push(s); paintMode(); api.toast('✓ Stamped: ' + P.noAddr(s.name), 3500); }   // small and silent-ish while driving
+  else showStamp(s);
+  ding(); try { if (navigator.vibrate) navigator.vibrate([60, 40, 60]); } catch { /* ignore */ }
   syncSoon();
+}
+// A soft two-note "stamped" chime (Web Audio). Browsers only allow sound after a tap, so the context is made on the first tap.
+let actx = null;
+document.addEventListener('pointerdown', () => { try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); actx.resume(); } catch { /* no audio */ } }, { capture: true });
+function ding() {
+  if (!actx || actx.state !== 'running') return;
+  try {
+    const t = actx.currentTime;
+    [[880, 0], [1320, 0.12]].forEach(([f, d]) => { const o = actx.createOscillator(), g = actx.createGain(); o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t + d); g.gain.exponentialRampToValueAtTime(0.18, t + d + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.35);
+      o.connect(g).connect(actx.destination); o.start(t + d); o.stop(t + d + 0.4); });
+  } catch { /* ignore */ }
 }
 let syncT = null;
 function syncSoon() {
@@ -159,7 +192,7 @@ function summary() {
     '<p class="note">Collected while you were driving.</p><div class="tdp-grid">' + list.map((s) => '<figure>' + P.stampSvg(s, { size: 110 }) + '<figcaption>' + esc(P.noAddr(s.name)) + '<br><small>' + esc(P.placeLine(s)) + '</small></figcaption></figure>').join('') + '</div>'
     + '<div class="row"><a class="btn p g" href="../passport/">Open my passport</a></div>');
 }
-function onStop() { driving = false; speeds = []; slowSince = 0; paintMode(); summary(); }
+function onStop() { lastGood = null; driving = false; speeds = []; slowSince = 0; paintMode(); summary(); }
 function paintMode() {
   let b = $('#tdp-mode');
   if (!b) { b = document.createElement('span'); b.id = 'tdp-mode'; b.className = 'tdp-mode'; b.setAttribute('role', 'status'); $('#stage').appendChild(b); }
@@ -241,4 +274,4 @@ async function boot() {
   if (sg) { history.replaceState(null, '', location.pathname); const id = sg[1] ? decodeURIComponent(sg[1]) : ''; suggestForm(id ? (catalog.get(id) || { id, name: '' }) : null); }
 }
 if (window.__tdLiveApi) boot(); else window.addEventListener('td-live-api', boot, { once: true });
-window.__tdPassportDebug = { get state() { return { stamps: P.stamps(), driving, pending: pending.length, cand: [...cand.keys()], remote: { ...P.remote }, catalog: catalog.size }; }, P, get catalog() { return catalog; }, suggestForm };
+window.__tdPassportDebug = { get state() { return { stamps: P.stamps(), driving, pending: pending.length, lastGood, radiusFor, remote: { ...P.remote }, catalog: catalog.size }; }, P, get catalog() { return catalog; }, suggestForm };

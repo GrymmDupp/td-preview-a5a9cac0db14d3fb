@@ -89,5 +89,20 @@ async function boot() {
   if (P.remote.status === 'on') { await P.sync().catch(() => null); render(); }
   document.documentElement.dataset.ready = '1';
 }
+// Debug line: which app version this phone is running (the service worker's cache name) and the newest one online.
+async function paintVersion() {
+  const el = $('#pp-ver'); if (!el) return;
+  let have = '', latest = '';
+  try { have = (await caches.keys()).map((k) => (k.match(/^(td-pwa-\d{8}-\d{6})-shell$/) || [])[1]).filter(Boolean).sort().pop() || ''; } catch { /* no caches */ }
+  const ctl = navigator.serviceWorker && navigator.serviceWorker.controller ? '' : ' (not installed offline)';
+  el.textContent = 'App version: ' + (have || 'unknown') + ctl + ' · stamps on this phone: ' + P.stamps().length;
+  try { latest = ((await (await fetch('../sw.js', { cache: 'no-store' })).text()).match(/VERSION = '(td-pwa-[\d-]+)'/) || [])[1] || ''; } catch { /* offline */ }
+  if (latest && !have) el.textContent = 'App version: ' + latest + ' (straight from the web)' + ' · stamps on this phone: ' + P.stamps().length;
+  if (latest && have && latest !== have) {
+    el.innerHTML = esc(el.textContent) + ' · <b>update ready (' + esc(latest) + ')</b> <button class="btn sm" id="pp-reload">Reload</button>';
+    $('#pp-reload').onclick = () => location.reload();
+  }
+}
+paintVersion();
 window.addEventListener('storage', (e) => { if (e.key === 'td-passport') render(); });
 boot();

@@ -641,7 +641,15 @@ function stop() {
   $('#recenter').hidden = true;
   TDP() && TDP().onStop();
 }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && running && !wakeLock) lockScreen(); });
+// Phones stop sending GPS to a web page that is off screen (screen locked, or another app such as Google Maps in front),
+// so nothing can be stamped or announced then. Say so when the map comes back after a gap.
+let hiddenAt = 0;
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return; }
+  if (running && !wakeLock) lockScreen();
+  if (running && hiddenAt && Date.now() - hiddenAt > 60000) toast('GPS was paused while the map was off screen. Keep the Live map open on screen (phone in a mount) to collect stamps and alerts.', 7000);
+  hiddenAt = 0;
+});
 $('#start').onclick = () => (running ? stop() : start());
 $('#gps').onclick = gpsTap;
 map.on('dragstart', () => { if (running && follow) { follow = false; $('#recenter').hidden = false; } });
@@ -857,11 +865,17 @@ function updateBar() {
 const LOCALHOST = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
 if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && (!LOCALHOST || localStorage.getItem('td-sw-dev') === '1')) {
   const had = !!navigator.serviceWorker.controller;
-  navigator.serviceWorker.addEventListener('controllerchange', () => { if (had) updateBar(); });
+  // A new version took over (sw.js skips waiting and claims open pages): reload straight away when it's safe (GPS not
+  // running, so no drive is interrupted); during a drive show the Refresh bar instead.
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (!had) return; if (!running) location.reload(); else updateBar(); });
   navigator.serviceWorker.register('../sw.js', { scope: '../' }).then((reg) => {
     reg.update().catch(() => {});
-    if (reg.waiting && had) updateBar();
-    reg.addEventListener('updatefound', () => { const w = reg.installing; if (w) w.addEventListener('statechange', () => { if (w.state === 'installed' && navigator.serviceWorker.controller) updateBar(); }); });
+    // An installed app can sit in the background for days without reloading: check for a new version every time it comes back.
+    let lastChk = Date.now();
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Date.now() - lastChk > 30000) { lastChk = Date.now(); reg.update().catch(() => {}); } });
+    setInterval(() => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); }, 15 * 60 * 1000);
+    if (reg.waiting && had && running) updateBar();
+    reg.addEventListener('updatefound', () => { const w = reg.installing; if (w) w.addEventListener('statechange', () => { if (w.state === 'installed' && navigator.serviceWorker.controller && running) updateBar(); }); });
   }).catch(() => {});
 }
 
