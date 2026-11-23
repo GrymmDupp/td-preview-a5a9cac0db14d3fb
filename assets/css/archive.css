@@ -131,3 +131,23 @@
 .unwritten-card .uw-line{font-size:1.08rem;margin:12px 0}
 .unwritten-card .uw-road{border-left:3px solid #b21226;padding:6px 10px;background:rgba(178,18,38,.08);border-radius:4px}
 .unwritten-card .uw-tell{font-size:1.05rem;padding:12px 20px;background:#c9a227;color:#1a1200;border-color:#e6c352}
+/* Research dossiers (t259u) */
+.dossier{max-width:780px;margin:0 auto 40px;color:var(--parch)}
+.dz-kicker{letter-spacing:.14em;text-transform:uppercase;font-size:.75rem;opacity:.75;margin:0}
+.dz-head h1{margin:.2em 0 .1em}
+.dz-lede{font-size:1.12rem;line-height:1.55;border-left:3px solid #9aa3ab;padding-left:14px}
+.dz-sec{margin:26px 0}.dz-sec h2{border-bottom:1px solid #4a4f54;padding-bottom:4px}
+.dz-sec p{line-height:1.6}
+.dz-fig{margin:14px 0}.dz-fig img{width:100%;height:auto;border-radius:3px;display:block;background:#111}
+.dz-fig figcaption{font-size:.8rem;opacity:.8;margin-top:4px}
+.dz-gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}.dz-gal .dz-fig{margin:0}
+.dz-gal img{aspect-ratio:4/3;object-fit:cover}
+.dz-tl{list-style:none;padding:0}.dz-tl li{display:grid;grid-template-columns:110px 1fr;gap:10px;padding:6px 0;border-bottom:1px dashed #33373b}
+.dz-src{opacity:.6;font-size:.8em}
+.dz-news,.dz-doc{background:#1b1d1f;border:1px solid #33373b;border-radius:3px;padding:10px 14px;margin:10px 0}
+.dz-news h3,.dz-doc h3{margin:0 0 4px;font-size:1rem}
+.dz-news blockquote{margin:8px 0 0;padding-left:12px;border-left:2px solid #9aa3ab;font-style:italic}
+.dz-news cite{display:block;font-style:normal;font-size:.8rem;opacity:.75}
+.dz-lore{background:#1b1d1f;padding:4px 14px;border-radius:3px}
+.dz-tx .dz-page{font-size:.85rem;white-space:pre-wrap;border-top:1px solid #33373b;padding-top:6px}
+.dz-gate{background:#1b1d1f;border:1px solid #4a4f54;border-left:3px solid #c9a227;border-radius:3px;padding:12px 16px;margin:16px 0}

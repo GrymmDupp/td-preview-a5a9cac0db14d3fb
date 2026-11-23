@@ -6,6 +6,7 @@ import { displayableImages, updateLine, isArchived, isArchiveShelf } from '../fe
 import { isPrivateHome, publicAreaLabel } from '../privacy.js';
 import { isSaved } from '../reveals.js';
 import { isUnwritten, unwrittenCard } from '../unwritten.js';
+import { loadDossierIndex, dossierEntry } from '../dossiers.js';
 import { bookShell, bookCover, pageHead, folio, rule, wordmark, statusSeal, scrollShell } from '../tome.js';
 
 const SIG = { landmark: 'National Historic Landmark', register: 'National Register of Historic Places', district: 'Historic district', local: 'Local record' };
@@ -237,6 +238,8 @@ export async function listing(ctx, q, id) {
   const mapLink = l.lat != null ? `#/map?focus=${enc}` : '';
   const orig = publicUrl(l.url);
   const onShelf = isArchiveShelf(l);
+  await loadDossierIndex();
+  const dz = dossierEntry(l.id);
   const fileBtn = onShelf ? '' : full ? `<a class="ink bk-btn gold" href="#/l/${enc}?at=file">Open the sealed full file</a>`
     : `<a class="ink bk-btn gold" href="#/unlock/${enc}" data-unlock-link>Unlock the full file · ${esc(unlockPrice(ctx))}</a>`;
   const finis = `${fileBtn}
@@ -255,6 +258,7 @@ export async function listing(ctx, q, id) {
   ${arch ? html`<div class="no-longer" role="note"><b>No longer for sale.</b> This property is marked <b>${l.status}</b>${l.statusChangedAt ? html` since ${fmtDate(l.statusChangedAt)}` : ''}${l.lastChecked ? html` (last checked ${fmtDate(l.lastChecked)})` : ''}. The price shown is the last known asking price, not an offer. It stays on the <a href="#/archive?at=sold">Once for sale</a> list for its story; the original listing may be gone.</div>` : ''}
   ${isUnwritten(l) ? unwrittenCard(l) : raw(bookFor(ctx, l, imgs, finis))}
   <div class="book-quick">
+    ${dz ? html`<a class="btn" href="#/dossier/${enc}">Research dossier</a>` : ''}
     ${isArchiveShelf(l) ? '' : full ? html`<a class="btn" href="#/l/${enc}?at=file">${unlocked ? 'Your full file' : 'Full file (moderator)'} ↓</a>` : html`<a class="btn" href="#/unlock/${enc}" data-unlock-link>Unlock full file · ${unlockPrice(ctx)}</a>`}
     ${isArchiveShelf(l) ? '' : html`<a class="btn ghost" href="${findListingUrl(l)}" target="_blank" rel="noopener">Find listing</a>`}
     ${orig ? html`<a class="btn ghost" href="${orig}" target="_blank" rel="noopener nofollow">Original listing ↗</a>` : ''}

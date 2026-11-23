@@ -1,0 +1,75 @@
+{
+ "schema": 1,
+ "generated": "2026-11-23",
+ "dossiers": [
+  {
+   "id": "moon-river-brewing-company",
+   "name": "Moon River Brewing Company (former City Hotel)",
+   "place": "Savannah, Chatham County, GA",
+   "status": "complete",
+   "updated": "2026-11-23",
+   "hero": {
+    "src": "assets/dossier/moon-river-brewing-company/moon-river-brewing-company-savannah-georgia-usa.webp",
+    "w": 1100,
+    "h": 825,
+    "author": "Tjbliss",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Moon_River_Brewing_Company_-_Savannah,_Georgia,_USA.jpg"
+   },
+   "counts": {
+    "words": 358,
+    "images": 1,
+    "news": 3,
+    "documents": 0,
+    "timeline": 13
+   }
+  },
+  {
+   "id": "palace-hotel-port-townsend",
+   "name": "Palace Hotel",
+   "place": "Port Townsend, Jefferson County, WA",
+   "status": "complete",
+   "updated": "2026-11-23",
+   "hero": {
+    "src": "assets/dossier/palace-hotel-port-townsend/port-townsend-captain-tibbals-building-01.webp",
+    "w": 1100,
+    "h": 730,
+    "author": "Joe Mabel",
+    "license": "CC BY-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Port_Townsend_-_Captain_Tibbals_Building_01.jpg"
+   },
+   "counts": {
+    "words": 303,
+    "images": 5,
+    "news": 1,
+    "documents": 1,
+    "timeline": 6
+   }
+  },
+  {
+   "id": "ohio-state-reformatory",
+   "name": "Ohio State Reformatory (Mansfield Reformatory)",
+   "place": "Mansfield, Richland County, OH",
+   "status": "complete",
+   "updated": "2026-11-23",
+   "hero": {
+    "src": "assets/dossier/ohio-state-reformatory/mansfield-oh-reformatory-closed.webp",
+    "w": 1100,
+    "h": 602,
+    "author": "Mike Sharp - User: (WT-shared) 2old at wts wikivoyage",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Mansfield_OH_-_Reformatory_-_Closed.jpg"
+   },
+   "counts": {
+    "words": 9289,
+    "images": 12,
+    "news": 2,
+    "documents": 1,
+    "timeline": 12
+   }
+  }
+ ]
+}

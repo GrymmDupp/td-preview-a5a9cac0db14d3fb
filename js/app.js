@@ -26,6 +26,7 @@ import { packs } from './views/packs.js';
 import { archive } from './views/archive.js';
 import { heritage } from './views/heritage.js';
 import { research } from './views/research.js';
+import { dossier } from './views/dossier.js';
 import { initPwa, showFirstRun } from './install.js';
 import { standardPrice } from './components.js';
 import { mountTomes, setReduceMotion } from './tome.js';
@@ -41,6 +42,7 @@ const ROUTES = [
   [/^\/packs$/, packs, 'Dossier Packs'], [/^\/archive$/, archive, 'The Archive'],
   [/^\/heritage$/, heritage, 'Heritage Homes'],
   [/^\/research$/, research, 'Commission a Research File'],
+  [/^\/dossier\/(.+)$/, dossier, null],
   [/^\/rules$/, rules, 'Community rules'], [/^\/about$/, about, 'About'],
 ];
 

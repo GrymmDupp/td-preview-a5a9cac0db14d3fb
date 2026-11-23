@@ -59,6 +59,7 @@ export class LocalBackend {
   async setPreviewModerator(on) { const m = this.requireMe(); m.role = on ? 'moderator' : 'user'; this.save(); }
 
   // ---- unlocks (MOCK in this backend)
+  async getDossier() { return null; }   // dossiers live in Supabase only (t259u)
   async listUnlocks() { return this.db.unlocks.filter((u) => u.user_id === this.db.session).sort((a, b) => b.unlocked_at.localeCompare(a.unlocked_at)); }
   async hasUnlock(listingId) { return !!this.db.session && this.db.unlocks.some((u) => u.user_id === this.db.session && u.listing_id === listingId); }
   async startCheckout(listingId) {

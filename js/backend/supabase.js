@@ -191,6 +191,12 @@ export class SupabaseBackend {
     return { redirect: data.url };
   }
 
+  // Research dossiers (t259u): RLS returns the row only to admins/moderators (public.dossier_access()).
+  async getDossier(id) {
+    if (!this.uid) return null;
+    const r = this.ok(await this.sb.from('place_dossiers').select('doc').eq('id', id).maybeSingle());
+    return r?.doc || null;
+  }
   async getFullFile(listingId) {
     if (!this.uid) return null;
     const f = this.ok(await this.sb.from('listing_full').select('*').eq('listing_id', listingId).maybeSingle());
