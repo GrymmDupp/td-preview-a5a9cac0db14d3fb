@@ -63,3 +63,41 @@ main{max-width:1060px;margin:0 auto;padding:18px 14px 60px}
 #pp-toast{position:fixed;left:12px;right:12px;bottom:14px;max-width:560px;margin:0 auto;background:#241b17;border:1px solid var(--bronze);border-radius:12px;padding:12px 14px;font:600 .95rem var(--sans);z-index:20}
 #pp-toast[hidden]{display:none}
 .pp-prog-list{columns:2 220px;margin:6px 0 0;padding-left:18px;font:.95rem var(--sans)}
+
+/* Open the book (2026-11-23): earned stamps as pages; tap a stamp for its place card */
+.pp-open{position:relative;margin-top:16px;font:400 1rem var(--display);letter-spacing:.08em;color:#1a1200;background:var(--gilt);border:1px solid #e6c98a;border-radius:6px;min-height:46px;padding:0 18px;cursor:pointer;box-shadow:0 3px 8px rgba(0,0,0,.6)}
+.pp-tap{cursor:pointer;border-radius:8px}.pp-tap:focus-visible,.pp-leaf-stamp:focus-visible{outline:3px solid #8e1b22;outline-offset:2px}
+.pp-tap:hover .tdp-stamp{transform:scale(1.04)}
+.pp-reader{border:0;padding:0;background:transparent;max-width:min(96vw,520px);width:100%;color:#2a1c10}
+.pp-reader::backdrop{background:radial-gradient(ellipse at 50% 30%,rgba(40,25,15,.85),rgba(0,0,0,.92))}
+.pp-reader-in{padding:12px}
+.pp-reader-pages{perspective:1400px}
+.pp-leaf{aspect-ratio:3/4;border-radius:4px 10px 10px 4px;padding:10px;background:#3a2216;box-shadow:inset 8px 0 12px rgba(0,0,0,.6),0 18px 40px rgba(0,0,0,.8)}
+.pp-leaf-in{position:relative;height:100%;border-radius:2px 6px 6px 2px;padding:18px 16px;display:flex;flex-direction:column;
+  background:linear-gradient(90deg,rgba(90,60,25,.25),transparent 18px),radial-gradient(ellipse at 20% 0%,rgba(255,255,255,.35),transparent 50%),radial-gradient(ellipse 120% 90% at 50% 50%,transparent 60%,rgba(120,80,30,.3)),var(--paper)}
+.pp-title-leaf .pp-leaf-in{justify-content:center;text-align:center}
+.pp-leaf h2{margin:6px 0;font:400 1.5rem/1.15 var(--display)}
+.pp-leaf .pp-kind{font:700 .72rem var(--sans);letter-spacing:.16em;text-transform:uppercase;color:#8e1b22}
+.pp-big{font:400 4rem/1 var(--display);margin:10px 0 0;color:#5a1a1a}
+.muted-ink{color:#6a5640;font-style:italic}
+.pp-leaf-grid{flex:1;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:8px;align-items:center;justify-items:center}
+.pp-leaf-stamp{background:none;border:0;padding:4px;cursor:pointer;transform:rotate(var(--r,0deg));font:600 .75rem var(--sans);color:#6a5640;display:flex;flex-direction:column;align-items:center;gap:2px;border-radius:10px;max-width:100%}
+.pp-leaf-stamp .tdp-stamp{max-width:100%;height:auto}
+.pp-folio{position:absolute;bottom:8px;right:14px;font:italic .85rem var(--serif);color:#6a5640}
+.pp-reader-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:12px 0 6px;color:var(--parch);font:600 .9rem var(--sans)}
+.pp-reader-nav .btn:disabled{opacity:.35;cursor:default}
+.turn-next .pp-leaf{animation:ppNext .38s ease-out}.turn-prev .pp-leaf{animation:ppPrev .38s ease-out}
+@keyframes ppNext{from{transform:rotateY(-24deg) translateX(30px);opacity:.3;transform-origin:left center}to{transform:none;opacity:1}}
+@keyframes ppPrev{from{transform:rotateY(24deg) translateX(-30px);opacity:.3;transform-origin:right center}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.turn-next .pp-leaf,.turn-prev .pp-leaf{animation:none}}
+.pp-card{max-width:min(94vw,480px);background:var(--paper);color:#2a1c10;border:8px solid #3a2216;box-shadow:0 0 0 1px rgba(201,164,92,.5),0 20px 50px rgba(0,0,0,.8)}
+.pp-card-in{padding:6px 8px}
+.pp-card-stamp{text-align:center;margin:-4px 0 6px}
+.pp-card .pp-kind{font:700 .72rem var(--sans);letter-spacing:.16em;text-transform:uppercase;color:#8e1b22}
+.pp-card h2{margin:2px 0 4px;font:400 1.4rem/1.15 var(--display)}
+.pp-card-where{margin:0;font-style:italic;color:#5a4630}
+.pp-card-when{margin:6px 0 10px;font:.88rem var(--sans);color:#4a3826}
+.pp-card-story{margin:8px 0}
+.pp-card .pp-warn{color:var(--bone)}
+.pp-card .btn{background:#3a2216;color:#f0e6d0}.pp-card .btn.p{background:var(--gold);color:#1a1200}.pp-card .btn.ghost{background:transparent;color:#3a2216}
+.pp-card .muted{color:#6a5640}

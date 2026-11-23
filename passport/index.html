@@ -26,6 +26,7 @@
       <h1><span>Twisted</span><span>Passport</span></h1>
       <p class="pp-sub">Twisted History Tours · since the paper days</p>
       <div class="pp-stats" id="pp-stats"></div>
+      <button type="button" class="pp-open" id="pp-open">Open your passport</button>
     </div>
     <div class="pp-intro">
       <p>Remember the little passport we stamped on every tour? It’s back. Turn on <a href="../live/">the live map</a>, press <b>Start</b>, and drive past a twisted place. Within about 300 feet, its stamp lands here, and its pin on the map turns into the stamp.</p>
@@ -45,6 +46,12 @@
   </section>
 </main>
 <dialog id="pp-share" class="pp-dlg"><div class="pp-dlg-in"><img id="pp-share-img" alt="Share card"><p class="row"><button class="btn p" id="pp-share-go">Share</button><a class="btn" id="pp-share-dl" download="twisted-passport.png">Save image</a><button class="btn ghost" id="pp-share-x">Close</button></p></div></dialog>
+<dialog id="pp-reader" class="pp-reader" aria-label="Your passport, page by page"><div class="pp-reader-in">
+  <div class="pp-reader-pages" id="pp-reader-pages"></div>
+  <div class="pp-reader-nav"><button class="btn" id="pp-prev" aria-label="Previous page">‹ Back</button><span id="pp-reader-n"></span><button class="btn" id="pp-next" aria-label="Next page">Next ›</button></div>
+  <p class="row" style="justify-content:center"><button class="btn ghost" id="pp-reader-x">Close the book</button></p>
+</div></dialog>
+<dialog id="pp-card" class="pp-dlg pp-card" aria-labelledby="pp-card-h"><div id="pp-card-in" class="pp-card-in"></div></dialog>
 <div id="pp-toast" role="status" hidden></div>
 <script type="module" src="book.js"></script>
 </body>

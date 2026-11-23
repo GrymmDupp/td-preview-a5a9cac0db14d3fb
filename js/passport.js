@@ -105,6 +105,10 @@ async function getJson(url, ms = 9000) {
   try { const r = await fetch(url, { cache: 'no-cache', signal: c.signal }); if (!r.ok) throw new Error(r.status); return await r.json(); } finally { clearTimeout(t); }
 }
 let catP = null;
+// The records behind the catalog, for the passport book's cards. Archive private homes are stored after applyArchivePrivacy
+// (no street, no listing link, no photos, offset point), and private pins lose their address and photo.
+export const RAW = new Map();
+const pinPublic = (p) => (p.privateHome ? { id: p.id, cat: p.cat, label: p.label, name: p.name, area: p.area || 'an area of town', privateHome: true, hook: p.hook, status: p.status, asof: p.asof, jackson: p.jackson } : p);
 // base: URL prefix to the app folder ('../' from live/ and passport/).
 export function loadCatalog(base = '../') {
   if (catP) return catP;
@@ -115,14 +119,16 @@ export function loadCatalog(base = '../') {
     for (const l of (feed?.listings || [])) {
       if (!l.id || l.collection === 'heritage' || l.grade === 'heritage' || l.lat == null || l.lon == null) continue;
       out.set(l.id, metaFromListing(l, l.collection === 'archive' ? 'archive' : 'sale'));
+      RAW.set(l.id, { ...l, _shelf: l.collection === 'archive' ? 'archive' : 'sale' });
     }
     if (feed?.archive?.url || feed?.archive?.count) {
-      try { for (const l of ((await getJson(feed.archive.url || ARCH)).listings || [])) if (l.id && l.lat != null) out.set(l.id, metaFromListing(l, 'archive')); } catch { /* shelf offline */ }
+      try { for (const l of ((await getJson(feed.archive.url || ARCH)).listings || [])) if (l.id && l.lat != null) { out.set(l.id, metaFromListing(l, 'archive')); RAW.set(l.id, { ...applyArchivePrivacy({ ...l, shelf: 'archive' }), _shelf: 'archive' }); } } catch { /* shelf offline */ }
     }
     try {
       for (const p of await getJson(base + 'live/jackson_pins.json')) {
         if (p.cat === 'context' || !isFinite(p.lat)) continue;
         out.set(p.id, metaFromPin(p, out.get(p.id) ? { ...out.get(p.id), layer: out.get(p.id).layer } : null));
+        if (!RAW.has(p.id)) RAW.set(p.id, { ...pinPublic(p), _pin: true }); else RAW.get(p.id)._pinInfo = pinPublic(p);
       }
     } catch { /* ignore */ }
     return out;
@@ -137,6 +143,8 @@ export function addStamp(meta, at = new Date(), rare = null) {
   if (b.stamps.some((s) => s.id === meta.id && (!s.u || s.u === u))) return null;
   const s = { id: meta.id, name: meta.name || '', town: meta.town || '', county: meta.county || '', state: meta.state || '', layer: meta.layer || 'place', sub: meta.sub || '',
     theme: meta.theme || '', crew: !!meta.crew, priv: !!meta.priv, area: meta.area ? String(meta.areaLabel || '') : '', firstOk: !!meta.firstOk, at: at.toISOString(), rare: rare || rareNow(meta.lat, meta.lon, at), u: null, synced: false };
+  // Markers and cemeteries keep their public spot (5 decimals) so the passport book can open their card. Homes never do.
+  if ((s.layer === 'marker' || s.layer === 'cemetery') && !meta.area && isFinite(meta.lat) && isFinite(meta.lon)) { s.lat = Math.round(meta.lat * 1e5) / 1e5; s.lon = Math.round(meta.lon * 1e5) / 1e5; }
   b.stamps.push(s); saveBook(b);
   return s;
 }

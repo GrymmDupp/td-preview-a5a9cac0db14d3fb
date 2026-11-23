@@ -12,7 +12,7 @@ const GHOSTS = 12;
 function toast(t, ms) { const el = $('#pp-toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true; }, ms || 3500); }
 const list = () => P.enrich(P.stamps(), catalog).sort((a, b) => String(b.at).localeCompare(String(a.at)));
 const place = (s) => P.placeLine(s);
-const fig = (s) => '<figure>' + P.stampSvg(s, { size: 124 }) + '<figcaption>' + esc(s.layer === 'scout' ? 'Scout: ' + s.name : P.noAddr(s.name)) + '<small>' + esc([place(s), P.fmtDate(s.at)].filter(Boolean).join(' · ')) + '</small>'
+const fig = (s) => '<figure class="pp-tap" data-open="' + esc(s.id) + '" tabindex="0" role="button" aria-label="Open the card for ' + esc(P.noAddr(s.name) || 'this stamp') + '">' + P.stampSvg(s, { size: 124 }) + '<figcaption>' + esc(s.layer === 'scout' ? 'Scout: ' + s.name : P.noAddr(s.name)) + '<small>' + esc([place(s), P.fmtDate(s.at)].filter(Boolean).join(' · ')) + '</small>'
   + ((s.rare || []).length ? '<small>Rare: ' + esc(s.rare.map((r) => P.RARE[r]).join(', ')) + '</small>' : '') + (s.first ? '<small><b>First to find</b></small>' : '') + '</figcaption></figure>';
 const ghost = (m) => '<figure class="ghost">' + P.stampSvg(m, { size: 124, ghost: true }) + '<figcaption>' + esc(P.noAddr(m.name)) + '<small>' + esc(place(m) || 'Not stamped yet') + '</small></figcaption></figure>';
 
@@ -20,6 +20,7 @@ function render() {
   const all = list();
   sets = P.computeSets(catalog, all);
   const done = sets.filter((s) => s.complete).length;
+  if ($('#pp-reader').open) paintReader(0);
   $('#pp-stats').innerHTML = '<div><b>' + all.length + '</b>' + (all.length === 1 ? 'stamp' : 'stamps') + '</div><div><b>' + sets.filter((s) => s.kind === 'town').length + '</b>towns started</div><div><b>' + done + '</b>' + (done === 1 ? 'set' : 'sets') + ' complete</div>';
   const kinds = [['all', 'Every stamp'], ['town', 'Towns'], ['county', 'Counties'], ['layer', 'Markers & cemeteries'], ['theme', 'Themes'], ['collection', 'Collections']].filter(([k]) => k === 'all' || sets.some((s) => s.kind === k));
   if (!kinds.some(([k]) => k === tab)) tab = 'all';
@@ -34,6 +35,7 @@ function render() {
   if (tab === 'all') {
     pages.innerHTML = '<article class="pp-page"><span class="pp-kind">Every stamp</span><h2>Newest first</h2><div class="pp-prog">' + all.length + ' ' + (all.length === 1 ? 'place' : 'places') + ' stamped</div><div class="pp-grid">' + all.map(fig).join('') + '</div></article>'
       + (sets.length ? '<article class="pp-page"><span class="pp-kind">Sets in progress</span><h2>Where to next</h2><ul class="pp-prog-list">' + sets.slice(0, 12).map((S) => '<li>' + esc(P.progressText(S)) + (S.complete ? ' · complete' : '') + '</li>').join('') + '</ul></article>' : '');
+    wireTaps(pages);
     return;
   }
   pages.innerHTML = sets.filter((S) => S.kind === tab).map((S, i) => {
@@ -47,6 +49,7 @@ function render() {
       + (miss.length > GHOSTS ? '<p class="pp-more">+ ' + (miss.length - GHOSTS) + ' more to find</p>' : '')
       + '<div class="pp-actions"><button class="btn" data-share="' + i + '">Share this page</button></div></article>';
   }).join('');
+  wireTaps($('#pp-pages'));
   const mine = sets.filter((S) => S.kind === tab);
   document.querySelectorAll('[data-share]').forEach((b) => { b.onclick = () => share(mine[+b.dataset.share], b); });
 }
@@ -67,6 +70,77 @@ async function share(S, btn) {
   finally { btn.disabled = false; }
 }
 $('#pp-share-x').onclick = () => $('#pp-share').close();
+
+// ---- Tap a stamp: that place's card (2026-11-23). Only what the app already shows publicly. Private homes: area only,
+// no street, no photo, no story text that could name the house; a stay-on-the-road reminder instead.
+function wireTaps(root) {
+  root.querySelectorAll('[data-open]').forEach((f) => {
+    f.onclick = () => openCard(f.dataset.open);
+    f.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openCard(f.dataset.open); } };
+  });
+}
+const LAYER_NAME = { listing: 'For sale now', archive: 'From the Archive', marker: 'Historical marker', cemetery: 'Cemetery', lead: 'Twisted place', place: 'Twisted place', scout: 'Scout stamp' };
+const unwritten = (r) => !!r && [r.story_status, r.storyStatus].some((v) => String(v || '').toLowerCase() === 'unwritten');
+function openCard(id) {
+  const s = list().find((x) => x.id === id); if (!s) return;
+  const r = P.RAW.get(id) || null, priv = !!(s.priv || r?.privateHome || r?.townOnly);
+  const name = s.layer === 'scout' ? s.name : priv ? (s.area || P.placeLine(s) || 'A private home') : P.noAddr(s.name);
+  const story = priv || !r ? '' : String(r.preview?.summary || r.preview?.teaser || r.hook || r._pinInfo?.hook || '').trim();
+  const inApp = r && !r._pin && s.layer !== 'scout';      // a feed or Archive record with its own page in the app
+  const meta = [P.placeLine(s) === name ? '' : P.placeLine(s), s.county && !(P.placeLine(s) || '').includes(s.county) ? s.county : ''].filter(Boolean).join(' · ');
+  const rare = (s.rare || []).map((x) => P.RARE[x]).filter(Boolean);
+  let h = '<div class="pp-card-stamp">' + P.stampSvg(s, { size: 180 }) + '</div>'
+    + '<span class="pp-kind">' + esc(LAYER_NAME[s.layer] || 'Twisted place') + (priv ? ' · private home' : '') + '</span>'
+    + '<h2 id="pp-card-h">' + esc(name) + '</h2>' + (meta && meta !== name ? '<p class="pp-card-where">' + esc(meta) + '</p>' : '')
+    + '<p class="pp-card-when">Stamped ' + esc(P.fmtDate(s.at)) + (rare.length ? ' · <b>Rare: ' + esc(rare.join(', ')) + '</b>' : '') + (s.first ? ' · <b>First to find</b>' : '') + '</p>';
+  if (s.layer === 'scout') h += '<p>Your tip about this place was approved after a check against public records. Thank you for scouting.</p>';
+  else if (unwritten(r)) h += '<p><b>We haven’t found this place’s story yet.</b></p><p><a class="btn" href="../live/#suggest=' + encodeURIComponent(id) + '">Know this place? Tell us</a></p>';
+  else if (story) h += '<p class="pp-card-story">' + esc(story.length > 420 ? story.slice(0, 400).replace(/\s+\S*$/, '') + '…' : story) + '</p>';
+  if (priv) h += '<p class="pp-warn">This is a private home with people living in it. Only its area is shown. Stay on the public road: don’t stop, park, knock or go onto the property.</p>';
+  h += '<p class="pp-card-count muted small" id="pp-card-count"></p><p class="row">'
+    + (inApp ? '<a class="btn p" href="../#/l/' + encodeURIComponent(id) + '">' + (s.layer === 'archive' ? 'Read its story' : 'Open its page') + '</a>' : '')
+    + (!priv && isFinite(s.lat) && isFinite(s.lon) ? '<a class="btn" href="https://www.openstreetmap.org/?mlat=' + s.lat + '&mlon=' + s.lon + '#map=17/' + s.lat + '/' + s.lon + '" target="_blank" rel="noopener">Where it is ↗</a>' : '')
+    + '<a class="btn" href="../live/">Live map</a><button class="btn ghost" id="pp-card-x">Close</button></p>';
+  const d = $('#pp-card'); $('#pp-card-in').innerHTML = h; $('#pp-card-x').onclick = () => d.close();
+  if (!d.open) d.showModal();
+  if (s.layer !== 'scout') P.counts([id]).then((m) => { const n = m && (m.get ? m.get(id) : m[id]); const el = $('#pp-card-count'); if (el && n > 0) el.textContent = P.countLine(n); }).catch(() => {});
+}
+$('#pp-card').addEventListener('click', (e) => { if (e.target === e.currentTarget) e.currentTarget.close(); });
+
+// ---- Open the book: earned stamps as pages (2026-11-23). Oldest first, like the paper passport: a title page,
+// then four stamps to a page. Swipe, arrow keys or the page buttons turn pages; tap a stamp for its card.
+const PER = 4;
+let pg = 0;
+function readerPages() {
+  const all = list().slice().reverse();
+  const out = ['<div class="pp-leaf pp-title-leaf"><div class="pp-leaf-in"><span class="pp-kind">Twisted Passport</span><h2>This passport has traveled</h2>'
+    + '<p class="pp-big">' + all.length + '</p><p>' + (all.length === 1 ? 'stamp' : 'stamps') + (all.length ? ' since ' + esc(P.fmtDate(all[0].at)) : '') + '</p>'
+    + (all.length ? '<p class="muted-ink">Turn the page to see them. Tap any stamp to open its place.</p>' : '<p class="muted-ink">No stamps yet. Open the live map, press Start, and drive past any pin. Your first page is waiting.</p>') + '</div></div>'];
+  for (let i = 0; i < all.length; i += PER) {
+    const n = out.length;
+    out.push('<div class="pp-leaf"><div class="pp-leaf-in"><div class="pp-leaf-grid">' + all.slice(i, i + PER).map((s) => '<button class="pp-leaf-stamp" data-open="' + esc(s.id) + '" aria-label="Open the card for ' + esc(P.noAddr(s.name) || 'this stamp') + '" style="--r:' + (((s.id.length * 7 + i) % 9) - 4) + 'deg">'
+      + P.stampSvg(s, { size: 128 }) + '<small>' + esc(P.fmtDate(s.at)) + '</small></button>').join('') + '</div><span class="pp-folio">' + n + '</span></div></div>');
+  }
+  return out;
+}
+function paintReader(dir) {
+  const pages = readerPages(); pg = Math.max(0, Math.min(pg, pages.length - 1));
+  const body = $('#pp-reader-pages');
+  body.innerHTML = pages[pg]; body.className = 'pp-reader-pages' + (dir ? ' turn-' + (dir > 0 ? 'next' : 'prev') : '');
+  $('#pp-reader-n').textContent = pg === 0 ? 'Title page' : 'Page ' + pg + ' of ' + (pages.length - 1);
+  $('#pp-prev').disabled = pg === 0; $('#pp-next').disabled = pg >= pages.length - 1;
+  wireTaps(body);
+}
+function openBook() { pg = 0; paintReader(0); const d = $('#pp-reader'); if (!d.open) d.showModal(); $('#pp-next').focus(); }
+const turn = (k) => { const before = pg; pg += k; paintReader(k); if (pg === before) paintReader(0); };
+document.querySelector('.pp-book').onclick = openBook;
+document.querySelector('.pp-book').style.cursor = 'pointer';
+$('#pp-prev').onclick = () => turn(-1); $('#pp-next').onclick = () => turn(1);
+$('#pp-reader-x').onclick = () => $('#pp-reader').close();
+$('#pp-reader').addEventListener('keydown', (e) => { if ($('#pp-card').open) return; if (e.key === 'ArrowRight') turn(1); if (e.key === 'ArrowLeft') turn(-1); });
+{ let x0 = null; const el = $('#pp-reader-pages');
+  el.addEventListener('touchstart', (e) => { x0 = e.touches[0].clientX; }, { passive: true });
+  el.addEventListener('touchend', (e) => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 50) turn(dx < 0 ? 1 : -1); }, { passive: true }); }
 
 function tonight() {
   const m = moonPhase(), now = new Date(), parts = [];
