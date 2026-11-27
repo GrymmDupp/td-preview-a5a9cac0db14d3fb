@@ -348,13 +348,23 @@ export const progressText = (S) => S.open ? `${S.label}: ${S.got.size} stamped` 
 const SDK = 'https://esm.sh/@supabase/supabase-js@2.118.0';
 let sbP = null;
 export const remote = { ready: false, uid: null, status: 'local' };   // status: local | signed-out | on | off
+// One Supabase client per page (the passport, the live map and the Ancestors Trail share it), on the app's own session.
+let cliP = null;
+export function client() {
+  if (cliP) return cliP;
+  cliP = (async () => {
+    if (CONFIG.backend !== 'supabase' || !CONFIG.supabase?.url) return null;
+    const { createClient } = await import(SDK);
+    return createClient(CONFIG.supabase.url, CONFIG.supabase.anonKey, { auth: { persistSession: true, detectSessionInUrl: false, storageKey: 'td-auth' } });
+  })().catch(() => null);
+  return cliP;
+}
 export function backend() {
   if (sbP) return sbP;
   sbP = (async () => {
     if (CONFIG.backend !== 'supabase' || !CONFIG.supabase?.url) { remote.status = 'off'; return null; }
     try {
-      const { createClient } = await import(SDK);
-      const sb = createClient(CONFIG.supabase.url, CONFIG.supabase.anonKey, { auth: { persistSession: true, detectSessionInUrl: false, storageKey: 'td-auth' } });
+      const sb = await client(); if (!sb) { remote.status = 'off'; return null; }
       // Switched on by _build/migrations/20261121_passport.sql (app_settings is publicly readable). Before that: stay local, quietly.
       const st = await Promise.race([sb.from('app_settings').select('value').eq('key', 'passport_enabled').maybeSingle(), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000))]);
       if (st.error || st.data?.value !== 'true') { remote.status = 'off'; return null; }

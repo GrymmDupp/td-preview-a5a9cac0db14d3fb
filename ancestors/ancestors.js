@@ -169,11 +169,12 @@ function showList(q) {
   openPanel('list', 'Your family', tabs + body);
   document.querySelectorAll('[data-t]').forEach((b) => { b.onclick = () => { listTab = b.dataset.t; showList(); }; });
 }
+const pl = (n, one, many) => n.toLocaleString() + ' ' + (n === 1 ? one : many || one + 's');
 function showStats(s) {
   const pr = s.precision || {};
   const sum = (re) => Object.entries(pr).filter(([k]) => re.test(k)).reduce((a, [, v]) => a + v, 0);
   openPanel('stats', 'Your trail is ready', '<div class="at-stats"><div><b>' + s.people_kept.toLocaleString() + '</b>people</div><div><b>' + s.places.toLocaleString() + '</b>places</div><div><b>' + (sum(/^cemetery/) + sum(/^exact/)) + '</b>exact spots</div><div><b>' + sum(/^town|^township/) + '</b>towns</div><div><b>' + sum(/^county/) + '</b>counties</div><div><b>' + s.living + '</b>living relatives</div></div>'
-    + '<p class="at-note">Left off: ' + s.non_us_events.toLocaleString() + ' records outside the US, ' + s.unplaceable_events + ' too vague to place, ' + s.duplicates_people + ' duplicate people and ' + s.duplicates_events + ' repeated events.</p><div class="row"><button class="btn p" id="at-go">See the map</button></div>');
+    + '<p class="at-note">Left off: ' + pl(s.non_us_events, 'record') + ' outside the US, ' + s.unplaceable_events.toLocaleString() + ' too vague to place, ' + pl(s.duplicates_people, 'duplicate person', 'duplicate people') + ' and ' + pl(s.duplicates_events, 'repeated event') + '.</p><div class="row"><button class="btn p" id="at-go">See the map</button></div>');
   $('#at-go').onclick = closePanel;
 }
 function showMenu() {

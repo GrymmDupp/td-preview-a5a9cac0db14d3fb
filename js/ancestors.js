@@ -10,18 +10,20 @@ const SK = (u) => 'td-anc-stamps:' + u;
 const ls = { get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } }, del(k) { try { localStorage.removeItem(k); } catch { /* */ } } };
 export const state = { status: 'loading', uid: null, tree: null, byId: null, home: null, stamps: {}, err: '' };   // status: loading | off | signed-out | none | ready | error
 
-export async function init() {
-  const sb = await P.backend();
+let initP = null;
+export function init() { return initP || (initP = init0()); }
+async function init0() {
+  const sb = await P.client();
   if (!sb) { state.status = 'off'; return state; }
-  state.uid = P.remote.uid;
+  try { const { data } = await sb.auth.getSession(); state.uid = data.session?.user?.id || null; } catch { state.uid = null; }
   if (!state.uid) { state.status = 'signed-out'; clearOthers(null); return state; }
   clearOthers(state.uid);
   const cached = ls.get(CK(state.uid), null);
   if (cached && cached.tree) use(cached.tree, cached.home, ls.get(SK(state.uid), {}));
   try {
-    const st = await sb.from('app_settings').select('value').eq('key', 'ancestors_enabled').maybeSingle();
-    if (st.error || st.data?.value !== 'true') { if (!state.tree) state.status = 'off'; return state; }
     const r = await sb.from('ancestor_trees').select('tree,stamps,home_person,updated_at').eq('owner', state.uid).maybeSingle();
+    // before _build/migrations/20261127_ancestors_trail.sql has been run the table does not exist yet
+    if (r.error && /schema cache|does not exist|relation|PGRST205|42P01/i.test((r.error.message || '') + (r.error.code || ''))) { if (!state.tree) state.status = 'off'; return state; }
     if (r.error) throw r.error;
     if (!r.data) { forget(); state.status = 'none'; return state; }
     const local = ls.get(SK(state.uid), {});
@@ -44,7 +46,7 @@ export function rel(id) { if (!relCache.has(id)) relCache.set(id, relationship(s
 export async function setHome(id) {
   state.home = id; relCache.clear();
   ls.set(CK(state.uid), Object.assign(ls.get(CK(state.uid), {}), { home: id }));
-  const sb = await P.backend(); if (sb) await sb.from('ancestor_trees').update({ home_person: id }).eq('owner', state.uid);
+  const sb = await P.client(); if (sb) await sb.from('ancestor_trees').update({ home_person: id }).eq('owner', state.uid);
 }
 
 /* ------------------------------------------------ places and people */
@@ -86,7 +88,7 @@ export function addStamp(i, at = new Date()) {
   return state.stamps[id];
 }
 async function pushStamps() {
-  const sb = await P.backend(); if (!sb || !state.uid) return;
+  const sb = await P.client(); if (!sb || !state.uid) return;
   const r = await sb.from('ancestor_trees').update({ stamps: state.stamps }).eq('owner', state.uid);
   if (!r.error) ls.set(SK(state.uid), state.stamps);
 }
@@ -106,17 +108,18 @@ export async function processFile(file, base, onStep) {
   return t;
 }
 export async function saveTree(t, sourceName) {
-  const sb = await P.backend(); if (!sb || !P.remote.uid) throw new Error('Sign in first.');
+  const sb = await P.client(); if (!sb || !state.uid) throw new Error('Sign in first.');
+  const uid = state.uid;
   const used = new Set(); for (const p of t.people) for (const e of p.e) if (e[2] >= 0 && t.places[e[2]].q !== 'state') used.add(e[2]);
-  const keep = state.tree && state.stamps ? {} : {};   // a new tree has new place numbers, so old family stamps do not carry over
-  const r = await sb.from('ancestor_trees').upsert({ owner: P.remote.uid, tree: t, stamps: keep, home_person: t.home, source: String(sourceName || 'GEDCOM file').slice(0, 120), people: t.people.length, places: used.size }, { onConflict: 'owner' });
+  const keep = {};   // a new tree has new place numbers, so old family stamps do not carry over
+  const r = await sb.from('ancestor_trees').upsert({ owner: uid, tree: t, stamps: keep, home_person: t.home, source: String(sourceName || 'GEDCOM file').slice(0, 120), people: t.people.length, places: used.size }, { onConflict: 'owner' });
   if (r.error) throw new Error(/relation|schema cache|does not exist/i.test(r.error.message) ? 'The Ancestors Trail is not switched on for accounts yet.' : r.error.message);
-  ls.set(SK(P.remote.uid), {});
-  use(t, t.home, {}); ls.set(CK(P.remote.uid), { tree: t, home: t.home, at: new Date().toISOString() });
+  ls.set(SK(uid), {});
+  use(t, t.home, {}); ls.set(CK(uid), { tree: t, home: t.home, at: new Date().toISOString() });
 }
 export async function deleteTree() {
-  const sb = await P.backend(); if (!sb || !P.remote.uid) return;
-  const r = await sb.from('ancestor_trees').delete().eq('owner', P.remote.uid);
+  const sb = await P.client(); if (!sb || !state.uid) return;
+  const r = await sb.from('ancestor_trees').delete().eq('owner', state.uid);
   if (r.error) throw new Error(r.error.message);
   forget(); state.status = 'none';
 }
