@@ -5,6 +5,7 @@ import { LAYERS, layerInfo, storyLabel } from '../taxonomy.js';
 import { displayableImages } from '../feed.js';
 import { applyFilters } from './browse.js';
 import { isPrivateHome, isAreaOnly, outlineRing, publicAreaLabel, radiusM as privacyRadiusM, TOWN_RADIUS_M } from '../privacy.js';
+import { mountCaptureFab } from '../capture.js';
 
 let maplibreP;
 const loadLib = () => maplibreP ||= new Promise((res, rej) => {
@@ -130,8 +131,9 @@ export async function mountMap(ctx, q, root) {
     card.hidden = false;
     card.innerHTML = `<button class="x" aria-label="Close">×</button><div class="mc-badges">${l.shelf === 'archive' ? '<span class="badge story">From the Archive</span>' : l.tier === 1 ? '<span class="badge ddd" style="--c:#c41e32"><b>Twisted Deed</b></span>' : `<span class="badge story">Strong Story${storyLabel(l) ? `<i>${esc(storyLabel(l))}</i>` : ''}</span>`} <span class="layer" style="--c:${l.layerI.color}"><span class="dot"></span>${esc(l.layerI.label)}</span></div>
       ${(() => { const i = displayableImages(l)[0]; return i ? `<div class="mc-photo" data-ph><img src="${esc(i.src || i.url)}" alt="${esc((i.image_type === 'illustration' ? 'Illustration, not a photo: ' : '') + (i.caption || l.name))}" referrerpolicy="no-referrer" data-ph-img>${i.image_type === 'illustration' ? '<span class="ph-note mc-note"><span class="ph-type illus">Illustration, not a photo</span></span>' : ''}</div>` : ''; })()}
-      <h3>${esc(l.name)}</h3><div class="muted">${esc(l.place)}</div><div class="card-price">${l.shelf === 'archive' ? (l.status === 'Sold' ? 'Sold · in the Archive' : 'Not for sale · in the Archive') : esc(l.price) + ' · ' + esc(l.status)}</div>${isPrivateHome(l) ? '<div class="small muted">A private home: shown as ' + esc(publicAreaLabel(l) || 'an area of town') + ', not a pin.</div>' : isAreaOnly(l) && l.geo_precision === 'township' ? '<div class="small muted">Shown as the whole township, not a pin: the exact site is unknown.</div>' : ''}<p class="clamp2">${esc(truncate(l.preview?.summary || "", 180))}</p><a class="btn sm" href="#/l/${encodeURIComponent(l.id)}">Open</a>`;
-    card.querySelector('.x').onclick = () => { card.hidden = true; lantern(''); };
+      <h3>${esc(l.name)}</h3><div class="muted">${esc(l.place)}</div><div class="card-price">${l.shelf === 'archive' ? (l.status === 'Sold' ? 'Sold · in the Archive' : 'Not for sale · in the Archive') : esc(l.price) + ' · ' + esc(l.status)}</div>${isPrivateHome(l) ? '<div class="small muted">A private home: shown as ' + esc(publicAreaLabel(l) || 'an area of town') + ', not a pin.</div>' : isAreaOnly(l) && l.geo_precision === 'township' ? '<div class="small muted">Shown as the whole township, not a pin: the exact site is unknown.</div>' : ''}<p class="clamp2">${esc(truncate(l.preview?.summary || "", 180))}</p><div class="row-btns"><a class="btn sm" href="#/l/${encodeURIComponent(l.id)}">Open</a><button class="btn sm" type="button" data-capture-place="${esc(l.id)}">Add photo or info</button></div>`;
+    root.classList.add('has-card');
+    card.querySelector('.x').onclick = () => { card.hidden = true; root.classList.remove('has-card'); lantern(''); };
     lantern(l.id);
   };
   map.on('click', 'pt', (e) => { const l = ctx.feed.byId.get(e.features[0].properties.id); if (l) showCard(l); });
@@ -153,4 +155,6 @@ export async function mountMap(ctx, q, root) {
   root.querySelector('[data-fly="mi"]').onclick = () => map.fitBounds([[-90.5, 41.6], [-82.1, 47.5]], { padding: 20 });
   root.querySelector('[data-fly="all"]').onclick = () => map.fitBounds([[-125, 24], [-66, 49.5]], { padding: 20 });
   window._tdMap = map;
+  const wrap = root.classList.contains('map-wrap') ? root : root.querySelector('.map-wrap') || root;
+  mountCaptureFab(wrap);
 }

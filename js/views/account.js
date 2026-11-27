@@ -143,6 +143,7 @@ function writingDesk(ctx) {
 }
 
 const KIND = { info: 'Info / correction', photo: 'Photo or document', lore: 'Lore or story', link: 'Link' };
+const kindLabelFor = (s) => (s.field_capture || s.payload?.capture) ? 'Field report' : (KIND[s.kind] || s.kind);
 const STATUS = { pending: ['Awaiting review', 'pending'], approved: ['Approved', 'ok'], rejected: ['Not approved', 'no'], removed: ['Removed', 'no'] };
 
 // Plain account page: the user's own submissions with moderation status, and their
@@ -190,7 +191,7 @@ export async function account(ctx) {
     <section class="block"><h2>Your submissions <small class="muted">${subs.length}</small></h2>
       ${subs.length ? html`<table class="tbl"><thead><tr><th>Type</th><th>Listing</th><th>What</th><th>Sent</th><th>Status</th></tr></thead><tbody>
         ${subs.map((s) => { const st = STATUS[s.status] || [s.status, '']; const p = s.payload || {};
-          return html`<tr><td>${KIND[s.kind] || s.kind}</td><td>${L(s.listing_id) ? html`<a href="#/l/${s.listing_id}">${L(s.listing_id).name}</a>` : html`<span class="muted">${p.new_property ? 'New property' : '—'}</span>`}</td>
+          return html`<tr><td>${kindLabelFor(s) || s.kind}</td><td>${L(s.listing_id) ? html`<a href="#/l/${s.listing_id}">${L(s.listing_id).name}</a>` : html`<span class="muted">${p.new_property ? 'New property' : '—'}</span>`}</td>
           <td>${p.title || p.label || (p.text || '').slice(0, 60) || (safeUrl(p.url) ? host(p.url) : '')}</td><td>${fmtDate(s.created_at)}</td>
           <td><span class="st ${st[1]}">${st[0]}</span>${s.mod_note ? html`<div class="small muted">Moderator: ${s.mod_note}</div>` : ''}</td></tr>`; })}</tbody></table>`
       : html`<p class="muted">You haven’t submitted anything yet. <a href="#/contribute">Submit info, a photo, lore or a link</a>.</p>`}</section>

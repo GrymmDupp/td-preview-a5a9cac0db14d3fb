@@ -8,6 +8,7 @@ import { isSaved } from '../reveals.js';
 import { isUnwritten, unwrittenCard } from '../unwritten.js';
 import { loadDossierIndex, dossierEntry } from '../dossiers.js';
 import { bookShell, bookCover, pageHead, folio, rule, wordmark, statusSeal, scrollShell } from '../tome.js';
+import { fieldReportsHtml } from '../field-covers.js';
 
 const SIG = { landmark: 'National Historic Landmark', register: 'National Register of Historic Places', district: 'Historic district', local: 'Local record' };
 const LANE = { institution: 'Closed institution', inn: 'Inn or theater', death: 'Ordinary death', attraction: 'Failed attraction', disaster: 'Disaster', bundle: 'Business included' };
@@ -84,7 +85,8 @@ function fullFileContent(l, f, unlocked) {
     ${f.ownershipChain || sf.length ? `<h3 class="line">Ownership &amp; story notes</h3><dl class="sc-facts">${f.ownershipChain ? `<div class="line"><dt>Ownership chain</dt><dd>${esc(f.ownershipChain)}</dd></div>` : ''}${sf.map(([k, v]) => `<div class="line"><dt>${esc(STORY_FIELDS[k])}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>` : ''}
     <h3 class="line">Citations &amp; sources</h3>${f.citation ? `<p class="line">${esc(f.citation)}</p>` : '<p class="line sc-empty">No citation yet.</p>'}
     <ul class="sc-src">${src.map(([u, label]) => `<li class="line"><a href="${esc(u)}" target="_blank" rel="noopener nofollow">${esc(label)}</a> <span class="sc-host">${esc(host(u))}</span></li>`).join('')}<li class="line"><a href="${esc(findListingUrl(l))}" target="_blank" rel="noopener">Find the current listing</a> <span class="sc-host">address search</span></li></ul>
-    <h3 class="line">Community archive</h3>${f.community?.length ? f.community.map(scrollItem).join('') : '<p class="line sc-empty">No approved submissions yet.</p>'}
+    <h3 class="line">Field reports</h3>${(f.community || []).filter((s) => s.field_capture || s.payload?.capture).length ? (f.community || []).filter((s) => s.field_capture || s.payload?.capture).map(scrollItem).join('') : '<p class="line sc-empty">No approved field reports yet.</p>'}
+    <h3 class="line">Community archive</h3>${(f.community || []).filter((s) => !(s.field_capture || s.payload?.capture)).length ? (f.community || []).filter((s) => !(s.field_capture || s.payload?.capture)).map(scrollItem).join('') : '<p class="line sc-empty">No approved submissions yet.</p>'}
     <h3 class="line">Dossier</h3>${typeof f.dossier === 'string' && f.dossier ? lines(f.dossier) : f.dossier ? '<p class="line">A research dossier exists for this file.</p><p class="line sc-small">The dossier text is being prepared for members. Internal scoring and listing numbers are never included.</p>' : '<p class="line sc-empty">No dossier for this file yet.</p>'}
     <p class="line sc-note">View from public ground only. Many of these places are occupied homes; never trespass or contact the owners or occupants.</p>
     <div class="line sc-btns"><a class="bk-btn gold" href="#/contribute?listing=${encodeURIComponent(l.id)}">Add to this file</a><button class="bk-btn ghost" type="button" data-reroll>Roll it back up</button></div>
@@ -231,7 +233,13 @@ function bookFor(ctx, l, imgs, finis) {
 export async function listing(ctx, q, id) {
   const l = ctx.feed.byId.get(id);
   if (!l) return html`<div class="empty-state"><h1>Not in the archive</h1><p>This listing isn’t in the current feed. It may have sold and been retired. <a href="#/browse">Browse the listings</a> or <a href="#/archive">visit the Archive</a>.</p></div>`;
-  const [comments, samples, fullRaw, counts] = await Promise.all([ctx.be.listComments(l.id), ctx.be.samplePhotos(l.id), ctx.be.getFullFile(l.id), ctx.be.fileCounts(l.id)]);
+  const [comments, samples, fullRaw, counts, reports] = await Promise.all([
+    ctx.be.listComments(l.id).catch(() => []),
+    ctx.be.samplePhotos(l.id).catch(() => []),
+    ctx.be.getFullFile(l.id).catch(() => null),
+    ctx.be.fileCounts(l.id).catch(() => ({ photo: 0, lore: 0, info: 0, link: 0 })),
+    ctx.be.listFieldReports ? ctx.be.listFieldReports(l.id).catch(() => []) : Promise.resolve([]),
+  ]);
   const full = ctx.visitor && !ctx.unlocks.includes(l.id) ? null : fullRaw;   // View as visitor: no staff access to sealed files
   const top = comments.filter((c) => !c.parent_id), kids = (c) => comments.filter((r) => r.parent_id === c.id);
   const imgs = displayableImages(l);
@@ -266,6 +274,7 @@ export async function listing(ctx, q, id) {
   ${arch ? html`<div class="no-longer" role="note"><b>No longer for sale.</b> This property is marked <b>${l.status}</b>${l.statusChangedAt ? html` since ${fmtDate(l.statusChangedAt)}` : ''}${l.lastChecked ? html` (last checked ${fmtDate(l.lastChecked)})` : ''}. The price shown is the last known asking price, not an offer. It stays on the <a href="#/archive?at=sold">Once for sale</a> list for its story; the original listing may be gone.</div>` : ''}
   ${isUnwritten(l) ? unwrittenCard(l) : raw(bookFor(ctx, l, imgs, finis))}
   <div class="book-quick">
+    <button class="btn" type="button" data-capture-place="${enc}">Add photo or info</button>
     ${dz ? html`<a class="btn" href="#/dossier/${enc}">Research dossier</a>` : ''}
     ${isArchiveShelf(l) ? '' : full ? html`<a class="btn" href="#/l/${enc}?at=file">${unlocked ? 'Your full file' : 'Full file (moderator)'} ↓</a>` : canOpen ? html`<a class="btn" href="#/l/${enc}?at=file">Your full file ↓</a>` : html`<a class="btn" href="#/unlock/${enc}" data-unlock-link>Unlock full file · ${unlockPrice(ctx)}</a>`}
     ${isArchiveShelf(l) ? '' : html`<a class="btn ghost" href="${findListingUrl(l)}" target="_blank" rel="noopener">Find listing</a>`}
@@ -294,6 +303,8 @@ export async function listing(ctx, q, id) {
   <div class="detail-main">
     ${isArchiveShelf(l) ? '' : full ? fullFile(l, full, unlocked) : canOpen ? missingFilePanel(l) : lockedPanel(ctx, l, counts, signedIn)}
 
+    ${reports?.length && !isPrivateHome(l) ? raw(fieldReportsHtml(reports)) : (reports?.length ? html`<section class="td-fr" id="field-reports"><h2>Field reports</h2><p class="muted small">Field notes for this private home are in the full file, so the house is not shown on the public card.</p></section>` : '')}
+
     <section class="block comments" id="comments"><h2>Comments <small class="muted">${comments.length}</small></h2>
       <p class="muted small">Public discussion about this listing. Separate from submissions: to add facts, photos, lore or links to the file, use <a href="#/contribute?listing=${l.id}">Submit</a>.</p>
       ${signedIn ? html`<form class="composer" data-new-comment="${l.id}">
@@ -306,7 +317,10 @@ export async function listing(ctx, q, id) {
   </div>
   <aside class="sidebar">
     <section class="box warn"><h4>Before you visit</h4>${isArchiveShelf(l) ? html`<p>This place is <b>not for sale</b>, and it may be someone’s home. ${l.roadOnly ? 'View it from the public road only. ' : 'View from public ground only. '}Never trespass, and don’t contact owners or occupants about the history. We are a public-interest archive, not a broker.</p>` : html`<p>This is a public-interest archive, not a real-estate broker. Many of these places are <b>occupied homes</b>. View from public ground only, never trespass, and don’t contact owners or occupants about the history. To ask about buying, <a href="${findListingUrl(l)}" target="_blank" rel="noopener">find the current listing</a>${orig ? html` or open the <a href="${orig}" target="_blank" rel="noopener nofollow">original listing</a>` : ''}.</p>`}</section>
-    <section class="box"><h4>Submit to this file</h4><ul class="contrib"><li><a href="#/contribute?type=info&listing=${l.id}">✒ Add info or a correction</a></li><li><a href="#/contribute?type=photo&listing=${l.id}">🗄 Add a photo or document</a></li><li><a href="#/contribute?type=lore&listing=${l.id}">🕯 Add lore or a story</a></li><li><a href="#/contribute?type=link&listing=${l.id}">🔗 Add a link</a></li></ul>
+    <section class="box"><h4>Submit to this file</h4>
+      <p><button class="btn" type="button" data-capture-place="${l.id}">Add photo or info</button></p>
+      <p class="small muted">One photo or a short note, sent for review. Or use the longer forms below.</p>
+      <ul class="contrib"><li><a href="#/contribute?type=info&listing=${l.id}">✒ Add info or a correction</a></li><li><a href="#/contribute?type=photo&listing=${l.id}">🗄 Add a photo or document</a></li><li><a href="#/contribute?type=lore&listing=${l.id}">🕯 Add lore or a story</a></li><li><a href="#/contribute?type=link&listing=${l.id}">🔗 Add a link</a></li></ul>
       <p class="small muted">Moderated. Approved submissions become part of the full file.</p>
       <button class="link small" data-report="listing:${l.id}">⚑ Report a problem with this page</button></section>
     ${nearby.length ? html`<section class="box"><h4>${isArchiveShelf(l) ? 'More from the Archive in' : 'More in'} ${STATES[l.state] || l.state}</h4>${nearby.map((x) => listingCard(x, { ...ctx, compact: true }))}</section>` : ''}

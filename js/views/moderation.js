@@ -5,6 +5,22 @@ import { analyticsPanel, correctionsPanel, suggestionsPanel } from './admin_pane
 
 // One queue for everything user-written: DATA (submissions) and SOCIAL (comments,
 // board posts and replies). Nothing is public until approved here.
+
+const HIDE_KEYS = new Set(['data_url', 'lat', 'lon', 'acc', 'accuracy', 'capture_lat', 'capture_lon', 'gps', 'coords', 'position', 'capture']);
+function captureFacts(s) {
+  const p = s.payload || {};
+  const lat = s.capture_lat ?? p.lat, lon = s.capture_lon ?? p.lon;
+  const map = Number.isFinite(+lat) && Number.isFinite(+lon) ? html`<p class="small"><a href="https://www.openstreetmap.org/?mlat=${lat}&amp;mlon=${lon}#map=18/${lat}/${lon}" target="_blank" rel="noopener">See the capture point on a map</a> (review only; this point is not shown publicly)</p>` : '';
+  const rest = Object.entries(p).filter(([k, v]) => !HIDE_KEYS.has(k) && v !== '' && v != null);
+  return html`${map}<dl class="facts small">
+    ${p.place_name ? html`<dt>place</dt><dd>${p.place_name}${p.priv ? ' · private home (keep the photo off the public card)' : ''}</dd>` : ''}
+    ${p.captured_at ? html`<dt>taken</dt><dd>${p.captured_at}</dd>` : ''}
+    ${p.note || p.text ? html`<dt>note</dt><dd>${p.note || p.text}</dd>` : ''}
+    ${p.credit ? html`<dt>credit</dt><dd>${p.credit}</dd>` : ''}
+    ${rest.filter(([k]) => !['place_name','captured_at','note','text','credit','title','caption','priv','public_ground','public_road','not_from_listing','new_place','newPlace','place_kind','field','era','doc_type','file_name','capture_id'].includes(k)).map(([k, v]) => html`<dt>${k}</dt><dd>${String(v)}</dd>`)}
+    ${s.kind === 'photo' ? html`<dt>rights</dt><dd>${s.rights_confirmed ? '✔ confirmed by submitter' : '✘ not confirmed'}</dd>` : ''}
+  </dl>`;
+}
 export async function moderation(ctx) {
   if (!ctx.me) return html`<div class="empty-state"><h1>Moderation queue</h1><p>Sign in with a moderator account.</p><button class="btn" data-signin>Sign in</button></div>`;
   const isMod = ['moderator', 'admin'].includes(ctx.me.role);
@@ -20,7 +36,8 @@ export async function moderation(ctx) {
   const L = (id) => ctx.feed.byId.get(id);
   const lk = (id) => L(id) ? html`<a href="#/l/${id}">${L(id).name}</a>` : html`<span class="muted">No listing</span>`;
   const actions = (table, row) => html`<form class="mod-actions" data-moderate="${table}:${row.id}"><input name="note" placeholder="Note to author (optional)" maxlength="300">
-    ${table === 'submissions' && row.kind === 'photo' ? html`<label class="check small"><input type="checkbox" name="is_sample"> <span>Also show as a free-preview sample photo</span></label>` : ''}
+    ${table === 'submissions' && (row.field_capture || row.payload?.capture) ? html`<input type="hidden" name="field_capture" value="1">${row.payload?.priv ? html`<input type="hidden" name="field_priv" value="1">` : ''}` : ''}
+    ${table === 'submissions' && row.kind === 'photo' ? html`<label class="check small"><input type="checkbox" name="is_sample" ${((row.field_capture || row.payload?.capture) && !row.payload?.priv) ? 'checked' : ''}> <span>Also show as a free-preview sample photo</span></label>` : ''}
     <button class="btn sm ok" name="d" value="approved">Approve</button><button class="btn sm ghost" name="d" value="rejected">Reject</button></form>`;
   const total = qd.submissions.length + qd.comments.length + qd.board.length + qd.reports.length + (pays?.length || 0);
   return html`<div class="page-head"><h1>Moderation queue <small class="muted">${total} waiting</small></h1>
@@ -39,9 +56,9 @@ export async function moderation(ctx) {
     <p>${r.details || html`<span class="muted">No details</span>`}</p>${r.target ? html`<blockquote>${r.target.title || r.target.body || r.target.payload?.title || ''}</blockquote>` : html`<p class="muted small">Target: ${r.target_type} ${r.target_id}</p>`}
     <div class="mod-actions"><button class="btn sm ghost" data-resolve="${r.id}:dismissed">Dismiss</button><button class="btn sm danger" data-resolve="${r.id}:removed">Remove content</button></div></div>`) : html`<p class="muted">No open reports.</p>`}</section>
   <section><h2>Submissions <small>${qd.submissions.length}</small></h2><p class="small muted">Data: info, photos, lore, links. Approved items join the listing’s full file.</p>
-    ${qd.submissions.length ? qd.submissions.map((s) => html`<div class="mod-item"><div class="post-meta"><span class="kind">${s.kind}</span> ${authorName(s.author)} · ${lk(s.listing_id)} · ${ago(s.created_at)}</div>
+    ${qd.submissions.length ? qd.submissions.map((s) => html`<div class="mod-item"><div class="post-meta"><span class="kind">${s.field_capture || s.payload?.capture ? 'field ' + s.kind : s.kind}</span> ${authorName(s.author)} · ${lk(s.listing_id) || (s.payload?.new_place || s.payload?.newPlace ? html`<span>New place: ${s.payload?.place_name || 'unnamed'}</span>` : '')} · ${ago(s.created_at)}</div>
     ${s.payload?.data_url ? html`<img class="mod-img" src="${s.payload.data_url}" alt="">` : ''}
-    <dl class="facts small">${Object.entries(s.payload || {}).filter(([k, v]) => k !== 'data_url' && v !== '' && v != null).map(([k, v]) => html`<dt>${k}</dt><dd>${String(v)}</dd>`)}${s.kind === 'photo' ? html`<dt>rights</dt><dd>${s.rights_confirmed ? '✔ confirmed by submitter' : '✘ not confirmed'}</dd>` : ''}</dl>
+    ${s.field_capture || s.payload?.capture ? captureFacts(s) : html`<dl class="facts small">${Object.entries(s.payload || {}).filter(([k, v]) => k !== 'data_url' && v !== '' && v != null).map(([k, v]) => html`<dt>${k}</dt><dd>${String(v)}</dd>`)}${s.kind === 'photo' ? html`<dt>rights</dt><dd>${s.rights_confirmed ? '✔ confirmed by submitter' : '✘ not confirmed'}</dd>` : ''}</dl>`}
     ${s.kind === 'link' && !s.listing_id ? html`<p class="small muted">New-property suggestion. Approving marks it accepted; add it to the Master Sheet yourself. The site never edits the feed.</p>` : ''}
     ${actions('submissions', s)}</div>`) : html`<p class="muted">Queue is clear.</p>`}</section>
   <section><h2>Listing comments <small>${qd.comments.length}</small></h2>${qd.comments.length ? qd.comments.map((c) => html`<div class="mod-item"><div class="post-meta"><span class="kind">${c.parent_id ? 'reply' : 'comment'}</span> ${authorName(c.author)} · ${lk(c.listing_id)} · ${ago(c.created_at)}</div><p>${c.body}</p>${actions('comments', c)}</div>`) : html`<p class="muted">Queue is clear.</p>`}</section>

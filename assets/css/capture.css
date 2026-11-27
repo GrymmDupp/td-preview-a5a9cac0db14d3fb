@@ -1,0 +1,56 @@
+/* Quick field capture: dark ornate sheet + always-visible map button. */
+.td-cap-file{position:fixed;left:-9999px;width:1px;height:1px;opacity:0}
+#td-cap{position:fixed;inset:0;z-index:4000;background:rgba(8,6,6,.72);display:flex;align-items:flex-end;justify-content:center}
+#td-cap[hidden]{display:none}
+.td-cap-sheet{width:100%;max-width:520px;max-height:92dvh;display:flex;flex-direction:column;background:#141413;color:#f2efe8;border-top:2px solid #c9a227;border-radius:18px 18px 0 0;box-shadow:0 -8px 32px rgba(0,0,0,.7)}
+.td-cap-bar{display:flex;align-items:center;gap:8px;padding:8px 8px 6px 16px;border-bottom:1px solid #4a4a47}
+.td-cap-bar b{flex:1;font:600 1.15rem "IM Fell English SC","Cinzel",Georgia,serif;letter-spacing:.04em;color:#e6c352}
+.td-cap-x{width:48px;height:48px;border-radius:50%;border:1px solid #4a4a47;background:#00000055;color:#f2efe8;font-size:26px;line-height:1;cursor:pointer}
+.td-cap-body{overflow:auto;padding:12px 16px calc(env(safe-area-inset-bottom) + 16px);-webkit-overflow-scrolling:touch}
+.td-cap-gps{margin:0 0 10px;font-size:.85rem;color:#a19d95}
+.td-cap-thumbs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px}
+.td-cap-thumb{position:relative;width:88px;height:88px;margin:0;border:1px solid #6f6a62;border-radius:8px;overflow:hidden;background:#090909}
+.td-cap-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.td-cap-rm{position:absolute;top:2px;right:2px;width:32px;height:32px;border-radius:50%;border:0;background:#000000aa;color:#fff;font-size:18px;cursor:pointer}
+.td-cap-addrow{display:flex;gap:8px;margin:0 0 14px}
+.td-cap-places{display:flex;flex-direction:column;gap:6px;margin:0 0 12px}
+.td-cap-choice{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid #4a4a47;border-radius:12px;background:#232322;cursor:pointer}
+.td-cap-choice.on{border-color:#c9a227;background:#2a2218}
+.td-cap-choice b{display:block;font-size:1rem}
+.td-cap-choice small{display:block;color:#a19d95;font-size:.82rem}
+.td-cap-place-locked{margin:0 0 12px;padding:10px 12px;border-left:4px solid #c9a227;background:#1e1718;border-radius:8px}
+.td-cap-label{display:block;margin:0 0 12px;font-size:.9rem;color:#d9d5cc}
+.td-cap-label input,.td-cap-label textarea{display:block;width:100%;margin-top:6px;background:#100c0c;color:#f2efe8;border:1px solid #4a4a47;border-radius:10px;padding:10px;font:inherit}
+.td-cap-opt{color:#a19d95;font-weight:400}
+.td-cap-check{display:flex;gap:10px;align-items:flex-start;margin:0 0 12px;font-size:.88rem;line-height:1.35;color:#d9d5cc}
+.td-cap-check input{margin-top:4px;width:20px;height:20px;flex:0 0 auto}
+.td-cap-muted{margin:0 0 12px;font-size:.85rem;color:#a19d95}
+.td-cap-actions{display:flex}
+.td-cap-actions .btn{flex:1;min-height:56px;font-weight:800}
+.td-cap-actions .btn.p,.td-cap-send{background:linear-gradient(180deg,#e6c352,#c9a227);color:#1a1200;border:2px solid #e6c352;border-radius:14px;cursor:pointer}
+
+/* Always-visible capture button on map / live views */
+.td-cap-fab{position:absolute;z-index:950;left:10px;bottom:48px;min-width:64px;min-height:64px;padding:8px 10px 6px;border-radius:50%;border:2px solid #c9a227;background:radial-gradient(circle at 35% 30%,#5a1814,#2a0603 70%);color:#e6c352;box-shadow:0 3px 12px rgba(0,0,0,.65),inset 0 0 0 1px #e7b7a055;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font:700 .68rem/1 "IM Fell English SC",Georgia,serif;letter-spacing:.08em;text-transform:uppercase}
+.td-cap-fab-ic{font-size:1.25rem;line-height:1;margin-bottom:2px}
+.map-wrap.has-card .td-cap-fab{bottom:200px}
+.td-cap-badge{position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#c9a227;color:#1a1200;font:800 .7rem/20px Inter,system-ui,sans-serif;letter-spacing:0;text-transform:none}
+.td-cap-card-btn{cursor:pointer}
+.td-cap-fab:focus-visible,.td-cap-x:focus-visible,.td-cap-send:focus-visible{outline:2px solid #e6c352;outline-offset:2px}
+@media (min-width:720px){
+  #td-cap{align-items:center}
+  .td-cap-sheet{border-radius:18px;border:2px solid #c9a227;max-height:86vh}
+}
+@media (max-height:700px){.td-cap-fab{min-width:56px;min-height:56px}}
+@media (prefers-reduced-motion:reduce){#td-cap,.td-cap-sheet{transition:none}}
+
+.td-fr{margin:1.5rem 0 2rem;padding:1rem 0;border-top:1px solid #4a4a47}
+.td-fr h2{font:600 1.4rem "IM Fell English SC",Georgia,serif;color:#e6c352;margin:0 0 .4rem}
+.td-fr-item{margin:0 0 1.2rem;background:#141413;border:1px solid #4a4a47;border-radius:8px;overflow:hidden}
+.td-fr-item img{display:block;width:100%;max-height:420px;object-fit:cover;background:#090909}
+.td-fr-item figcaption,.td-fr-note{padding:8px 12px;font-size:.92rem}
+.td-fr-note{margin:0 0 1rem;border-left:4px solid #c9a227;background:#1e1718;border-radius:8px}
+.td-fr-cred{display:block;margin-top:4px;color:#a19d95;font-size:.82rem}
+.row-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+
+#stage .td-cap-fab{bottom:56px;left:10px}
+.map-wrap .td-cap-fab{bottom:56px}

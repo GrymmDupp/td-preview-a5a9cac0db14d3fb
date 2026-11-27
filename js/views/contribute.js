@@ -14,7 +14,7 @@ export async function contribute(ctx, q) {
   const type = q.get('type') || 'info', lid = q.get('listing') || '', isNew = q.get('new') === '1';
   const l = ctx.feed.byId.get(lid);
   const tabs = [['info', '✒ Info or correction'], ['photo', '🗄 Photo or document'], ['lore', '🕯 Lore or story'], ['link', '🔗 Link']];
-  return html`<div class="page-head"><h1>Submit to the archive</h1><p class="muted">${l ? html`For <a href="#/l/${l.id}">${l.name}</a>, ${l.place}.` : 'Add info, photos, lore or links to a listing, or suggest a new property.'}</p></div>
+  return html`<div class="page-head"><h1>Submit to the archive</h1><p class="muted">${l ? html`For <a href="#/l/${l.id}">${l.name}</a>, ${l.place}. <button class="btn sm" type="button" data-capture-place="${l.id}">Quick photo or note</button>` : 'Add info, photos, lore or links to a listing, or suggest a new property. On the map or Live view, the Add button opens the camera in one tap.'}</p></div>
   <div class="tabs">${tabs.map(([k, t]) => html`<a class="${type === k ? 'on' : ''}" href="#/contribute?type=${k}${lid ? '&listing=' + lid : ''}">${t}</a>`)}</div>
   ${!ctx.me ? html`<div class="signin-nudge"><p>Sign in to submit.</p><button class="btn" data-signin>Sign in</button></div>` : ''}
   <div class="with-side"><div>

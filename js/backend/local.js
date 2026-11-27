@@ -126,15 +126,39 @@ export class LocalBackend {
   async samplePhotos(listingId) { return this.approvedFor(listingId).filter((s) => s.kind === 'photo' && s.is_sample).map((s) => this.withAuthor(s)); }
 
   // ---- DATA: submissions
-  async createSubmission({ kind, listing_id, payload, rights_confirmed, file }) {
+  async createSubmission({ kind, listing_id, payload, rights_confirmed, file, extra }) {
     const m = this.requireMe();
     if (!['info', 'photo', 'lore', 'link'].includes(kind)) throw new Error('Unknown submission type');
     if (kind === 'photo' && !rights_confirmed) throw new Error('Please confirm you have the right to share this file');
-    if (kind !== 'link' && !listing_id) throw new Error('Choose a listing');
+    const field = !!(extra?.field_capture || payload?.capture || payload?.new_place);
+    if (kind !== 'link' && !listing_id && !field) throw new Error('Choose a listing');
     const p = { ...payload };
     if (file) p.data_url = await shrinkImage(file);
-    const s = { id: uid('s'), kind, listing_id: listing_id || null, author_id: m.id, payload: p, rights_confirmed: !!rights_confirmed, is_sample: false, status: 'pending', created_at: nowIso(), is_example: false };
+    const s = { id: uid('s'), kind, listing_id: listing_id || null, author_id: m.id, payload: p, rights_confirmed: !!rights_confirmed, is_sample: false, status: 'pending', created_at: nowIso(), is_example: false,
+      field_capture: field, capture_id: extra?.capture_id || p.capture_id || null, captured_at: extra?.captured_at || p.captured_at || null };
     this.db.submissions.push(s); this.save(); return s;
+  }
+  _fieldRows(listingId, { covers = false } = {}) {
+    return this.db.submissions.filter((s) => s.status === 'approved' && s.field_capture && (!listingId || s.listing_id === listingId)
+      && s.payload?.priv !== true && s.payload?.priv !== 'true' && (!covers || (s.kind === 'photo' && (s.payload?.data_url || s.storage_path))));
+  }
+  async listFieldReports(listingId) {
+    return this._fieldRows(listingId).sort((a, b) => b.created_at.localeCompare(a.created_at)).map((s) => {
+      const a = this.db.accounts.find((p) => p.id === s.author_id);
+      return { id: s.id, kind: s.kind, title: s.payload?.title, caption: s.payload?.caption || s.payload?.text || s.payload?.note,
+        credit: s.payload?.credit || a?.display_name || a?.handle, storage_path: s.storage_path, data_url: s.payload?.data_url,
+        captured_at: s.captured_at, created_at: s.created_at };
+    });
+  }
+  async fieldReportCovers() {
+    const seen = new Set(), out = [];
+    for (const s of this._fieldRows(null, { covers: true }).sort((a, b) => a.created_at.localeCompare(b.created_at))) {
+      if (!s.listing_id || seen.has(s.listing_id)) continue;
+      seen.add(s.listing_id);
+      const a = this.db.accounts.find((p) => p.id === s.author_id);
+      out.push({ listing_id: s.listing_id, src: s.payload?.data_url, credit: s.payload?.credit || a?.display_name || a?.handle, title: s.payload?.title });
+    }
+    return out;
   }
   // Paid Research Pack intake (preview: this browser only; no link to listings).
   async requestResearch({ address, purpose, ack }) {
@@ -203,7 +227,8 @@ export class LocalBackend {
     const at = nowIso();
     Object.assign(row, { status: decision, moderated_at: at, moderated_by: this.db.session, mod_note: note });
     if (table === 'submissions') {
-      row.is_sample = decision === 'approved' && row.kind === 'photo' && !!opts.is_sample;
+      const autoSample = decision === 'approved' && row.kind === 'photo' && row.field_capture && row.payload?.priv !== true && row.payload?.priv !== 'true';
+      row.is_sample = decision === 'approved' && row.kind === 'photo' && (!!opts.is_sample || autoSample);
       if (decision === 'approved') row.approved_at = at;   // drives the per-listing "Updated" signal
     }
     this.save();

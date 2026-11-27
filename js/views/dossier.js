@@ -4,6 +4,7 @@
 // lore is labelled as lore. Nothing here touches for-sale data.
 import { html, raw, esc, safeUrl, fmtDate } from '../util.js';
 import { loadDossierIndex, dossierEntry } from '../dossiers.js';
+import { fieldReportsHtml } from '../field-covers.js';
 
 const ext = (u, t) => { const s = safeUrl(u || ''); return s ? html`<a href="${s}" target="_blank" rel="noopener nofollow">${t}</a>` : t; };
 const credit = (g) => html`${g.author ? html`${g.author} · ` : ''}${ext(g.license_url, g.license)} · ${ext(g.source_url, g.origin || 'source')}`;
@@ -49,12 +50,14 @@ export async function dossier(ctx, q, id) {
   if (!e) return html`<div class="empty-state"><h1>No dossier yet</h1><p>We haven't finished a research dossier for this place.</p><p><a class="btn" href="#/archive">The Archive</a></p></div>`;
   let d = null, err = '';
   if (ctx.me && ctx.be.getDossier) { try { d = await ctx.be.getDossier(id); } catch (x) { err = x.message; } }
+  const reports = d && ctx.be.listFieldReports ? await ctx.be.listFieldReports(id).catch(() => []) : [];
   document.title = `${e.name} · Dossier · ${ctx.config.siteName}`;
   return html`<nav class="crumbs"><a href="#/archive">The Archive</a> › ${l ? html`<a href="#/l/${encodeURIComponent(id)}">${l.name}</a> › ` : ''}Dossier</nav>
   <article class="dossier">
     <header class="dz-head"><p class="dz-kicker">Twisted Deeds research dossier</p><h1>${e.name}</h1><p class="muted">${e.place}</p></header>
     ${e.hero ? fig({ ...e.hero, origin: 'Wikimedia Commons' }, 'dz-hero') : ''}
     ${d ? body(d) : gate(ctx, e)}
+    ${d && reports.length ? raw(fieldReportsHtml(reports)) : ''}
     ${err ? html`<p class="small muted">Couldn't load the dossier: ${err}</p>` : ''}
   </article>`;
 }

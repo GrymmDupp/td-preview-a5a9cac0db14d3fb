@@ -143,13 +143,73 @@ export function addStamp(meta, at = new Date(), rare = null) {
   const b = book(); const u = curUid();
   if (b.stamps.some((s) => s.id === meta.id && (!s.u || s.u === u))) return null;
   const s = { id: meta.id, name: meta.name || '', town: meta.town || '', county: meta.county || '', state: meta.state || '', layer: meta.layer || 'place', sub: meta.sub || '',
-    theme: meta.theme || '', crew: !!meta.crew, priv: !!meta.priv, area: meta.area ? String(meta.areaLabel || '') : '', firstOk: !!meta.firstOk, at: at.toISOString(), rare: rare || rareNow(meta.lat, meta.lon, at), u: null, synced: false };
+    theme: meta.theme || '', crew: !!meta.crew, priv: !!meta.priv, area: meta.area ? String(meta.areaLabel || '') : '', firstOk: !!meta.firstOk, at: at.toISOString(), rare: rare || rareNow(meta.lat, meta.lon, at), u: null, synced: false, tier: 'ink' };
   // Markers and cemeteries keep their public spot (5 decimals) so the passport book can open their card. Homes never do.
   if ((s.layer === 'marker' || s.layer === 'cemetery') && !meta.area && isFinite(meta.lat) && isFinite(meta.lon)) { s.lat = Math.round(meta.lat * 1e5) / 1e5; s.lon = Math.round(meta.lon * 1e5) / 1e5; }
   b.stamps.push(s); saveBook(b);
   return s;
 }
-export function patchStamp(id, patch) { const b = book(); const s = b.stamps.find((x) => x.id === id); if (s) { Object.assign(s, patch); saveBook(b); } }
+export function patchStamp(id, patch) { const b = book(); const s = b.stamps.find((x) => x.id === id && (!x.u || x.u === curUid())); if (s) { Object.assign(s, patch); saveBook(b); return s; } }
+const SEAL_LAYERS = new Set(['listing', 'archive', 'marker', 'cemetery', 'lead', 'place']);
+// Wax seal: a traveler stopped (dwell) or took a photo on site. Never downgrades an existing wax seal.
+export async function awardSeal(meta, { how = 'dwell', file = null } = {}) {
+  if (!meta?.id || !SEAL_LAYERS.has(meta.layer || meta.kind || 'place')) return null;
+  let s = stampOf(meta.id);
+  if (!s) s = addStamp(meta) || stampOf(meta.id);
+  if (!s || s.layer === 'scout') return null;
+  const already = s.tier === 'wax';
+  const patch = { tier: 'wax', sealedAt: s.sealedAt || new Date().toISOString(), sealHow: already && s.sealHow === 'photo' ? 'photo' : (already && how !== 'photo' ? s.sealHow : how), sealSynced: false };
+  if (file && /^image\//.test(file.type || 'image/jpeg')) {
+    try {
+      const { compressImage } = await import('./capture.js');
+      const small = await compressImage(file, { maxEdge: 900, quality: 0.8 });
+      if (small) {
+        patch.sealPhoto = await new Promise((res, rej) => {
+          const fr = new FileReader();
+          fr.onload = () => res(fr.result);
+          fr.onerror = rej;
+          fr.readAsDataURL(small);
+        });
+      }
+    } catch { /* photo is optional on a dwell seal */ }
+  }
+  s = patchStamp(s.id, patch) || s;
+  if (remote.status === 'on') {
+    try { await syncSeal(s); } catch { /* will retry on the next passport sync */ }
+  }
+  try { window.dispatchEvent(new Event('td-passport')); } catch { /* ignore */ }
+  return s;
+}
+async function syncSeal(s) {
+  const sb = await backend(); if (!sb || !remote.uid) return;
+  let path = s.sealPhotoPath || null;
+  if (s.sealPhoto && s.sealPhoto.startsWith('data:image/') && !path) {
+    const bin = Uint8Array.from(atob(s.sealPhoto.split(',')[1] || ''), (c) => c.charCodeAt(0));
+    path = `${remote.uid}/seals/${String(s.id).replace(/[^\w.-]+/g, '_')}.jpg`;
+    const up = await sb.storage.from('contributions').upload(path, bin, { contentType: 'image/jpeg', upsert: true });
+    if (up.error) path = null;
+  }
+  const r = await sb.rpc('passport_seal', { p_place_id: s.id, p_how: s.sealHow || 'dwell', p_photo_path: path });
+  if (r.error) { if (/does not exist|schema cache|42883|stamp this place/i.test(r.error.message)) return; throw new Error(r.error.message); }
+  patchStamp(s.id, { sealSynced: true, sealPhotoPath: r.data?.seal_photo_path || path, sealedAt: r.data?.sealed_at || s.sealedAt, tier: 'wax' });
+}
+export const RANK = [
+  { id: 'wanderer', name: 'Wanderer', need: 5, blurb: 'Five places where you actually stopped.' },
+  { id: 'pilgrim', name: 'Pilgrim', need: 25, blurb: 'Twenty-five wax seals in the book.' },
+  { id: 'keeper', name: 'Keeper', need: 50, blurb: 'Fifty places walked, not just driven past.' },
+];
+export function ranks(list = stamps()) {
+  const wax = list.filter((s) => s.tier === 'wax' && s.layer !== 'scout');
+  const n = wax.length;
+  const cem = wax.filter((s) => s.layer === 'cemetery').length;
+  const mark = wax.filter((s) => s.layer === 'marker').length;
+  const current = [...RANK].reverse().find((r) => n >= r.need) || null;
+  const next = RANK.find((r) => n < r.need) || null;
+  const badges = [];
+  if (cem >= 10) badges.push({ id: 'cem10', name: '10 cemeteries walked', n: cem });
+  if (mark >= 10) badges.push({ id: 'mark10', name: '10 markers walked', n: mark });
+  return { wax: n, ink: list.filter((s) => s.tier !== 'wax' && s.layer !== 'scout').length, current, next, badges, cem, mark };
+}
 
 /* ---------------------------------------------------------------- stamp art (procedural SVG) */
 function hash(s) { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
@@ -222,14 +282,17 @@ export function stampSvg(s, opts = {}) {
   }
   const rg = rare.slice(0, 3).map((r, i) => RGLYPH[r](60 + (i - (Math.min(3, rare.length) - 1) / 2) * 15, shape === 3 ? 100 : 92)).join('');
   const rareRing = rare.length && !opts.ghost ? `<circle cx="60" cy="60" r="58" stroke-width="1" stroke-dasharray="2 3"/>` : '';
+  const wax = s.tier === 'wax' && !opts.ghost;
+  const waxRing = wax ? `<circle cx="60" cy="60" r="57.5" stroke="#9c1b1b" stroke-width="3.2"/><circle cx="60" cy="60" r="53.5" stroke="#e7b7a0" stroke-width=".9" stroke-dasharray="2 2"/>` : '';
+  const waxDisc = wax && !opts.mini && !opts.noSeal ? `<g transform="translate(22 98) rotate(-12)"><circle r="14" fill="#9c1b1b" stroke="#5e0d0d" stroke-width="1.4"/><circle r="10.2" fill="none" stroke="#e7b7a0" stroke-width=".8" stroke-dasharray="1.4 1.2"/><text y="1.2" font-size="6.2" text-anchor="middle" fill="#f6e3cf" stroke="none" letter-spacing=".6" font-family="'IM Fell English SC','Cinzel',Georgia,serif">WAX</text></g>` : '';
   const first = s.first && !opts.ghost && !opts.noSeal ? `<g transform="translate(96 22) rotate(14)"><circle r="15" fill="#9c1b1b" stroke="#5e0d0d" stroke-width="1.5"/><circle r="11" fill="none" stroke="#e7b7a0" stroke-width=".8" stroke-dasharray="1.6 1.4"/><text y="-2" font-size="5.2" text-anchor="middle" fill="#f6e3cf" stroke="none" letter-spacing=".4">FIRST</text><text y="5" font-size="5.2" text-anchor="middle" fill="#f6e3cf" stroke="none" letter-spacing=".4">TO FIND</text></g>` : '';
   const filt = opts.ghost ? '' : `<filter id="ink${n}" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency="${mini ? 0.5 : 0.9}" numOctaves="2" seed="${h % 97}"/><feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.3 1.55"/><feComposite in="SourceGraphic" operator="in"/></filter>`;
-  const label = opts.ghost ? 'Not stamped yet: ' + (s.name || '') : 'Stamp: ' + (opts.forShare && s.priv ? 'a private home in ' + (s.town || 'town') : s.name) + (s.at ? ', ' + fmtDate(s.at) : '') + (rare.length ? ' (' + rare.map((r) => RARE[r]).join(', ') + ')' : '');
+  const label = opts.ghost ? 'Not stamped yet: ' + (s.name || '') : (wax ? 'Wax seal: ' : 'Stamp: ') + (opts.forShare && s.priv ? 'a private home in ' + (s.town || 'town') : s.name) + (s.at ? ', ' + fmtDate(s.at) : '') + (rare.length ? ' (' + rare.map((r) => RARE[r]).join(', ') + ')' : '');
   return `<svg class="tdp-stamp${opts.ghost ? ' ghost' : ''}${mini ? ' mini' : ''}" viewBox="0 0 120 120" width="${size}" height="${size}" role="img" aria-label="${esc(label)}" xmlns="http://www.w3.org/2000/svg">`
     + `<defs>${filt}</defs><g ${opts.ghost ? 'opacity=".5" stroke-dasharray="4 3"' : `filter="url(#ink${n})"`} transform="rotate(${rot} 60 60)" fill="none" stroke="${ink}" stroke-width="${mini ? 5 : 3}" font-family="'IM Fell English SC','Cinzel',Georgia,serif">`
     + outer + rareRing + `<g fill="${ink}" stroke="none">${text}</g>`
     + `<g transform="translate(60 ${mini ? 60 : 58}) scale(${mini ? 2.3 : 1.15})" stroke="${ink}" fill="${ink}">${glyph}</g>`
-    + (mini ? '' : `<g stroke="${ink}" fill="${ink}">${rg}</g>`) + `</g>${first}</svg>`;
+    + (mini ? '' : `<g stroke="${ink}" fill="${ink}">${rg}</g>`) + `</g>${waxRing}${waxDisc}${first}</svg>`;
 }
 
 /* ---------------------------------------------------------------- sets */
@@ -320,12 +383,28 @@ export async function sync() {
       if (r.error) { if (/too many/i.test(r.error.message)) break; continue; }
       s.u = u; s.synced = true; if (r.data?.first) { s.first = true; firsts.push(s); }
     }
-    const mine = await sb.from('passport_stamps').select('place_id,place_name,town,layer,rare,stamped_at').limit(5000);
+    for (const s of b.stamps) {
+      if (s.tier === 'wax' && !s.sealSynced && s.u === u) { try { await syncSeal(s); } catch { /* retry next time */ } }
+    }
+    let mine = await sb.from('passport_stamps').select('place_id,place_name,town,layer,rare,stamped_at,tier,sealed_at,seal_how,seal_photo_path').limit(5000);
+    if (mine.error && /column|schema cache|tier|seal_/i.test(mine.error.message)) {
+      mine = await sb.from('passport_stamps').select('place_id,place_name,town,layer,rare,stamped_at').limit(5000);
+    }
     if (!mine.error) for (const r of mine.data || []) {
       const have = b.stamps.find((s) => s.id === r.place_id && (!s.u || s.u === u));
-      if (have) { have.u = u; have.synced = true; continue; }
+      const wax = r.tier === 'wax';
+      let sealPhoto = have?.sealPhoto || null;
+      if (r.seal_photo_path && !sealPhoto) {
+        const { data } = await sb.storage.from('contributions').createSignedUrl(r.seal_photo_path, 86400);
+        if (data?.signedUrl) sealPhoto = data.signedUrl;
+      }
+      if (have) {
+        have.u = u; have.synced = true;
+        if (wax) { have.tier = 'wax'; have.sealedAt = r.sealed_at || have.sealedAt; have.sealHow = r.seal_how || have.sealHow; have.sealPhotoPath = r.seal_photo_path || have.sealPhotoPath; have.sealSynced = true; if (sealPhoto) have.sealPhoto = sealPhoto; }
+        continue;
+      }
       b.stamps.push({ id: r.place_id, name: r.place_name || '', town: r.town || '', county: '', state: '', layer: r.layer, theme: '', crew: false, priv: r.layer === 'listing' || r.layer === 'lead' || r.layer === 'place',
-        firstOk: false, at: r.stamped_at, rare: r.rare || [], u, synced: true });
+        firstOk: false, at: r.stamped_at, rare: r.rare || [], u, synced: true, tier: r.tier || 'ink', sealedAt: r.sealed_at || null, sealHow: r.seal_how || null, sealPhotoPath: r.seal_photo_path || null, sealPhoto, sealSynced: true });
     }
     const fs = await sb.from('passport_firsts').select('place_id');
     if (!fs.error) { const ids = new Set((fs.data || []).map((x) => x.place_id)); for (const s of b.stamps) if (s.u === u && ids.has(s.id)) s.first = true; }

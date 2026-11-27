@@ -13,8 +13,9 @@ const GHOSTS = 12;
 function toast(t, ms) { const el = $('#pp-toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true; }, ms || 3500); }
 const list = () => P.enrich(P.stamps(), catalog).sort((a, b) => String(b.at).localeCompare(String(a.at)));
 const place = (s) => P.placeLine(s);
+const cutText = (s, n) => { s = String(s || '').trim(); return s.length > n ? s.slice(0, n - 20).replace(/\s+\S*$/, '') + '…' : s; };
 const fig = (s) => '<figure class="pp-tap" data-open="' + esc(s.id) + '" tabindex="0" role="button" aria-label="Open the card for ' + esc(P.noAddr(s.name) || 'this stamp') + '">' + P.stampSvg(s, { size: 124 }) + '<figcaption>' + esc(s.layer === 'scout' ? 'Scout: ' + s.name : P.noAddr(s.name)) + '<small>' + esc([place(s), P.fmtDate(s.at)].filter(Boolean).join(' · ')) + '</small>'
-  + ((s.rare || []).length ? '<small>Rare: ' + esc(s.rare.map((r) => P.RARE[r]).join(', ')) + '</small>' : '') + (s.first ? '<small><b>First to find</b></small>' : '') + '</figcaption></figure>';
+  + (s.tier === 'wax' ? '<small class="pp-wax">Wax seal</small>' : '') + ((s.rare || []).length ? '<small>Rare: ' + esc(s.rare.map((r) => P.RARE[r]).join(', ')) + '</small>' : '') + (s.first ? '<small><b>First to find</b></small>' : '') + '</figcaption></figure>';
 const ghost = (m) => '<figure class="ghost">' + P.stampSvg(m, { size: 124, ghost: true }) + '<figcaption>' + esc(P.noAddr(m.name)) + '<small>' + esc(place(m) || 'Not stamped yet') + '</small></figcaption></figure>';
 
 // Family stamps (Ancestors Trail): the reader's own family places, from their private tree. Never synced to passport_stamps.
@@ -39,7 +40,16 @@ function render() {
   sets = P.computeSets(catalog, all);
   const done = sets.filter((s) => s.complete).length;
   if ($('#pp-reader').open) paintReader(0);
-  $('#pp-stats').innerHTML = '<div><b>' + all.length + '</b>' + (all.length === 1 ? 'stamp' : 'stamps') + '</div><div><b>' + sets.filter((s) => s.kind === 'town').length + '</b>towns started</div><div><b>' + done + '</b>' + (done === 1 ? 'set' : 'sets') + ' complete</div>';
+  const rk = P.ranks(all);
+  $('#pp-stats').innerHTML = '<div><b>' + all.length + '</b>' + (all.length === 1 ? 'stamp' : 'stamps') + '</div><div><b>' + rk.wax + '</b>' + (rk.wax === 1 ? 'wax seal' : 'wax seals') + '</div><div><b>' + sets.filter((s) => s.kind === 'town').length + '</b>towns started</div><div><b>' + done + '</b>' + (done === 1 ? 'set' : 'sets') + ' complete</div>';
+  const rankEl = $('#pp-rank');
+  if (rankEl) {
+    const left = rk.next ? rk.next.need - rk.wax : 0;
+    rankEl.innerHTML = '<p class="pp-rank-line"><b>' + (rk.current ? 'Rank: ' + esc(rk.current.name) : 'No rank yet.') + '</b>'
+      + (rk.next ? ' ' + left + ' more wax seal' + (left === 1 ? '' : 's') + ' to become a ' + esc(rk.next.name) + '.' : (rk.current ? ' Every rank is earned.' : ' Stop at 5 places for Wanderer.')) + '</p>'
+      + (rk.badges.length ? '<p class="pp-badges">' + rk.badges.map((x) => '<span class="pp-badge">' + esc(x.name) + '</span>').join(' ') + '</p>' : '')
+      + '<p class="muted small">A drive-by leaves ink. Stay about 3 minutes at walking speed, or take a photo from the public road, and it becomes a wax seal. Seals count toward Wanderer, Pilgrim and Keeper.</p>';
+  }
   const kinds = [['all', 'Every stamp'], ['family', 'Family'], ['town', 'Towns'], ['county', 'Counties'], ['layer', 'Markers & cemeteries'], ['theme', 'Themes'], ['collection', 'Collections']].filter(([k]) => k === 'all' || (k === 'family' ? A.state.status === 'ready' : sets.some((s) => s.kind === k)));
   if (!kinds.some(([k]) => k === tab)) tab = 'all';
   $('#pp-tabs').innerHTML = kinds.map(([k, t]) => '<button role="tab" data-tab="' + k + '" aria-selected="' + (k === tab) + '">' + t + '</button>').join('');
@@ -118,11 +128,21 @@ function openCard(id) {
   let h = '<div class="pp-card-stamp">' + P.stampSvg(s, { size: 180 }) + '</div>'
     + '<span class="pp-kind">' + esc(LAYER_NAME[s.layer] || 'Twisted place') + (priv ? ' · private home' : '') + '</span>'
     + '<h2 id="pp-card-h">' + esc(name) + '</h2>' + (meta && meta !== name ? '<p class="pp-card-where">' + esc(meta) + '</p>' : '')
-    + '<p class="pp-card-when">Stamped ' + esc(P.fmtDate(s.at)) + (rare.length ? ' · <b>Rare: ' + esc(rare.join(', ')) + '</b>' : '') + (s.first ? ' · <b>First to find</b>' : '') + '</p>';
+    + '<p class="pp-card-when">' + (s.tier === 'wax' ? 'Wax seal' : 'Ink stamp') + ' · ' + esc(P.fmtDate(s.tier === 'wax' ? (s.sealedAt || s.at) : s.at)) + (rare.length ? ' · <b>Rare: ' + esc(rare.join(', ')) + '</b>' : '') + (s.first ? ' · <b>First to find</b>' : '') + '</p>';
+  if (s.tier === 'wax' && s.sealPhoto) h += '<figure class="pp-seal-photo"><img src="' + esc(s.sealPhoto) + '" alt="Your photo from the public road"><figcaption>Your photo from the public road</figcaption></figure>';
   if (s.layer === 'scout') h += '<p>Your tip about this place was approved after a check against public records. Thank you for scouting.</p>';
   else if (unwritten(r)) h += '<p><b>We haven’t found this place’s story yet.</b></p><p><a class="btn" href="../live/#suggest=' + encodeURIComponent(id) + '">Know this place? Tell us</a></p>';
-  else if (story) h += '<p class="pp-card-story">' + esc(story.length > 420 ? story.slice(0, 400).replace(/\s+\S*$/, '') + '…' : story) + '</p>';
-  if (priv) h += '<p class="pp-warn">This is a private home with people living in it. Only its area is shown. Stay on the public road: don’t stop, park, knock or go onto the property.</p>';
+  else if (story) h += '<p class="pp-card-story">' + esc(cutText(story, 420)) + '</p>';
+  if (s.tier === 'wax' && !priv) {
+    const teaser = String(r?.preview?.teaser || '').trim();
+    const loreLine = String(Array.isArray(r?.lore) ? (r.lore[0]?.text || r.lore[0] || '') : '').trim();
+    const lore = (teaser && teaser !== story) ? teaser : (loreLine && loreLine !== story ? loreLine : '');
+    if (lore) h += '<p class="pp-card-lore"><span class="pp-kind">Lore, unlocked with your wax seal</span> ' + esc(cutText(lore, 360)) + '</p>';
+    else h += '<p class="pp-card-lore muted small">Your wax seal is in the book. Lore for this place will show here when we have a line to share.</p>';
+  } else if (s.tier !== 'wax' && s.layer !== 'scout') {
+    h += '<p class="muted small">Ink from a drive-by. Stay about 3 minutes, or add a photo from the public road, to earn a wax seal and unlock a lore line on this page.</p>';
+  }
+    if (priv) h += '<p class="pp-warn">This is a private home with people living in it. Only its area is shown. Stay on the public road: don’t stop, park, knock or go onto the property.</p>';
   h += '<p class="pp-card-count muted small" id="pp-card-count"></p><p class="row">'
     + (inApp ? '<a class="btn p" href="../#/l/' + encodeURIComponent(id) + '">' + (s.layer === 'archive' ? 'Read its story' : 'Open its page') + '</a>' : '')
     + (!priv && isFinite(s.lat) && isFinite(s.lon) ? '<a class="btn" href="https://www.openstreetmap.org/?mlat=' + s.lat + '&mlon=' + s.lon + '#map=17/' + s.lat + '/' + s.lon + '" target="_blank" rel="noopener">Where it is ↗</a>' : '')
@@ -139,13 +159,16 @@ const PER = 4;
 let pg = 0;
 function readerPages() {
   const all = list().slice().reverse();
+  const rk = P.ranks(all);
   const out = ['<div class="pp-leaf pp-title-leaf"><div class="pp-leaf-in"><span class="pp-kind">Twisted Passport</span><h2>This passport has traveled</h2>'
-    + '<p class="pp-big">' + all.length + '</p><p>' + (all.length === 1 ? 'stamp' : 'stamps') + (all.length ? ' since ' + esc(P.fmtDate(all[0].at)) : '') + '</p>'
-    + (all.length ? '<p class="muted-ink">Turn the page to see them. Tap any stamp to open its place.</p>' : '<p class="muted-ink">No stamps yet. Open the live map, press Start, and drive past any pin. Your first page is waiting.</p>') + '</div></div>'];
+    + '<p class="pp-big">' + all.length + '</p><p>' + (all.length === 1 ? 'stamp' : 'stamps') + (all.length ? ' since ' + esc(P.fmtDate(all[0].at)) : '') + (rk.wax ? ' · ' + rk.wax + ' wax ' + (rk.wax === 1 ? 'seal' : 'seals') : '') + '</p>'
+    + (rk.current ? '<p class="pp-rank-line"><b>' + esc(rk.current.name) + '</b></p>' : '')
+    + (rk.badges.length ? '<p class="pp-badges">' + rk.badges.map((x) => '<span class="pp-badge">' + esc(x.name) + '</span>').join(' ') + '</p>' : '')
+    + (all.length ? '<p class="muted-ink">Turn the page to see them. Tap any stamp to open its place. Wax seals show your photo and a lore line.</p>' : '<p class="muted-ink">No stamps yet. Open the live map, press Start, and drive past any pin. Your first page is waiting.</p>') + '</div></div>'];
   for (let i = 0; i < all.length; i += PER) {
     const n = out.length;
     out.push('<div class="pp-leaf"><div class="pp-leaf-in"><div class="pp-leaf-grid">' + all.slice(i, i + PER).map((s) => '<button class="pp-leaf-stamp" data-open="' + esc(s.id) + '" aria-label="Open the card for ' + esc(P.noAddr(s.name) || 'this stamp') + '" style="--r:' + (((s.id.length * 7 + i) % 9) - 4) + 'deg">'
-      + P.stampSvg(s, { size: 128 }) + '<small>' + esc(P.fmtDate(s.at)) + '</small></button>').join('') + '</div><span class="pp-folio">' + n + '</span></div></div>');
+      + P.stampSvg(s, { size: 128 }) + '<small>' + (s.tier === 'wax' ? 'Wax · ' : '') + esc(P.fmtDate(s.at)) + '</small></button>').join('') + '</div><span class="pp-folio">' + n + '</span></div></div>');
   }
   return out;
 }

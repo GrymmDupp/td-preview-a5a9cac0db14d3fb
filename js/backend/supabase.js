@@ -260,15 +260,58 @@ export class SupabaseBackend {
   }
 
   // ---- DATA: submissions (always inserted 'pending'; RLS rejects anything else)
-  async createSubmission({ kind, listing_id, payload, rights_confirmed, file }) {
+  async createSubmission({ kind, listing_id, payload, rights_confirmed, file, extra }) {
     this.need();
     let storage_path = null;
     if (file) {
       storage_path = `${this.uid}/${crypto.randomUUID()}-${String(file.name || 'file').replace(/[^\w.-]+/g, '_')}`;
-      this.ok(await this.sb.storage.from(BUCKET).upload(storage_path, file, { contentType: file.type }));
+      this.ok(await this.sb.storage.from(BUCKET).upload(storage_path, file, { contentType: file.type || 'image/jpeg' }));
       payload = { ...payload }; delete payload.data_url;
     }
-    return this.ok(await this.sb.from('submissions').insert({ kind, listing_id: listing_id || null, author_id: this.uid, payload, rights_confirmed: !!rights_confirmed, storage_path }).select().single());
+    const row = { kind, listing_id: listing_id || null, author_id: this.uid, payload, rights_confirmed: !!rights_confirmed, storage_path };
+    if (extra && extra.field_capture) {
+      const withExtra = { ...row, field_capture: true };
+      if (extra.capture_id) withExtra.capture_id = extra.capture_id;
+      if (extra.captured_at) withExtra.captured_at = extra.captured_at;
+      if (Number.isFinite(+extra.capture_lat)) withExtra.capture_lat = +extra.capture_lat;
+      if (Number.isFinite(+extra.capture_lon)) withExtra.capture_lon = +extra.capture_lon;
+      const r = await this.sb.from('submissions').insert(withExtra).select().single();
+      if (!r.error) return r.data;
+      if (!/column|schema cache|field_capture|capture_/i.test(r.error.message)) throw new Error(r.error.message);
+    }
+    return this.ok(await this.sb.from('submissions').insert(row).select().single());
+  }
+  async listFieldReports(listingId) {
+    if (!listingId) return [];
+    const r = await this.sb.rpc('field_reports', { lid: listingId });
+    if (r.error) {
+      // Migration not run yet: fall back to preview-sample photos the caller can already read.
+      const rows = await this.samplePhotos(listingId).catch(() => []);
+      return rows.map((s) => ({
+        id: s.id, kind: s.kind, title: s.payload?.title, caption: s.payload?.caption || s.payload?.text,
+        credit: s.payload?.credit || s.author?.display_name || s.author?.handle, storage_path: s.storage_path,
+        captured_at: s.payload?.captured_at, created_at: s.created_at, data_url: s.payload?.data_url,
+      }));
+    }
+    return this._withUrls((r.data || []).map((x) => ({ ...x, payload: { data_url: null } })));
+  }
+  async fieldReportCovers() {
+    const r = await this.sb.rpc('field_report_covers');
+    let rows;
+    if (r.error) {
+      const fb = await this._okAuthor(() => this.sb.from('submissions').select(`listing_id, storage_path, payload, created_at, ${this._author('submissions')}`)
+        .eq('status', 'approved').eq('is_sample', true).eq('kind', 'photo').not('listing_id', 'is', null).order('created_at').limit(2000));
+      rows = (fb || []).filter((s) => s.storage_path && s.payload?.priv !== true && s.payload?.priv !== 'true')
+        .map((s) => ({ listing_id: s.listing_id, storage_path: s.storage_path, credit: s.payload?.credit || s.author?.display_name || s.author?.handle, title: s.payload?.title, created_at: s.created_at }));
+    } else rows = r.data || [];
+    const seen = new Set(), out = [];
+    for (const row of rows) {
+      if (!row.listing_id || !row.storage_path || seen.has(row.listing_id)) continue;
+      seen.add(row.listing_id);
+      const { data } = await this.sb.storage.from(BUCKET).createSignedUrl(row.storage_path, 3600);
+      if (data?.signedUrl) out.push({ listing_id: row.listing_id, src: data.signedUrl, credit: row.credit, title: row.title });
+    }
+    return out;
   }
   async listMySubmissions() {
     if (!this.uid) return [];

@@ -4,6 +4,7 @@ import { PRICING, founderOn, priceNow, isOpen as productOpen } from './pricing.j
 import { CONFIG } from './config.js';
 import { statusInfo, kindLabel, tierInfo, storyLabel, PUBLIC_TIER1, PUBLIC_TIER2, PUBLIC_HERITAGE, heritageTierInfo } from './taxonomy.js';
 import { displayableImages } from './feed.js';
+import { fieldCoverFor } from './field-covers.js';
 import { isNew, isArchived, isArchiveShelf, isOpen, updateLine } from './feed.js';
 
 // Public rating badge. Tier 1 = prominent "Twisted Deed"; tier 2 = muted "Strong Story"
@@ -134,7 +135,13 @@ export function photoCredit(i) {
 // First usable photo with the plate underneath as its fallback (see app.js img error handler).
 export function photoOrPlate(l, cls = '') {
   const i = displayableImages(l)[0];
-  if (!i) return plate(l, cls);
+  if (!i) {
+    const cov = fieldCoverFor(l);
+    if (cov?.src) {
+      return html`<div class="ph ${cls}" data-ph>${plate(l, cls)}<img src="${cov.src}" alt="${cov.title || l.name}" loading="lazy" data-ph-img></div><span class="ph-note"><span class="ph-type">Field photo</span> · Photo: ${cov.credit}</span>`;
+    }
+    return plate(l, cls);
+  }
   const illus = imageType(i) === 'illustration';
   // The "Illustration, not a photo" label sits on a caption line BELOW the image, never on it.
   return html`<div class="ph ${cls}" data-ph>${plate(l, cls)}<img src="${i.src || i.url}" alt="${imgAlt(i, l.name)}" loading="lazy" referrerpolicy="no-referrer" data-ph-img></div>${illus ? illusNote() : ''}`;

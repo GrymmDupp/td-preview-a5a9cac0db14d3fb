@@ -30,6 +30,10 @@ import { dossier } from './views/dossier.js';
 import { initPwa, showFirstRun } from './install.js';
 import { standardPrice, readerLabel } from './components.js';
 import { mountTomes, setReduceMotion } from './tome.js';
+import { bootCapture, startCaptureForPlace, flushQueue } from './capture.js';
+import { setFieldCovers } from './field-covers.js';
+import { isPrivateHome } from './privacy.js';
+import * as Passport from './passport.js';
 
 const ctx = { feed, be: null, me: null, membership: null, unlocks: [], comments: {}, config: CONFIG };
 
@@ -64,6 +68,10 @@ async function refreshCtx() {
   ctx.notifyPref = ctx.me && ctx.be.getNotifyPref ? await ctx.be.getNotifyPref().catch(() => null) : null;
   // listing_id -> { at, kinds } for approved submissions in the last CONFIG.newDays days (facts only)
   ctx.updates = updatesMap(ctx.be.recentUpdates ? await ctx.be.recentUpdates(CONFIG.newDays).catch(() => []) : []);
+  if (ctx.be.fieldReportCovers) {
+    ctx.fieldCovers = await ctx.be.fieldReportCovers().catch(() => []);
+    setFieldCovers(ctx.fieldCovers);
+  }
 }
 
 // Instant unlock (Payment Link mode): ask the server whether pending payments have landed. It runs on
@@ -218,6 +226,7 @@ document.addEventListener('click', async (e) => {
   const ds = t.dataset;
   if (ds.checkout) track('unlock_click', ds.checkout); else if (t.matches('a[href^="#/unlock/"]')) track('unlock_click', decodeURIComponent(t.getAttribute('href').slice(9))); else if (ds.pricingClick) track('pricing_click', ds.pricingClick); else if (ds.share) track('share_click', ds.share);
   try {
+    if (ds.capturePlace) { e.preventDefault(); const place = feed.byId.get(ds.capturePlace) || { id: ds.capturePlace, name: ds.capturePlace }; startCaptureForPlace(place); return; }
     if ('spine' in ds) { const f = t.closest('form'); const p = new URLSearchParams([...new FormData(f)].filter(([, v]) => v)); const on = t.getAttribute('aria-pressed') === 'true';
       if (on) p.delete('layer'); else p.set('layer', ds.spine); refocusFilter = 'spine-' + ds.spine; location.hash = '#/browse?' + p; return; }
     if ('filtersToggle' in ds) { const f = t.closest('form'); const open = !f.classList.contains('f-open'); f.classList.toggle('f-open', open); filterPanel.open = open; t.setAttribute('aria-expanded', String(open)); if (open) f.querySelector('#f-panel select')?.focus({ preventScroll: true }); }
@@ -305,7 +314,10 @@ document.addEventListener('submit', async (e) => {
       await refreshCtx(); toast(name ? 'Display name saved.' : 'Display name cleared. The default name is shown again.'); route();
     }
     else if (ds.researchStatus) { e.preventDefault(); const d = data(); await ctx.be.setResearchStatus(ds.researchStatus, d.status, d.note || ''); toast('Research request updated.'); route(); }
-    else if (ds.moderate) { e.preventDefault(); const [table, id] = ds.moderate.split(':'); const decision = e.submitter?.value; await ctx.be.moderate(table, id, decision, data().note || '', { is_sample: !!data().is_sample }); toast(decision === 'approved' ? (table === 'submissions' ? 'Approved. It’s now part of the full file.' : 'Approved. It’s public now.') : 'Rejected.'); await refreshCtx(); route(); }
+    else if (ds.moderate) { e.preventDefault(); const [table, id] = ds.moderate.split(':'); const decision = e.submitter?.value;
+      const autoSample = table === 'submissions' && decision === 'approved' && !!data().field_capture && data().field_priv !== '1';
+      await ctx.be.moderate(table, id, decision, data().note || '', { is_sample: !!data().is_sample || autoSample });
+      toast(decision === 'approved' ? (table === 'submissions' ? 'Approved. It’s now part of the file and, if this place had no photo, its card.' : 'Approved. It’s public now.') : 'Rejected.'); await refreshCtx(); route(); }
     else if (ds.submit) {
       e.preventDefault(); if (!needMe()) return;
       const d = data(); const kind = ds.submit;
@@ -357,6 +369,17 @@ matchMedia('(prefers-reduced-motion: reduce)').addEventListener?.('change', (e) 
   $('#disclaimer').textContent = DISCLAIMER;
   try { await loadFeed(); } catch (e) { $('#main').innerHTML = torn({ detail: `Listings unavailable: ${esc(e.message)}`, back: '#/', backText: 'Try again' }); return; }
   ctx.be = await getBackend();
+  bootCapture({
+    assetBase: './',
+    toast,
+    signInHref: '#/account',
+    getCatalog: () => [...(feed.catalog || []), ...(feed.theArchive || [])],
+    getSession: async () => ctx.me,
+    createSubmission: (opts) => ctx.be.createSubmission(opts),
+    awardSeal: (place, opts) => Passport.awardSeal(place, opts),
+    suggestPlace: null,
+  });
+  flushQueue().catch(() => {});
   // Banner: preview store (or Supabase unreachable) = test data in this browser; live with
   // mock checkout = purchases are examples, no real payment.
   const banner = $('#preview-banner');

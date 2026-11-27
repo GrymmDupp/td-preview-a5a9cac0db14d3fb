@@ -87,9 +87,12 @@ function details(p, el) {
   const m = metaFor(p); if (!m || !el) return;
   const s = P.stampOf(m.id);
   const box = document.createElement('div'); box.className = 'tdp-det';
+  const wax = s && s.tier === 'wax';
   box.innerHTML = '<h4>Twisted Passport</h4>' + (s
-    ? '<div class="tdp-row">' + P.stampSvg(s, { size: 86 }) + '<div><b>Stamped ' + esc(P.fmtDate(s.at)) + '</b>' + ((s.rare || []).length ? '<br><span class="tdp-rare">Rare: ' + esc(s.rare.map((r) => P.RARE[r]).join(', ')) + '</span>' : '') + (s.first ? '<br><span class="tdp-rare">First to find</span>' : '') + '</div></div>'
-    : '<p class="note">Not stamped yet. ' + (m.area ? 'Drive through its area with <b>Start</b> on and it lands in your passport.' : 'Pass within about 300 ft (farther at driving speed) with <b>Start</b> on and the live map on screen, and it lands in your passport.') + ' ' + (m.priv ? 'This is a private home: stamp it from the road, and please don’t stop, park or approach.' : 'Stamp it from the road or the public grounds.') + '</p>')
+    ? '<div class="tdp-row">' + P.stampSvg(s, { size: 86 }) + '<div><b>' + (wax ? 'Wax seal' : 'Ink stamp') + ' · ' + esc(P.fmtDate(wax ? (s.sealedAt || s.at) : s.at)) + '</b>'
+      + (wax ? '<br><span class="tdp-rare">You stopped here' + (s.sealHow === 'photo' ? ' and took a photo from the road' : '') + '.</span>' : '<br><span class="note">Drive-by ink. Stay for about 3 minutes, or add a photo from the road, for a wax seal.</span>')
+      + ((s.rare || []).length ? '<br><span class="tdp-rare">Rare: ' + esc(s.rare.map((r) => P.RARE[r]).join(', ')) + '</span>' : '') + (s.first ? '<br><span class="tdp-rare">First to find</span>' : '') + '</div></div>'
+    : '<p class="note">Not stamped yet. ' + (m.area ? 'Drive through its area with <b>Start</b> on and it lands as ink in your passport.' : 'Pass within about 300 ft (farther at driving speed) with <b>Start</b> on and the live map on screen, and it lands as ink in your passport.') + ' Stay about 3 minutes at walking speed, or add a photo from the public road, and the stamp becomes a wax seal. ' + (m.priv ? 'This is a private home: stamp it from the road, and please don’t leave the road or approach the house.' : 'Stamp it from the road or the public grounds.') + '</p>')
     + '<p class="tdp-cnt" hidden></p>'
     + (m.firstOk && P.remote.ready && !s ? '<p class="note tdp-first">The first traveler to stamp this public place gets a rare “first to find” seal.</p>' : '')
     + '<div class="row"><a class="btn sm g" href="../passport/">Open my passport</a></div>';
@@ -98,6 +101,42 @@ function details(p, el) {
 }
 
 /* ------------------------------------------------ stamping */
+const SEAL_M = 50, SEAL_MS = 3 * 60 * 1000, WALK_MAX = 2.5;   // ~3 minutes inside ~50 m at walking speed
+const dwell = new Map();   // place id -> { acc, last }
+function inSealZone(m, la, lo) {
+  if (m.inArea) return m.inArea(la, lo);
+  if (m.area) return meters(la, lo, m.lat, m.lon) <= m.area;
+  return meters(la, lo, m.lat, m.lon) <= SEAL_M + (m.rad || 0);
+}
+function tickDwell(here, now, speed, acc) {
+  if (acc > 50) return;
+  const walking = speed == null || speed <= WALK_MAX;
+  const hereIds = new Set();
+  for (const m of targets()) {
+    const s = P.stampOf(m.id);
+    if (s && s.tier === 'wax') { dwell.delete(m.id); continue; }
+    const inside = walking && inSealZone(m, here[0], here[1]);
+    if (!inside) { dwell.delete(m.id); continue; }
+    hereIds.add(m.id);
+    let d = dwell.get(m.id);
+    if (!d) { dwell.set(m.id, { acc: 0, last: now }); continue; }
+    d.acc += Math.min(now - d.last, 8000);
+    d.last = now;
+    if (d.acc >= SEAL_MS) {
+      dwell.delete(m.id);
+      if (!s) stamp(m, new Date(now));
+      P.awardSeal(m, { how: 'dwell' }).then((got) => {
+        if (!got) return;
+        refreshSet(); redraw();
+        if (!quiet()) {
+          api.toast('Wax seal: you stopped at ' + P.noAddr(got.name) + '.', 5000);
+          showStamp(got, 'wax');
+        } else { pending.push(Object.assign({}, got, { wax: true })); paintMode(); }
+        syncSoon();
+      }).catch(() => {});
+    }
+  }
+}
 async function townFor(lat, lon) {
   try {
     const r = await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=10&lat=' + lat + '&lon=' + lon, { headers: { Accept: 'application/json' } });
@@ -154,6 +193,7 @@ function onFix(pos) {
     } else hit = Math.max(0, cl.d - (m.rad || 0)) <= lim;
     if (hit) stamp(m, new Date(now));
   }
+  tickDwell(here, now, v != null ? v : avg, acc);
 }
 function stamp(m, at) {
   const s = P.addStamp(m, at); if (!s) return;
@@ -184,9 +224,10 @@ function syncSoon() {
     for (const s of r?.firsts || []) if (!quiet()) api.toast('First to find! You are the first traveler to stamp ' + s.name + '.', 6000);
   }, 1500);
 }
-function showStamp(s) {
+function showStamp(s, kind) {
   let el = $('#tdp-pop'); if (!el) { el = document.createElement('div'); el.id = 'tdp-pop'; el.setAttribute('role', 'status'); $('#stage').appendChild(el); }
-  el.innerHTML = '<div class="tdp-pop-in">' + P.stampSvg(s, { size: 132 }) + '<div><div class="tdp-k">Stamped</div><div class="tdp-n">' + esc(P.noAddr(s.name)) + '</div>'
+  const kicker = kind === 'wax' || s.tier === 'wax' ? 'Wax seal' : 'Stamped';
+  el.innerHTML = '<div class="tdp-pop-in">' + P.stampSvg(s, { size: 132 }) + '<div><div class="tdp-k">' + kicker + '</div><div class="tdp-n">' + esc(P.noAddr(s.name)) + '</div>'
     + '<div class="tdp-t">' + esc(P.placeLine(s)) + '</div>'
     + ((s.rare || []).length ? '<div class="tdp-rare">Rare: ' + esc(s.rare.map((r) => P.RARE[r]).join(', ')) + '</div>' : '')
     + '<div class="row"><a class="btn sm p" href="../passport/">My passport</a><button class="btn sm" id="tdp-ok">OK</button></div></div></div>';
@@ -201,7 +242,7 @@ function summary() {
     '<p class="note">Collected while you were driving.</p><div class="tdp-grid">' + list.map((s) => '<figure>' + P.stampSvg(s, { size: 110 }) + '<figcaption>' + esc(P.noAddr(s.name)) + '<br><small>' + esc(P.placeLine(s)) + '</small></figcaption></figure>').join('') + '</div>'
     + '<div class="row"><a class="btn p g" href="../passport/">Open my passport</a></div>');
 }
-function onStop() { lastGood = null; driving = false; speeds = []; slowSince = 0; paintMode(); summary(); }
+function onStop() { lastGood = null; driving = false; speeds = []; slowSince = 0; dwell.clear(); paintMode(); summary(); }
 function paintMode() {
   let b = $('#tdp-mode');
   if (!b) { b = document.createElement('span'); b.id = 'tdp-mode'; b.className = 'tdp-mode'; b.setAttribute('role', 'status'); $('#stage').appendChild(b); }
