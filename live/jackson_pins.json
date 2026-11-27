@@ -327,25 +327,6 @@
   "jackson": true
  },
  {
-  "id": "emmons-mansion",
-  "cat": "deed",
-  "label": "Twisted Deed",
-  "name": "Emmons Mansion",
-  "addr": "306 S Lansing St, St. Johns, MI 48879",
-  "lat": 42.9990555,
-  "lon": -84.5626532,
-  "status": "Sold",
-  "price": "$290,000 - Sold (closed Oct 29, 2026; last list price $270,000)",
-  "hook": "Local paper ran it as a ghost-story mansion.",
-  "src": [
-   "https://www.lansingstatejournal.com/story/news/local/2026/10/20/historic-st-johns-mansion-for-sale-comes-with-history-ghost-stories/92251369007/",
-   "https://diedinhouse.com/property-insights/2026/9/haunted-houses-306-s-lansing-st-st-johns-mi-emmons-mansion-haunted-for-sale"
-  ],
-  "conf": "Medium",
-  "asof": "sheet cache Nov 6, 2026",
-  "jackson": true
- },
- {
   "id": "corunna-funeral",
   "cat": "deed",
   "label": "Twisted Deed",
