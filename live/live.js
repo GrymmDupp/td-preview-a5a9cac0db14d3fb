@@ -55,7 +55,7 @@ const mine = [];   // private field-lead markers
 const markers = new Map();
 
 // ---------- map
-const map = L.map('map', { zoomControl: false, attributionControl: true, tap: true }).setView(JX, 12);
+const map = L.map('map', { zoomControl: false, attributionControl: true, tap: true }).setView(...(function () { try { const l = JSON.parse(localStorage.getItem('td_live_last') || 'null'); if (l && isFinite(l[0]) && isFinite(l[1])) return [[l[0], l[1]], 12]; } catch (e) {} return [[39.5, -98.35], 4]; })());   // last place this phone was, else all of the US
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
 L.control.zoom({ position: 'topright' }).addTo(map);
 const layer = L.layerGroup().addTo(map);
@@ -573,6 +573,7 @@ function onFix(pos) {
     meCircle = L.circle(me, { radius: meAcc, color: '#2b8cff', weight: 1, fillOpacity: 0.1, interactive: false }).addTo(map);
   } else { meMarker.setLatLng(me); meCircle.setLatLng(me).setRadius(meAcc); }
   setGps('GPS ±' + Math.round(meAcc) + ' m', meAcc > 100 ? 'warn' : 'on');
+  try { localStorage.setItem('td_live_last', JSON.stringify([+me[0].toFixed(2), +me[1].toFixed(2)])); } catch (e) {}
   if (first) map.setView(me, Math.max(map.getZoom(), 15)); else if (follow) map.panTo(me, { animate: true });
   lyrNear(me).then(() => { checkAlerts(); refreshNearby(); }); checkAlerts(); markPassed(); refreshNearby();
   try { TDP() && TDP().onFix(pos); } catch (e) { console.warn('passport', e); }
