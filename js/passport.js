@@ -153,7 +153,7 @@ export function patchStamp(id, patch) { const b = book(); const s = b.stamps.fin
 
 /* ---------------------------------------------------------------- stamp art (procedural SVG) */
 function hash(s) { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
-const INK = { listing: '#8e1b22', archive: '#27405f', marker: '#2f5233', cemetery: '#2e2e33', lead: '#5b3a80', scout: '#8a6214', place: '#6b2a1a' };
+const INK = { listing: '#8e1b22', archive: '#27405f', marker: '#2f5233', cemetery: '#2e2e33', lead: '#5b3a80', scout: '#8a6214', place: '#6b2a1a', family: '#3e5a2b' };
 const RARE_INK = { moon: '#3d5f8f', dark: '#1d1a2e', october: '#b0501a' };
 let uidN = 0;
 const GLYPH = {
@@ -164,6 +164,7 @@ const GLYPH = {
   cemetery: '<path d="M-7 10V-1a7 7 0 0 1 14 0v11z" fill="none" stroke-width="2"/><path d="M0-4v9M-3-1h6" stroke-width="1.8"/><path d="M-11 10h22" stroke-width="2"/>',
   museum: '<path d="M-11-3 0-10 11-3z" fill="none" stroke-width="1.8" stroke-linejoin="round"/><path d="M-8-1v9M-3-1v9M3-1v9M8-1v9" stroke-width="2"/><path d="M-11 10h22" stroke-width="2"/>',
   register: '<path d="M-10 10V-2h20v12M-12-2 0-9 12-2" fill="none" stroke-width="1.8" stroke-linejoin="round"/><path d="M-5 10V3h4v7M3 2h4v3h-4z" fill="none" stroke-width="1.4"/>',
+  family: '<path d="M0 11V0M0 0-6-6M0 0l6-6M0 5l-5-4M0 5l5-4" fill="none" stroke-width="2" stroke-linecap="round"/><circle cx="-6" cy="-7" r="2.2"/><circle cx="6" cy="-7" r="2.2"/><circle cx="0" cy="-9" r="2"/><path d="M-8 11h16" stroke-width="1.8"/>',
   scout: '<circle r="9" fill="none" stroke-width="2"/><path d="M0-12v5M0 7v5M-12 0h5M7 0h5" stroke-width="1.6"/><path d="M-3 3 0-6 3 3 0 1z"/>',
 };
 const RGLYPH = {

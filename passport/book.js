@@ -3,6 +3,7 @@
 // Empty slots are real places from the app's own feed that you have not passed yet. No sample stamps, no fake counts.
 import * as P from '../js/passport.js';
 import { moonPhase } from '../js/world.js';
+import * as A from '../js/ancestors.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = P.esc;
@@ -16,17 +17,42 @@ const fig = (s) => '<figure class="pp-tap" data-open="' + esc(s.id) + '" tabinde
   + ((s.rare || []).length ? '<small>Rare: ' + esc(s.rare.map((r) => P.RARE[r]).join(', ')) + '</small>' : '') + (s.first ? '<small><b>First to find</b></small>' : '') + '</figcaption></figure>';
 const ghost = (m) => '<figure class="ghost">' + P.stampSvg(m, { size: 124, ghost: true }) + '<figcaption>' + esc(P.noAddr(m.name)) + '<small>' + esc(place(m) || 'Not stamped yet') + '</small></figcaption></figure>';
 
+// Family stamps (Ancestors Trail): the reader's own family places, from their private tree. Never synced to passport_stamps.
+function famList() {
+  if (A.state.status !== 'ready') return [];
+  return A.familyStamps().map((f) => { const pl = A.state.tree.places[f.place]; const parts = pl.lb.split(', ');
+    return { id: f.id, place: f.place, name: pl.q === 'cemetery' ? pl.cm : parts[0], town: pl.q === 'cemetery' ? parts[1] || '' : parts.length > 2 ? parts[1] : '', state: parts[parts.length - 1], layer: 'family', at: f.at, rare: [], fam: true }; });
+}
+const famFig = (s) => '<figure class="pp-tap" data-fam="' + s.place + '" tabindex="0" role="button" aria-label="Open the family card for ' + esc(s.name) + '">' + P.stampSvg(s, { size: 124 }) + '<figcaption>' + esc(s.name) + '<small>' + esc([s.town, s.state].filter(Boolean).join(', ')) + '</small></figcaption></figure>';
+function openFam(i) {
+  const pl = A.state.tree.places[i]; if (!pl) return;
+  const rows = A.peopleAt(i).map(([pid, k]) => { const p = A.state.byId.get(pid); return { p, e: p.e[k] }; });
+  $('#pp-card-in').innerHTML = '<h2 id="pp-card-h">' + esc(pl.lb) + '</h2><p class="muted">' + esc(A.precisionNote(pl)) + '</p><ul>' + rows.slice(0, 30).map(({ p, e }) => '<li><b>' + esc(p.n) + '</b>' + (A.rel(p.i) ? ', ' + esc(A.rel(p.i)) : '') + '<br><small>' + esc(A.evLabel(e) + (e[1] ? ' ' + e[1] : '')) + '</small></li>').join('') + '</ul>'
+    + '<p class="row"><a class="btn" href="../ancestors/#p=' + i + '">Open in Ancestors Trail</a><button class="btn ghost" id="pp-card-x">Close</button></p>';
+  $('#pp-card').showModal(); $('#pp-card-x').onclick = () => $('#pp-card').close();
+}
+function wireFam(root) { root.querySelectorAll('[data-fam]').forEach((f) => { f.onclick = () => openFam(+f.dataset.fam); f.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openFam(+f.dataset.fam); } }; }); }
+
 function render() {
   const all = list();
+  const fam = famList();
   sets = P.computeSets(catalog, all);
   const done = sets.filter((s) => s.complete).length;
   if ($('#pp-reader').open) paintReader(0);
   $('#pp-stats').innerHTML = '<div><b>' + all.length + '</b>' + (all.length === 1 ? 'stamp' : 'stamps') + '</div><div><b>' + sets.filter((s) => s.kind === 'town').length + '</b>towns started</div><div><b>' + done + '</b>' + (done === 1 ? 'set' : 'sets') + ' complete</div>';
-  const kinds = [['all', 'Every stamp'], ['town', 'Towns'], ['county', 'Counties'], ['layer', 'Markers & cemeteries'], ['theme', 'Themes'], ['collection', 'Collections']].filter(([k]) => k === 'all' || sets.some((s) => s.kind === k));
+  const kinds = [['all', 'Every stamp'], ['family', 'Family'], ['town', 'Towns'], ['county', 'Counties'], ['layer', 'Markers & cemeteries'], ['theme', 'Themes'], ['collection', 'Collections']].filter(([k]) => k === 'all' || (k === 'family' ? A.state.status === 'ready' : sets.some((s) => s.kind === k)));
   if (!kinds.some(([k]) => k === tab)) tab = 'all';
   $('#pp-tabs').innerHTML = kinds.map(([k, t]) => '<button role="tab" data-tab="' + k + '" aria-selected="' + (k === tab) + '">' + t + '</button>').join('');
   document.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => { tab = b.dataset.tab; render(); }; });
   const pages = $('#pp-pages');
+  if (tab === 'family') {
+    const n = A.mappedPlaces().length;
+    pages.innerHTML = '<article class="pp-page"><span class="pp-kind">Family</span><h2>Your ancestors’ places</h2><div class="pp-prog"><span class="pp-bar"><i style="width:' + Math.round(100 * fam.length / Math.max(1, n)) + '%"></i></span><span>' + fam.length + ' of ' + n.toLocaleString() + ' family places visited</span></div>'
+      + (fam.length ? '<div class="pp-grid">' + fam.map(famFig).join('') + '</div>' : '<p>No family stamps yet. With the <a href="../live/">live map</a> running, reach any of your family’s places (a grave, a home town, a county) and its stamp lands here.</p>')
+      + '<div class="pp-actions"><a class="btn" href="../ancestors/">Open the Ancestors Trail</a></div><p class="muted small">Only you can see your family stamps.</p></article>';
+    wireFam(pages);
+    return;
+  }
   if (!all.length) {
     pages.innerHTML = '<article class="pp-page pp-empty"><h2>No stamps yet</h2><p>Your first page is waiting. Open the live map, press <b>Start</b>, and drive past any pin.</p>'
       + '<div class="pp-actions" style="justify-content:center"><a class="btn" href="../live/">Open the live map</a></div></article>';
@@ -160,6 +186,8 @@ async function boot() {
   tonight(); paintSync(); render();
   catalog = await P.loadCatalog('../').catch(() => new Map()); render();
   await P.backend(); paintSync();
+  A.init().then(() => render()).catch(() => {});
+  window.addEventListener('td-family-stamp', () => render());
   if (P.remote.status === 'on') { await P.sync().catch(() => null); render(); }
   document.documentElement.dataset.ready = '1';
 }

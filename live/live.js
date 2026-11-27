@@ -576,6 +576,7 @@ function onFix(pos) {
   if (first) map.setView(me, Math.max(map.getZoom(), 15)); else if (follow) map.panTo(me, { animate: true });
   lyrNear(me).then(() => { checkAlerts(); refreshNearby(); }); checkAlerts(); markPassed(); refreshNearby();
   try { TDP() && TDP().onFix(pos); } catch (e) { console.warn('passport', e); }
+  try { window.TDAncestors && window.TDAncestors.onFix(pos); } catch (e) { console.warn('ancestors', e); }
 }
 function markPassed() {
   if (!me || (meAcc && meAcc > 500)) return;
@@ -639,7 +640,7 @@ function stop() {
   if (me) setGps('Stopped · tap', 'off'); else setGps('GPS off · tap', 'off');
   try { if (wakeLock) wakeLock.release(); } catch (e) { /* ignore */ } wakeLock = null;
   $('#recenter').hidden = true;
-  TDP() && TDP().onStop();
+  TDP() && TDP().onStop(); try { window.TDAncestors && window.TDAncestors.onStop(); } catch (e) { /* ignore */ }
 }
 // Phones stop sending GPS to a web page that is off screen (screen locked, or another app such as Google Maps in front),
 // so nothing can be stamped or announced then. Say so when the map comes back after a gap.

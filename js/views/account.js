@@ -157,7 +157,8 @@ function accountManage(ctx) {
       <p class="small muted">This is the name shown in the header and next to your comments. Leave it blank to use the default (@${me.handle || 'reader'}).</p>
       ${me.email ? html`<p class="acct-email"><span class="lc-k">Signed in as</span> <b>${me.email}</b></p>` : ''}
       <div class="row-btns"><button class="btn">Save name</button><button class="btn ghost" type="button" data-signout>Sign out</button></div>
-    </form></section>`;
+    </form>
+    <p class="acct-anc"><a class="btn ghost" href="ancestors/">Ancestors Trail</a> <span class="small muted">Your family tree on the map: private to your account.</span></p></section>`;
 }
 
 export async function account(ctx) {

@@ -101,7 +101,7 @@ function startPoll(ms = 120000) {
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && hasPending()) { checkPayments(); startPoll(60000); } });
 
 function renderChrome(path) {
-  const nav = [['#/', 'Listings', /^\/?$/], ['#/browse', 'Browse', /^\/browse/], ['#/map', 'Map', /^\/map/], ['live/', 'Live', /^$/], ['passport/', 'Passport', /^$/], ...(CONFIG.show?.packs ? [['#/packs', 'Dossier Packs', /^\/packs/]] : []), ...(CONFIG.show?.heritage || (feed.heritage || []).length ? [['#/heritage', 'Heritage Homes', /^\/heritage/]] : []), ['#/board', 'Board', /^\/board/]];
+  const nav = [['#/', 'Listings', /^\/?$/], ['#/browse', 'Browse', /^\/browse/], ['#/map', 'Map', /^\/map/], ['live/', 'Live', /^$/], ['passport/', 'Passport', /^$/], ['ancestors/', 'Ancestors', /^$/], ...(CONFIG.show?.packs ? [['#/packs', 'Dossier Packs', /^\/packs/]] : []), ...(CONFIG.show?.heritage || (feed.heritage || []).length ? [['#/heritage', 'Heritage Homes', /^\/heritage/]] : []), ['#/board', 'Board', /^\/board/]];
   $('#nav').innerHTML = nav.map(([h, t, re]) => `<a href="${h}" class="${re.test(path) ? 'on' : ''}">${t}</a>`).join('') + `<a href="#/contribute" class="nav-cta ${/contribute|suggest/.test(path) ? 'on' : ''}">Submit</a>`;
   $('#who').innerHTML = (ctx.me
     ? `${ctx.staff && !ctx.visitor ? '<a class="modlink" href="#/moderate" title="Moderation queue">⚖</a>' : ''}
