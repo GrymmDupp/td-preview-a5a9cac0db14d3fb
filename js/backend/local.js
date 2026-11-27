@@ -61,7 +61,11 @@ export class LocalBackend {
   // ---- unlocks (MOCK in this backend)
   async getDossier() { return null; }   // dossiers live in Supabase only (t259u)
   async listUnlocks() { return this.db.unlocks.filter((u) => u.user_id === this.db.session).sort((a, b) => b.unlocked_at.localeCompare(a.unlocked_at)); }
-  async hasUnlock(listingId) { return !!this.db.session && this.db.unlocks.some((u) => u.user_id === this.db.session && u.listing_id === listingId); }
+  async hasUnlock(listingId) {
+    const m = this.me();
+    if (m && m.role === 'admin') return true;
+    return !!this.db.session && this.db.unlocks.some((u) => u.user_id === this.db.session && u.listing_id === listingId);
+  }
   async startCheckout(listingId) {
     const m = this.requireMe();
     if (!feed.byId.has(listingId)) throw new Error('Unknown listing');

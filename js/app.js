@@ -51,6 +51,8 @@ async function refreshCtx() {
   // View as visitor (staff only, this device): the app renders as a signed-in free user sees it. Client-side only.
   ctx.staff = !!ctx.me && ['moderator', 'admin'].includes(ctx.me.role);
   ctx.visitor = ctx.staff && visitorView();
+  // Server RLS also grants admins every full file / dossier. Visitor view keeps this off.
+  ctx.adminBypass = !!ctx.me && ctx.me.role === 'admin' && !ctx.visitor;
   if (ctx.visitor) ctx.me = { ...ctx.me, role: 'user' };
   syncStart(ctx.be, ctx.me, () => { if (/^(#\/?|#\/(account|browse)(\?.*)?)?$/.test(location.hash)) route(); });
   ctx.membership = await ctx.be.getMembership();

@@ -92,6 +92,9 @@ export class SupabaseBackend {
   }
   async hasUnlock(listingId) {
     if (!this.uid) return false;
+    // Admin bypass: the server has_unlock() (20261123_admin_full_access.sql) also returns true for is_admin().
+    const me = this._me === undefined ? await this.getSession() : this._me;
+    if (me && me.role === 'admin') return true;
     return !!this.ok(await this.sb.from('unlocks').select('id').eq('user_id', this.uid).eq('listing_id', listingId).maybeSingle());
   }
   // Effective membership: lifetime, or monthly whose current period hasn't ended.

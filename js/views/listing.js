@@ -231,7 +231,7 @@ export async function listing(ctx, q, id) {
   const imgs = displayableImages(l);
   const nearby = (isArchiveShelf(l) ? ctx.feed.theArchive : ctx.feed.catalog).filter((x) => x.state === l.state && x.id !== l.id).slice(0, 3);
   const signedIn = !!ctx.me;
-  const unlocked = !!full && ctx.unlocks.includes(l.id);
+  const unlocked = !!full && (ctx.adminBypass || ctx.unlocks.includes(l.id));
   const upd = ctx.updates?.get(l.id);   // fact + kinds only; the content stays in the full file
   const arch = isArchived(l);
   const enc = encodeURIComponent(l.id);

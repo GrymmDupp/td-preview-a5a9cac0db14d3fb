@@ -151,8 +151,11 @@ export function illusNote() {
 export const newTag = (l) => isNew(l) ? html`<span class="tag-new" title="Added to the archive ${fmtDate(l.addedAt)}">New</span>` : '';
 export const updatedTag = (u) => u ? html`<span class="tag-upd" title="${updateLine(u)}">Updated</span>` : '';
 
-export function listingCard(l, { comments = {}, unlocks = [], compact = false, updates } = {}) {
-  const n = comments[l.id] || 0, open = unlocks.includes(l.id), upd = updates?.get?.(l.id);
+// Admin bypass (ctx.adminBypass): signed-in admins see every file as unlocked. Visitor view leaves this off.
+export const fileUnlocked = (ctx, id) => !!(ctx && (ctx.adminBypass || (ctx.unlocks || []).includes(id)));
+
+export function listingCard(l, { comments = {}, unlocks = [], compact = false, updates, adminBypass = false } = {}) {
+  const n = comments[l.id] || 0, open = adminBypass || unlocks.includes(l.id), upd = updates?.get?.(l.id);
   const shelf = isArchiveShelf(l);
   return html`<article class="card ${l.tier === 1 ? 't1' : 't2'} ${compact ? 'compact' : ''} ${shelf ? 'in-archive' : ''}" style="--c:${l.layerI.color}">
   <a class="card-media" href="#/l/${encodeURIComponent(l.id)}" aria-label="${l.name}">${photoOrPlate(l)}
