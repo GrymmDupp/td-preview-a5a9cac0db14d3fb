@@ -8,7 +8,7 @@
 import { CONFIG } from './config.js';
 import { moonPhase } from './world.js';
 import { LAYERS } from './taxonomy.js';
-import { applyArchivePrivacy, isPrivateHome, radiusM, inArea, publicAreaLabel } from './privacy.js';
+import { applyArchivePrivacy, isPrivateHome, isAreaOnly, outlineRing, radiusM, inArea, publicAreaLabel } from './privacy.js';
 
 const KEY = 'td-passport', SHOWKEY = 'td-passport-show';
 const ls = { get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* private mode */ } } };
@@ -69,10 +69,11 @@ export function metaFromListing(l, shelf) {
 function metaFromListing0(l, shelf) {
   const t = townOf(l.place || l.address || l.addr || '');
   const archive = shelf === 'archive' || l.collection === 'archive' || l.shelf === 'archive';
-  if (archive) {   // private homes on the Archive shelf (js/privacy.js): offset area circle, area label, never the house point
+  if (archive) {   // private homes / township records on the Archive shelf (js/privacy.js): shipped area circle or outline, area label, never the site
     const a = applyArchivePrivacy({ ...l, shelf: 'archive' });
-    if (isPrivateHome(a)) return { id: a.id, name: String(a.name || ''), town: t.town, county: t.county, state: t.state, layer: 'archive', theme: a.layer || '', crew: a.crew_featured === true,
-      priv: true, firstOk: false, lat: +a.lat, lon: +a.lon, exact: true, area: radiusM(a), areaLabel: publicAreaLabel(a), inArea: (la, lo) => inArea(la, lo, a) };
+    if (isPrivateHome(a) || (isAreaOnly(a) && a.geo_precision !== 'town')) return { id: a.id, name: String(a.name || ''), town: t.town, county: t.county, state: t.state, layer: 'archive', theme: a.layer || '', crew: a.crew_featured === true,
+      priv: true, firstOk: false, lat: +a.lat, lon: +a.lon, exact: true, area: radiusM(a), areaLabel: publicAreaLabel(a), outline: outlineRing(a) || undefined,
+      inArea: (la, lo) => inArea(la, lo, a) };
   }
   const townOnly = l.geo_precision === 'town' || l.townOnly;
   const house = l.kind === 'house' || (!l.kind && !archive);

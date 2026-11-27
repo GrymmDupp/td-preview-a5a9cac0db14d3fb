@@ -67,7 +67,7 @@ function loadData() {
         const lat = Number(l.lat), lon = Number(l.lon);
         if (l.lat == null || l.lon == null || !isFinite(lat) || !isFinite(lon)) continue;
         const approx = !!(l.geo_precision && l.geo_precision !== 'address');
-        ARCH.push({ id: l.id, arch: true, name: l.name, lat, lon, approx, addr: l.place || '', privateHome: l.privateHome === true || l.kind === 'house' || approx, area: l.area || l.areaLabel || '', radiusM: Number(l.radiusM) || 0 });
+        ARCH.push({ id: l.id, arch: true, name: l.name, lat, lon, approx, addr: l.place || '', privateHome: l.privateHome === true || l.kind === 'house' || approx, area: l.area || l.areaLabel || '', radiusM: Number(l.radiusM) || (Number(l.circle_mi) > 0 ? Number(l.circle_mi) * 804.672 : 0) });   // shipped circle (circle_mi wide), never a recomputed center
       }
     } catch (e) { /* Archive shelf offline */ }
   })();

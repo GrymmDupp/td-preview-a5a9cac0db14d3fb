@@ -57,7 +57,15 @@ function drawArchive() {
   if (!archLayer) archLayer = L.layerGroup().addTo(api.map);
   archLayer.clearLayers();
   for (const m of catalog.values()) {
-    if (m.layer !== 'archive' || !m.exact || m.priv || api.pins.some((p) => p.id === m.id)) continue;   // never an exact pin for a private home
+    if (m.layer !== 'archive' || !m.exact || api.pins.some((p) => p.id === m.id)) continue;
+    if (m.priv) {   // private home / township record: its shipped area (outline, else circle around the precomputed offset center), never a pin
+      if (!(m.area > 0) && !m.outline) continue;
+      const got = stamped.has(m.id), st = { color: got ? '#c9a227' : '#e8e2d6', weight: 1.6, dashArray: '5 5', fillColor: '#cfc8b8', fillOpacity: got ? 0.2 : 0.12, interactive: true };
+      const shape = m.outline ? L.polygon(m.outline.map((c) => [+c[1], +c[0]]), st) : L.circle([m.lat, m.lon], Object.assign({ radius: m.area }, st));
+      shape.bindTooltip(esc(m.name) + (m.areaLabel ? ' · ' + esc(m.areaLabel) : ''), { sticky: true });
+      shape.on('click', () => archDetails(m)); archLayer.addLayer(shape);
+      continue;
+    }
     const s = P.showOnMap() && stamped.has(m.id) ? P.stampOf(m.id) : null;
     const html = s ? '<div class="tdp-pin">' + P.stampSvg(s, { mini: true, size: 40 }) + '</div>' : '<div class="pin archive' + (P.showOnMap() ? ' unstamped' : '') + '" title="The Archive">A</div>';
     const mk = L.marker([m.lat, m.lon], { icon: L.divIcon({ className: '', html, iconSize: [34, 34], iconAnchor: [17, 17] }), keyboard: false, zIndexOffset: -200, title: m.name });
@@ -67,7 +75,8 @@ function drawArchive() {
 function archDetails(m) {
   let h = '<div><span class="tag archive">The Archive</span>' + (m.unwritten ? ' <span class="tag off">Unwritten story</span>' : '') + '</div><div class="addr" style="margin-top:8px">' + esc(m.name) + '</div><p class="muted">' + esc([m.town, m.county, m.state].filter(Boolean).join(', ')) + '</p>'
     + (m.unwritten ? '<p><b>We haven’t found this place’s story yet.</b></p><div class="row"><button class="btn p g" id="tdp-tell">Know this place? Tell us</button></div>' : '')
-    + '<div class="row"><a class="btn p g" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=' + m.lat + ',' + m.lon + '&travelmode=driving">Directions</a><a class="btn g" href="../#/l/' + encodeURIComponent(m.id) + '">Open in app</a></div>';
+    + (m.priv ? '<p class="muted">' + esc(m.areaLabel || '') + (m.areaLabel ? '. ' : '') + 'Shown as an area, not a pin: the exact spot is private land or unknown. View from public roads only; you can collect the stamp anywhere inside the area.</p>' : '')
+    + '<div class="row">' + (m.priv ? '' : '<a class="btn p g" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=' + m.lat + ',' + m.lon + '&travelmode=driving">Directions</a>') + '<a class="btn g" href="../#/l/' + encodeURIComponent(m.id) + '">Open in app</a></div>';
   api.openSheet('details', 'Details', h); details({ id: m.id, arch: true, meta: m }, $('#sh-body'));
   const t = $('#tdp-tell'); if (t) t.onclick = () => suggestForm(m);
 }

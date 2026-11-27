@@ -40,7 +40,7 @@ function previewFacts(l) {
     l.significance && ['Significance', SIG[l.significance] || l.significance], l.lane && ['Lane', LANE[l.lane] || l.lane],
     l.extra.verification && ['Verification', l.extra.verification],
     ['Added to archive', fmtDate(l.addedAt || l.logged)], ['Last checked', fmtDate(l.lastChecked)], l.soldOn && ['Sold on', fmtDate(l.soldOn)],
-    l.geo_precision && ['Map point', l.geo_precision === 'town' ? 'Town centre only (approximate)' : 'Street address'],
+    l.geo_precision && ['Map point', l.geo_precision === 'town' ? 'Town centre only (approximate)' : l.geo_precision === 'neighborhood' ? 'Approximate area circle (not the house)' : l.geo_precision === 'township' ? `Whole township (exact site unknown)` : 'Street address'],
   ].filter(Boolean);
 }
 
@@ -182,7 +182,7 @@ function bookFor(ctx, l, imgs, finis) {
     `<div class="pg pg-facts">${pageHead(name, 'Facts')}
       <h3 class="ink">Particulars</h3>
       <dl class="tfacts">
-        <div class="ink"><dt>${isPrivateHome(l) ? 'Area' : 'Address'}</dt><dd>${esc(isPrivateHome(l) ? (publicAreaLabel(l) || l.place) : (l.address || l.place))}${isPrivateHome(l) ? ' <small>(a private home: shown as a neighborhood or area of town, not a street address)</small>' : l.geo_precision === 'town' ? ' <small>(map point: town only)</small>' : ''}</dd></div>
+        <div class="ink"><dt>${isPrivateHome(l) ? 'Area' : 'Address'}</dt><dd>${esc(isPrivateHome(l) ? (publicAreaLabel(l) || l.place) : (l.address || l.place))}${isPrivateHome(l) ? ' <small>(a private home: shown as a neighborhood or area of town, not a street address)</small>' : l.geo_precision === 'town' ? ' <small>(map point: town only)</small>' : l.geo_precision === 'township' ? ' <small>(shown as the whole township on the map)</small>' : ''}</dd></div>
         ${onShelf ? `<div class="ink"><dt>Market</dt><dd>${l.status === 'Sold' ? `Sold${l.soldOn ? ` <small>(${esc(fmtDate(l.soldOn))})</small>` : ''}` : 'Not for sale'}</dd></div>`
           : `<div class="ink quill"><dt>${arch ? 'Last asking' : 'Asking'}</dt><dd><span class="qw">${esc(l.price || 'Price not listed')}</span></dd></div>`}
         <div class="ink"><dt>Status</dt><dd>${onShelf ? 'In the Archive' : esc(l.status)}${l.lastChecked ? ` <small>(checked ${esc(fmtDate(l.lastChecked))})</small>` : ''}</dd></div>
