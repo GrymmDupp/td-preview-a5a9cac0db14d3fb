@@ -51,7 +51,9 @@ input[type=checkbox]{width:auto;accent-color:var(--crimson);margin:3px 0 0}
 .brand.small .brand-shield{height:32px}
 .tag{display:none;font-family:var(--serif);font-style:italic;color:var(--muted);font-size:1.05rem}
 .who{margin-left:auto;display:flex;align-items:center;gap:10px}
-.who .me{display:flex;align-items:center;gap:7px;text-decoration:none}.who .me>span:not(.avatar){display:none}
+.who .me{display:flex;align-items:center;gap:7px;text-decoration:none}
+.who .me .avatar{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:1px solid var(--line);border-radius:50%;background:rgba(0,0,0,.35);font-size:.95rem;line-height:1;flex:0 0 auto}
+.who .me .me-name{display:inline;font-size:.88rem;max-width:34vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .who .link{display:none}
 .nav{display:none}
 /* mobile tab bar */

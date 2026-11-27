@@ -12,6 +12,7 @@ const fig = (g, cls = '') => html`<figure class="dz-fig ${cls}"><img src="${g.sr
 
 function gate(ctx, e) {
   const msg = !ctx.me ? html`<p>Dossiers are open to staff during the preview. <a href="#/account">Sign in</a> with your admin account to read this one.</p>`
+    : ctx.adminBypass ? html`<p>This dossier should be open on your account, but it didn’t load. Close and reopen the app, then try again.</p>`
     : html`<p>This dossier isn't open to your account yet. Dossiers are staff-only during the preview.</p>`;
   return html`<section class="dz-gate" role="note"><h2>The dossier is sealed</h2>${msg}
     <p class="small muted">${e.counts?.images || 0} credited photos · ${e.counts?.timeline || 0} dated events · ${e.counts?.news || 0} news summaries · ${e.counts?.documents || 0} documents</p></section>`;

@@ -13,9 +13,9 @@ const BUCKET = 'contributions';
 // Comment, board and submission rows reference profiles twice (author + moderator), so the
 // author embed names its foreign key.
 const A = {
-  comments: 'author:profiles!comments_user_id_fkey(handle)',
-  board_posts: 'author:profiles!board_posts_user_id_fkey(handle)',
-  submissions: 'author:profiles!submissions_author_id_fkey(handle)',
+  comments: 'author:profiles!comments_user_id_fkey',
+  board_posts: 'author:profiles!board_posts_user_id_fkey',
+  submissions: 'author:profiles!submissions_author_id_fkey',
 };
 
 export class SupabaseBackend {
@@ -47,12 +47,49 @@ export class SupabaseBackend {
   }
   ok({ data, error }) { if (error) throw new Error(error.message); return data; }
   need() { if (!this.uid) throw new Error('Sign in first'); }
+  // Author embed: include display_name once the 20261127 migration has been applied; if the
+  // column is not there yet, fall back to handle only for the rest of this session.
+  _author(table) { return `${A[table]}(${this._noDisplayName ? 'handle' : 'handle,display_name'})`; }
+  async _okAuthor(req) {
+    let r = await req();
+    if (r.error && !this._noDisplayName && /display_name|schema cache|column/i.test(r.error.message || '')) {
+      this._noDisplayName = true;
+      r = await req();
+    }
+    return this.ok(r);
+  }
+  _row(data) { return Array.isArray(data) ? (data[0] || null) : (data || null); }
 
   // ---- account (email + password; role is a permission, read via my_profile(), never shown)
-  async getSession() {
+  async getSession({ refresh = false } = {}) {
     if (!this.uid) return null;
-    if (this._me === undefined) this._me = (this.ok(await this.sb.rpc('my_profile')) || [])[0] || null;
+    if (refresh) this._me = undefined;
+    if (this._me === undefined) {
+      const { data: sess } = await this.sb.auth.getSession();
+      const email = sess?.session?.user?.email || '';
+      const raw = this.ok(await this.sb.rpc('my_profile'));
+      const row = this._row(raw);
+      let isAdmin = !!(row && row.role === 'admin');
+      const ia = await this.sb.rpc('is_admin');
+      if (!ia.error) isAdmin = isAdmin || !!ia.data;
+      this._me = row ? { ...row, email, is_admin: isAdmin } : (email ? { id: this.uid, handle: '', role: isAdmin ? 'admin' : 'user', email, is_admin: isAdmin } : null);
+    }
     return this._me;
+  }
+  async setDisplayName(name) {
+    this.need();
+    const n = String(name || '').trim();
+    const rpc = await this.sb.rpc('set_display_name', { p_name: n });
+    if (rpc.error) {
+      if (/schema cache|does not exist|not find|404|set_display_name|display_name/i.test(rpc.error.message || '')) {
+        throw new Error('The name setting is being set up. Please try again after it is applied, or leave this page and come back later.');
+      }
+      throw new Error(rpc.error.message);
+    }
+    const row = this._row(rpc.data);
+    const email = this._me?.email || '';
+    this._me = row ? { ...row, email, is_admin: row.role === 'admin' || !!this._me?.is_admin } : undefined;
+    return this.getSession({ refresh: true });
   }
   async signIn({ email, password, create = false }) {
     email = String(email || '').trim(); password = String(password || '');
@@ -92,9 +129,9 @@ export class SupabaseBackend {
   }
   async hasUnlock(listingId) {
     if (!this.uid) return false;
-    // Admin bypass: the server has_unlock() (20261123_admin_full_access.sql) also returns true for is_admin().
+    // Admin bypass: has_unlock() also returns true for is_admin() once the 20261127 migration is applied.
     const me = this._me === undefined ? await this.getSession() : this._me;
-    if (me && me.role === 'admin') return true;
+    if (me && (me.role === 'admin' || me.is_admin)) return true;
     return !!this.ok(await this.sb.from('unlocks').select('id').eq('user_id', this.uid).eq('listing_id', listingId).maybeSingle());
   }
   // Effective membership: lifetime, or monthly whose current period hasn't ended.
@@ -120,6 +157,7 @@ export class SupabaseBackend {
   }
   // The price is resolved server-side (trial: app_settings trial_unlock_price; planned: by membership).
   async startCheckout(listingId) {
+    if (await this.hasUnlock(listingId)) return { unlocked: true };
     if (this.paymentLinkCheckout) {
       if (!isOpen('unlock')) throw new Error('Unlocks at this price open soon.');   // no link yet: never create a request that cannot be paid
       // Payment Link mode: no fake unlock. Record a PENDING request server-side (amount and
@@ -204,13 +242,13 @@ export class SupabaseBackend {
     if (!this.uid) return null;
     const f = this.ok(await this.sb.from('listing_full').select('*').eq('listing_id', listingId).maybeSingle());
     if (!f) return null;   // RLS returns nothing without an unlock (or moderator role)
-    const community = await this._withUrls(this.ok(await this.sb.from('submissions').select(`*, ${A.submissions}`)
+    const community = await this._withUrls(await this._okAuthor(() => this.sb.from('submissions').select(`*, ${this._author('submissions')}`)
       .eq('listing_id', listingId).eq('status', 'approved').order('created_at', { ascending: false })));
     return { ...fullFromRow(f, feed.byId.get(listingId)), community };
   }
   async fileCounts(listingId) { return this.ok(await this.sb.rpc('file_counts', { lid: listingId })); }
   async samplePhotos(listingId) {
-    return this._withUrls(this.ok(await this.sb.from('submissions').select(`*, ${A.submissions}`)
+    return this._withUrls(await this._okAuthor(() => this.sb.from('submissions').select(`*, ${this._author('submissions')}`)
       .eq('listing_id', listingId).eq('status', 'approved').eq('is_sample', true)));
   }
   async _withUrls(rows) {
@@ -239,7 +277,7 @@ export class SupabaseBackend {
 
   // ---- SOCIAL (a): comments. RLS: approved, or your own, or moderator.
   async listComments(listingId) {
-    const rows = this.ok(await this.sb.from('comments').select(`*, ${A.comments}`).eq('listing_id', listingId)
+    const rows = await this._okAuthor(() => this.sb.from('comments').select(`*, ${this._author('comments')}`).eq('listing_id', listingId)
       .in('status', ['approved', 'pending']).order('created_at'));
     return rows.filter((c) => c.status === 'approved' || c.user_id === this.uid);
   }
@@ -249,7 +287,7 @@ export class SupabaseBackend {
   }
   // ---- SOCIAL (b): the one general board
   async listBoard() {
-    const rows = this.ok(await this.sb.from('board_posts').select(`*, ${A.board_posts}`).in('status', ['approved', 'pending']).order('created_at'))
+    const rows = (await this._okAuthor(() => this.sb.from('board_posts').select(`*, ${this._author('board_posts')}`).in('status', ['approved', 'pending']).order('created_at')))
       .filter((b) => b.status === 'approved' || b.user_id === this.uid);
     return rows.filter((r) => !r.parent_id).reverse().map((p) => ({ ...p, replies: rows.filter((r) => r.parent_id === p.id) }));
   }
@@ -266,18 +304,18 @@ export class SupabaseBackend {
     return { ok: true };
   }
   async listQueue() {
-    const pend = (t) => this.sb.from(t).select(`*, ${A[t]}`).eq('status', 'pending').order('created_at');
-    const [s, c, b, r] = await Promise.all([pend('submissions'), pend('comments'), pend('board_posts'),
+    const pend = (t) => this._okAuthor(() => this.sb.from(t).select(`*, ${this._author(t)}`).eq('status', 'pending').order('created_at'));
+    const [s, c, board, r] = await Promise.all([pend('submissions'), pend('comments'), pend('board_posts'),
       this.sb.from('reports').select('*').eq('status', 'open').order('created_at')]);
-    const board = this.ok(b), parents = board.filter((x) => x.parent_id).map((x) => x.parent_id);
+    const parents = board.filter((x) => x.parent_id).map((x) => x.parent_id);
     const pmap = new Map();
     if (parents.length) for (const p of this.ok(await this.sb.from('board_posts').select('id, title').in('id', [...new Set(parents)]))) pmap.set(p.id, p);
     const reports = this.ok(r);
     for (const rep of reports) {
       const t = { comment: 'comments', board_post: 'board_posts', submission: 'submissions' }[rep.target_type];
-      if (t) rep.target = (this.ok(await this.sb.from(t).select(`*, ${A[t]}`).eq('id', rep.target_id).maybeSingle())) || null;
+      if (t) rep.target = (await this._okAuthor(() => this.sb.from(t).select(`*, ${this._author(t)}`).eq('id', rep.target_id).maybeSingle())) || null;
     }
-    return { submissions: await this._withUrls(this.ok(s)), comments: this.ok(c),
+    return { submissions: await this._withUrls(s), comments: c,
       board: board.map((x) => ({ ...x, parent: x.parent_id ? pmap.get(x.parent_id) || null : null })), reports };
   }
   // Per-listing "Updated" signal: rpc returns listing_id, kinds, last_approved_at only (no content).

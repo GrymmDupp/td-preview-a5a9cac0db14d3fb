@@ -8,11 +8,12 @@ import { leatherFor, layerInfo } from '../taxonomy.js';
 import { researchScrolls } from './research.js';
 import { analyticsOn, analyticsBlocked } from '../analytics.js';
 import { syncState } from '../sync.js';
-import { unlockPrice, standardPrice, monthlyUnlockPrice, lifetimeUnlockPrice, monthlyPrice, lifetimePrice, money, TIER_LABEL, membershipsOn, isTrial, soonChip, soonButton, trialNote } from '../components.js';
+import { unlockPrice, standardPrice, monthlyUnlockPrice, lifetimeUnlockPrice, monthlyPrice, lifetimePrice, money, TIER_LABEL, membershipsOn, isTrial, soonChip, soonButton, trialNote, readerLabel } from '../components.js';
 
 // Plan shown as a plain fact. The "Lifetime" badge appears HERE ONLY (the member's own
 // account page), never next to comments, board posts or listings.
 function planBlock(ctx) {
+  if (ctx.adminBypass) return html`<p><b>Full access.</b> Every scroll, book and dossier opens on this account, with no checkout.</p>`;
   const m = ctx.membership, mock = m?.mock ? ' (example checkout, no real payment)' : '';
   if (m?.plan === 'lifetime') return html`<p><span class="plan-badge">Lifetime</span> since ${fmtDate(m.purchased_at)}</p>
     <p class="small muted">Paid ${money(m.amount)} one time${mock} · ${m.payment_ref}. It never expires.</p>`;
@@ -61,8 +62,8 @@ function libraryCard(ctx) {
   const me = ctx.me, since = me.created_at ? fmtDate(me.created_at) : 'this year';
   return html`<section class="lib-card" aria-label="Your reader’s card">${raw(nyx('card', 'nyx-peek'))}
     <div class="lc-top"><span>Twisted Deeds Reading Room</span><span class="lc-no">No. ${cardNo(me.id)}</span></div>
-    <div class="lc-row"><span class="lc-k">Reader</span><span class="lc-ink">@${me.handle}</span></div>
-    <div class="lc-row"><span class="lc-k">Privileges</span><span class="lc-v">${ctx.membership?.plan === 'lifetime' ? 'Lifetime' : ctx.membership?.plan === 'monthly' ? 'Monthly' : 'Reading room · free previews'}</span></div>
+    <div class="lc-row"><span class="lc-k">Reader</span><span class="lc-ink">${readerLabel(me)}</span></div>
+    <div class="lc-row"><span class="lc-k">Privileges</span><span class="lc-v">${ctx.adminBypass ? 'Full access · no checkout' : ctx.membership?.plan === 'lifetime' ? 'Lifetime' : ctx.membership?.plan === 'monthly' ? 'Monthly' : 'Reading room · free previews'}</span></div>
     <div class="lc-stamp" aria-label="Member since ${since}"><small>Member since</small><b>${since}</b></div>
     <p class="lc-fine">Only you see this page. The card number is drawn from your account, nothing more.</p></section>`;
 }
@@ -146,15 +147,29 @@ const STATUS = { pending: ['Awaiting review', 'pending'], approved: ['Approved',
 
 // Plain account page: the user's own submissions with moderation status, and their
 // unlocked files. Nothing here is public; there are no profiles.
+function accountManage(ctx) {
+  const me = ctx.me, name = String(me.display_name || '');
+  return html`<section class="block acct-manage" id="manage"><h2>Your account</h2>
+    <form class="form" data-display-name>
+      <label>Display name
+        <input name="display_name" type="text" maxlength="40" value="${name}" placeholder="How your name appears" autocomplete="nickname" autocapitalize="words">
+      </label>
+      <p class="small muted">This is the name shown in the header and next to your comments. Leave it blank to use the default (@${me.handle || 'reader'}).</p>
+      ${me.email ? html`<p class="acct-email"><span class="lc-k">Signed in as</span> <b>${me.email}</b></p>` : ''}
+      <div class="row-btns"><button class="btn">Save name</button><button class="btn ghost" type="button" data-signout>Sign out</button></div>
+    </form></section>`;
+}
+
 export async function account(ctx) {
   if (!ctx.me) return html`<div class="page-head"><h1>Account</h1></div><div class="acct-world acct-out">${invitation()}
     <p class="small muted install-inline" data-install-entry>Want it on your home screen? <a href="#" data-install-app>Install the app</a></p>
     ${savedShelf(ctx)}${readingLog(ctx)}${seals(ctx)}${writingDesk(ctx)}</div>`;
   const [unlocks, subs, rf] = await Promise.all([ctx.be.listUnlocks(), ctx.be.listMySubmissions(), ctx.be.myResearchRequests ? ctx.be.myResearchRequests().catch(() => []) : []]);
   const L = (id) => ctx.feed.byId.get(id);
-  return html`<div class="page-head"><h1>Account</h1><p class="muted">Signed in as <b>@${ctx.me.handle}</b>. Only you see this page.</p>
+  return html`<div class="page-head"><h1>Account</h1><p class="muted">Signed in as <b>${readerLabel(ctx.me)}</b>. Only you see this page.</p>
     ${ctx.be.isPreview ? html`<p class="small muted">Preview: this is a test account in this browser. In live mode your account is your email sign-in, so unlocks follow you to every device.</p>` : ''}</div>
   <div class="with-side acct-world"><div>
+    ${accountManage(ctx)}
     ${libraryCard(ctx)}
     <section class="block"><h2>Plan</h2>${planBlock(ctx)}</section>
     <section class="block"><h2>Unlocked files <small class="muted">${unlocks.length}</small></h2>
@@ -180,7 +195,11 @@ export async function account(ctx) {
       : html`<p class="muted">You haven’t submitted anything yet. <a href="#/contribute">Submit info, a photo, lore or a link</a>.</p>`}</section>
     ${writingDesk(ctx)}
   </div><aside class="sidebar">
-    ${nyxBlock()}<section class="box"><h4>Your account</h4><p class="small">Handle: <b>@${ctx.me.handle}</b></p><button class="btn sm ghost" data-signout>Sign out</button></section>
+    ${nyxBlock()}<section class="box"><h4>Your account</h4>
+      <p class="small">Name: <b>${readerLabel(ctx.me)}</b></p>
+      ${ctx.me.email ? html`<p class="small">Email: <b>${ctx.me.email}</b></p>` : ''}
+      <p class="small muted">Change your display name at the top of this page.</p>
+      <p><a class="btn sm" href="#/account?at=manage">Edit name</a> <button class="btn sm ghost" data-signout>Sign out</button></p></section>
     <section class="box install-box" data-install-entry><h4>The app</h4><p class="small">Install Twisted Deeds on your phone or computer. It opens full screen like an app, and you stay signed in.</p><button class="btn sm ghost" data-install-app>Install the app</button></section>
     ${CONFIG.show?.notifications ? html`<section class="box notify-box"><h4>Notifications <span class="soon">Coming soon</span></h4>
       <label class="check"><input type="checkbox" data-notify-pref ${ctx.notifyPref?.opted_in ? 'checked' : ''}> <span>Get notified about new Twisted Deeds</span></label>

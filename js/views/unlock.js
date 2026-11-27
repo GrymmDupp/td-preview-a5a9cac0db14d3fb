@@ -1,7 +1,7 @@
 import { html, fmtDate } from '../util.js';
 import { isArchived, isArchiveShelf } from '../feed.js';
 import { unlockOpen, founderRemaining, founderOn, PRICING } from '../pricing.js';
-import { gradeBadge, plate, unlockPrice, membersLine, viewerTier, TIER_LABEL, trialNote, isTrial, unlockBar } from '../components.js';
+import { gradeBadge, plate, unlockPrice, membersLine, viewerTier, TIER_LABEL, trialNote, isTrial, unlockBar, readerLabel } from '../components.js';
 
 // Checkout. Local preview: a MOCK that records a test unlock, no card, no payment.
 // Supabase mode (Payment Link trial): opens the Stripe Payment Link; the unlock row is written
@@ -28,7 +28,7 @@ export async function unlock(ctx, q, id) {
       <dl class="co-lines"><dt>Full file · ${l.name}</dt><dd>${unlockPrice(ctx)}${trialNote()}</dd>${ctx.membership && !isTrial() ? html`<dt class="small muted">${TIER_LABEL[viewerTier(ctx.membership)]}</dt><dd></dd>` : ''}<dt><b>Total</b></dt><dd><b>${unlockPrice(ctx)} ${ctx.config.pricing.currency}</b></dd></dl>
       ${ctx.membership && !isTrial() ? '' : html`<p class="small muted">${membersLine(l.id)}</p>`}
       ${!ctx.me ? html`<p>Sign in first so the unlock is saved to your account.</p><button class="btn big" data-signin>Sign in to continue</button>`
-        : html`<p class="small">Account: <b>@${ctx.me.handle}</b></p>
+        : html`<p class="small">Account: <b>${readerLabel(ctx.me)}</b></p>
         ${plink && !unlockOpen() ? soonBlock() : plink ? html`${pend ? html`<p class="pay-pending small"><b>Waiting for your payment to clear</b> (reference <code>${req.reference}</code>). The file unseals the instant Stripe shows it paid. <button class="link small" data-check-payment="${req.id}">Check payment</button> If you didn’t finish paying, continue below; it reuses the same reference.</p>` : ''}
           <button class="btn big" data-checkout="${l.id}">${pend ? 'Open the payment page again' : 'Continue to payment'} · ${unlockPrice(ctx)}</button>
           <p class="small muted">Opens Stripe’s secure payment page in a new tab. We never see or store your card. The file unseals on your account the instant your payment clears. Keep this tab open, or come back to it.</p>`

@@ -1,5 +1,5 @@
 import { html, fmtDate } from '../util.js';
-import { standardPrice, monthlyUnlockPrice, lifetimeUnlockPrice, monthlyPrice, lifetimePrice, unlockPrice, membershipsOn, soonChip, soonButton, trialNote } from '../components.js';
+import { standardPrice, monthlyUnlockPrice, lifetimeUnlockPrice, monthlyPrice, lifetimePrice, unlockPrice, membershipsOn, soonChip, soonButton, trialNote, readerLabel } from '../components.js';
 
 // Membership checkout (planned model, prices in js/config.js): Monthly (per month, lower unlock
 // price while active) or Lifetime (one time, lowest unlock price forever). Memberships ONLY change the unlock price. Files already unlocked
@@ -31,7 +31,7 @@ export async function membership(ctx, q) {
       <dl class="co-lines"><dt>${monthly ? 'Monthly membership' : 'Lifetime membership (one-time)'}</dt><dd>${price}</dd><dt><b>Due today</b></dt><dd><b>${monthly ? monthlyPrice() : lifetimePrice()} ${ctx.config.pricing.currency}</b></dd></dl>
       ${monthly ? html`<p class="small muted">Renews monthly at ${monthlyPrice()} until you cancel.</p>` : ''}
       ${!ctx.me ? html`<p>Sign in first so the membership is saved to your account.</p><button class="btn big" data-signin>Sign in to continue</button>`
-        : html`<p class="small">Account: <b>@${ctx.me.handle}</b></p>
+        : html`<p class="small">Account: <b>${readerLabel(ctx.me)}</b></p>
         ${mock ? html`<div class="mock-card" aria-hidden="true"><span>Card details would be entered on Stripe’s secure page.</span><span class="muted">Not collected in this example.</span></div>
           <button class="btn big" data-membership-checkout="${plan}" data-from="${from || ''}">Complete example checkout · ${monthly ? monthlyPrice() + '/mo' : lifetimePrice()}</button>
           <p class="small muted">Example checkout, no real payment.</p>`

@@ -1,6 +1,6 @@
 import { html, raw, esc, fmtDate, ago, plural, safeUrl, host } from '../util.js';
 import { heritageCrossLink, forSaleSeal, archivePlate, mediaCredit, mediaLine, crewLine } from '../components.js';
-import { newTag, updatedTag, gradeBadge, layerChip, statusPill, plate, photoCredit, imageType, imgAlt, authorName, pendingTag, reportBtn, sourceLinks, listingCard, kindLabel, unlockPrice, membersLine, viewerTier, TIER_LABEL, trialNote, isTrial, unlockBar, publicUrl, findListingUrl } from '../components.js';
+import { newTag, updatedTag, gradeBadge, layerChip, statusPill, plate, photoCredit, imageType, imgAlt, authorName, pendingTag, reportBtn, sourceLinks, listingCard, kindLabel, unlockPrice, readerLabel, membersLine, viewerTier, TIER_LABEL, trialNote, isTrial, unlockBar, publicUrl, findListingUrl } from '../components.js';
 import { STATES, ratingLabel, leatherFor, layerInfo } from '../taxonomy.js';
 import { displayableImages, updateLine, isArchived, isArchiveShelf } from '../feed.js';
 import { isPrivateHome, publicAreaLabel } from '../privacy.js';
@@ -58,7 +58,7 @@ const communityItem = (s) => html`<div class="file-item ${s.kind}">
 const lines = (t, cls = '') => String(t || '').split(/\n{2,}|\n/).filter(Boolean).map((x) => `<p class="line ${cls}">${esc(x)}</p>`).join('');
 function scrollItem(s) {
   const P = s.payload || {};
-  const by = `<span class="sc-by">Submitted by @${esc(s.author?.handle || 'deleted')} · approved ${esc(fmtDate(s.moderated_at || s.created_at))}</span>`;
+  const by = `<span class="sc-by">Submitted by ${esc(s.author ? readerLabel(s.author) : 'deleted')} · approved ${esc(fmtDate(s.moderated_at || s.created_at))}</span>`;
   if (s.kind === 'photo') return `<figure class="line sc-fig">${P.data_url ? `<div class="sc-frame"><img src="${esc(P.data_url)}" alt="${esc(P.title || '')}"></div>` : ''}<figcaption><b>${esc(P.title)}</b> ${esc(P.caption || '')} · Credit ${esc(P.credit || s.author?.handle || '')}<br>${by}</figcaption></figure>`;
   if (s.kind === 'lore') return `<div class="line sc-item"><b>Lore${P.relation ? ' · ' + esc(REL[P.relation] || P.relation) : ''}${P.era ? ' · ' + esc(P.era) : ''}:</b> ${esc(P.title || '')}${lines(P.text)}${by}</div>`;
   if (s.kind === 'info') return `<div class="line sc-item"><b>Added info · ${esc(P.field || '')}:</b>${lines(P.text)}${P.sources ? `<p class="line"><i>Sources:</i> ${esc(P.sources)}</p>` : ''}${by}</div>`;
@@ -109,6 +109,12 @@ function pendingReq(ctx, l) {
   if (r.status === 'rejected') return html`<div class="pay-pending" role="status"><p>We couldn’t match a payment for reference <code>${r.reference}</code>.</p>
     <div class="unlock-cta"><a class="btn big" href="#/unlock/${encodeURIComponent(l.id)}" data-unlock-link>Unlock this file · ${unlockPrice(ctx)}</a>${trialNote()}</div></div>`;
   return null;
+}
+
+function missingFilePanel(l) {
+  return html`<section class="locked" id="file"><div class="lock-card"><h2>The full file couldn’t be opened</h2>
+    <p>This file should be open on your account, but it didn’t load. Close and reopen the app so it picks up the latest version, then try again.</p>
+    <p><a class="btn" href="#/l/${encodeURIComponent(l.id)}">Try again</a></p></div></section>`;
 }
 
 function lockedPanel(ctx, l, counts, signedIn) {
@@ -231,7 +237,8 @@ export async function listing(ctx, q, id) {
   const imgs = displayableImages(l);
   const nearby = (isArchiveShelf(l) ? ctx.feed.theArchive : ctx.feed.catalog).filter((x) => x.state === l.state && x.id !== l.id).slice(0, 3);
   const signedIn = !!ctx.me;
-  const unlocked = !!full && (ctx.adminBypass || ctx.unlocks.includes(l.id));
+  const canOpen = !!(ctx.adminBypass || ctx.unlocks.includes(l.id));
+  const unlocked = !!full && canOpen;
   const upd = ctx.updates?.get(l.id);   // fact + kinds only; the content stays in the full file
   const arch = isArchived(l);
   const enc = encodeURIComponent(l.id);
@@ -241,6 +248,7 @@ export async function listing(ctx, q, id) {
   await loadDossierIndex();
   const dz = dossierEntry(l.id);
   const fileBtn = onShelf ? '' : full ? `<a class="ink bk-btn gold" href="#/l/${enc}?at=file">Open the sealed full file</a>`
+    : canOpen ? `<a class="ink bk-btn gold" href="#/l/${enc}?at=file">Open the sealed full file</a>`
     : `<a class="ink bk-btn gold" href="#/unlock/${enc}" data-unlock-link>Unlock the full file · ${esc(unlockPrice(ctx))}</a>`;
   const finis = `${fileBtn}
     ${onShelf ? '<p class="ink fin-arch">Not for sale. Kept in the Archive for its story.</p>' : `<a class="ink bk-btn" href="${esc(findListingUrl(l))}" target="_blank" rel="noopener">Find listing</a>`}
@@ -259,7 +267,7 @@ export async function listing(ctx, q, id) {
   ${isUnwritten(l) ? unwrittenCard(l) : raw(bookFor(ctx, l, imgs, finis))}
   <div class="book-quick">
     ${dz ? html`<a class="btn" href="#/dossier/${enc}">Research dossier</a>` : ''}
-    ${isArchiveShelf(l) ? '' : full ? html`<a class="btn" href="#/l/${enc}?at=file">${unlocked ? 'Your full file' : 'Full file (moderator)'} ↓</a>` : html`<a class="btn" href="#/unlock/${enc}" data-unlock-link>Unlock full file · ${unlockPrice(ctx)}</a>`}
+    ${isArchiveShelf(l) ? '' : full ? html`<a class="btn" href="#/l/${enc}?at=file">${unlocked ? 'Your full file' : 'Full file (moderator)'} ↓</a>` : canOpen ? html`<a class="btn" href="#/l/${enc}?at=file">Your full file ↓</a>` : html`<a class="btn" href="#/unlock/${enc}" data-unlock-link>Unlock full file · ${unlockPrice(ctx)}</a>`}
     ${isArchiveShelf(l) ? '' : html`<a class="btn ghost" href="${findListingUrl(l)}" target="_blank" rel="noopener">Find listing</a>`}
     ${orig ? html`<a class="btn ghost" href="${orig}" target="_blank" rel="noopener nofollow">Original listing ↗</a>` : ''}
     ${mapLink ? html`<a class="btn ghost" href="${mapLink}">Map</a>` : ''}
@@ -284,7 +292,7 @@ export async function listing(ctx, q, id) {
 
   <div class="with-side detail">
   <div class="detail-main">
-    ${isArchiveShelf(l) ? '' : full ? fullFile(l, full, unlocked) : lockedPanel(ctx, l, counts, signedIn)}
+    ${isArchiveShelf(l) ? '' : full ? fullFile(l, full, unlocked) : canOpen ? missingFilePanel(l) : lockedPanel(ctx, l, counts, signedIn)}
 
     <section class="block comments" id="comments"><h2>Comments <small class="muted">${comments.length}</small></h2>
       <p class="muted small">Public discussion about this listing. Separate from submissions: to add facts, photos, lore or links to the file, use <a href="#/contribute?listing=${l.id}">Submit</a>.</p>

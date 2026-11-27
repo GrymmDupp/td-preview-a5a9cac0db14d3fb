@@ -38,11 +38,12 @@ export class LocalBackend {
   isMod() { const m = this.me(); return !!m && (m.role === 'moderator' || m.role === 'admin'); }
   requireMe() { const m = this.me(); if (!m) throw new Error('Sign in first'); return m; }
   visible(row) { return row.status === 'approved' || (this.db.session && row.author_id === this.db.session && row.status === 'pending'); }
-  withAuthor(row) { const a = this.db.accounts.find((p) => p.id === row.author_id); return { ...row, author: a ? { handle: a.handle, is_example: a.is_example } : null }; }
+  withAuthor(row) { const a = this.db.accounts.find((p) => p.id === row.author_id); return { ...row, author: a ? { handle: a.handle, display_name: a.display_name || null, is_example: a.is_example } : null }; }
   text(s, min, max, what) { s = String(s || '').trim(); if (s.length < min) throw new Error(`${what} is too short (${min}+ characters)`); return s.slice(0, max); }
 
   // ---- account
   async getSession() { return this.me(); }
+  async setDisplayName(name) { const m = this.requireMe(); m.display_name = String(name || '').trim() || null; this.save(); return m; }
   async signIn({ handle }) {
     handle = String(handle || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24);
     if (!handle) throw new Error('Pick a handle');
@@ -63,7 +64,7 @@ export class LocalBackend {
   async listUnlocks() { return this.db.unlocks.filter((u) => u.user_id === this.db.session).sort((a, b) => b.unlocked_at.localeCompare(a.unlocked_at)); }
   async hasUnlock(listingId) {
     const m = this.me();
-    if (m && m.role === 'admin') return true;
+    if (m && (m.role === 'admin' || m.is_admin)) return true;
     return !!this.db.session && this.db.unlocks.some((u) => u.user_id === this.db.session && u.listing_id === listingId);
   }
   async startCheckout(listingId) {

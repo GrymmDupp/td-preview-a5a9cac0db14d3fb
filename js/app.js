@@ -28,7 +28,7 @@ import { heritage } from './views/heritage.js';
 import { research } from './views/research.js';
 import { dossier } from './views/dossier.js';
 import { initPwa, showFirstRun } from './install.js';
-import { standardPrice } from './components.js';
+import { standardPrice, readerLabel } from './components.js';
 import { mountTomes, setReduceMotion } from './tome.js';
 
 const ctx = { feed, be: null, me: null, membership: null, unlocks: [], comments: {}, config: CONFIG };
@@ -47,12 +47,12 @@ const ROUTES = [
 ];
 
 async function refreshCtx() {
-  ctx.me = await ctx.be.getSession();
+  ctx.me = await ctx.be.getSession({ refresh: true });
   // View as visitor (staff only, this device): the app renders as a signed-in free user sees it. Client-side only.
-  ctx.staff = !!ctx.me && ['moderator', 'admin'].includes(ctx.me.role);
+  ctx.staff = !!ctx.me && (['moderator', 'admin'].includes(ctx.me.role) || ctx.me.is_admin);
   ctx.visitor = ctx.staff && visitorView();
   // Server RLS also grants admins every full file / dossier. Visitor view keeps this off.
-  ctx.adminBypass = !!ctx.me && ctx.me.role === 'admin' && !ctx.visitor;
+  ctx.adminBypass = !!ctx.me && (ctx.me.role === 'admin' || ctx.me.is_admin) && !ctx.visitor;
   if (ctx.visitor) ctx.me = { ...ctx.me, role: 'user' };
   syncStart(ctx.be, ctx.me, () => { if (/^(#\/?|#\/(account|browse)(\?.*)?)?$/.test(location.hash)) route(); });
   ctx.membership = await ctx.be.getMembership();
@@ -104,11 +104,12 @@ function renderChrome(path) {
   const nav = [['#/', 'Listings', /^\/?$/], ['#/browse', 'Browse', /^\/browse/], ['#/map', 'Map', /^\/map/], ['live/', 'Live', /^$/], ['passport/', 'Passport', /^$/], ...(CONFIG.show?.packs ? [['#/packs', 'Dossier Packs', /^\/packs/]] : []), ...(CONFIG.show?.heritage || (feed.heritage || []).length ? [['#/heritage', 'Heritage Homes', /^\/heritage/]] : []), ['#/board', 'Board', /^\/board/]];
   $('#nav').innerHTML = nav.map(([h, t, re]) => `<a href="${h}" class="${re.test(path) ? 'on' : ''}">${t}</a>`).join('') + `<a href="#/contribute" class="nav-cta ${/contribute|suggest/.test(path) ? 'on' : ''}">Submit</a>`;
   $('#who').innerHTML = (ctx.me
-    ? `${['moderator', 'admin'].includes(ctx.me.role) ? '<a class="modlink" href="#/moderate" title="Moderation queue">⚖</a>' : ''}
+    ? `${ctx.staff && !ctx.visitor ? '<a class="modlink" href="#/moderate" title="Moderation queue">⚖</a>' : ''}
        ${ctx.staff ? `<button class="vis-toggle" data-visitor aria-pressed="${ctx.visitor}" title="${ctx.visitor ? 'Visitor view is on. Tap for your admin view' : 'View the app as a visitor sees it'}" aria-label="${ctx.visitor ? 'Back to admin view' : 'View as visitor'}">◐</button>` : ''}
-       <a class="me" href="#/account">@${esc(ctx.me.handle)}</a>
+       <a class="me" href="#/account" title="Your account"><span class="avatar" aria-hidden="true">☺</span><span class="me-name">${esc(readerLabel(ctx.me))}</span></a>
        <button class="link small" data-signout>Sign out</button>`
     : `<button class="btn sm" data-signin>Sign in</button>`);
+  const vb = $('#visitor-banner'); if (vb) vb.hidden = !ctx.visitor;
   const tabs = [['#/', 'Feed', '⌂', /^\/?$/], ['#/browse', 'Browse', '☰', /^\/browse/], ['#/map', 'Map', '◎', /^\/map/], ['live/', 'Live', '◉', /^$/], ['#/board', 'Board', '✉', /^\/board/], ['#/account', 'Account', '☺', /^\/account/]];
   $('#tabbar').innerHTML = tabs.map(([h, t, i, re]) => `<a href="${h}" class="${re.test(path) ? 'on' : ''}"><span>${i}</span>${t}</a>`).join('');
   document.body.classList.toggle('is-map', /^\/map/.test(path));
@@ -182,7 +183,7 @@ function signInModal() {
     const f = Object.fromEntries(new FormData(e.target)); f.create = !!f.create;
     try {
       const r = await ctx.be.signIn(f); d.close();
-      if (r?.sent) toast('Check your email to confirm your account, then sign in.'); else { toast(`Signed in as @${r.handle}.`); await refreshCtx(); route(); }
+      if (r?.sent) toast('Check your email to confirm your account, then sign in.'); else { toast(`Signed in as ${readerLabel(r)}.`); await refreshCtx(); route(); }
     } catch (err) { toast(err.message); }
   });
 }
@@ -224,7 +225,9 @@ document.addEventListener('click', async (e) => {
     else if ('signin' in ds) { e.preventDefault(); signInModal(); }
     else if ('exportSuggestions' in ds) { const n = await exportSuggestions(ctx); toast(n ? `Downloaded ${n} approved place${n === 1 ? '' : 's'} for research.` : 'Nothing approved yet.'); }
     else if ('signout' in ds) { await ctx.be.signOut(); await refreshCtx(); route(); }
-    else if (ds.checkout) { e.preventDefault(); if (!needMe()) return; t.disabled = true;
+    else if (ds.checkout) { e.preventDefault(); if (!needMe()) return;
+      if (ctx.adminBypass || (ctx.unlocks || []).includes(ds.checkout)) { location.hash = `#/l/${encodeURIComponent(ds.checkout)}?at=file`; return; }
+      t.disabled = true;
       // Payment Link: open the tab synchronously (popup blockers), then point it at Stripe.
       const w = ctx.be.paymentLinkCheckout ? window.open('', '_blank') : null;
       let r; try { r = await ctx.be.startCheckout(ds.checkout); } catch (err) { w?.close(); t.disabled = false; throw err; }
@@ -293,6 +296,14 @@ document.addEventListener('submit', async (e) => {
       f.reset(); toast('Thank you. Your note has been sent to the curator.'); }
     else if (ds.correctionStatus) { e.preventDefault(); const d = data(); await ctx.be.setCorrectionStatus(ds.correctionStatus, d.status, d.note || ''); toast('Updated.'); route(); }
     else if (ds.placeSuggestion) { e.preventDefault(); const d = e.submitter?.value; await ctx.be.reviewPlaceSuggestion(ds.placeSuggestion, d, data().note || ''); toast(d === 'approved' ? 'Approved. It’s on the research list, and the traveler gets a Scout stamp.' : d === 'rejected' ? 'Turned down. Nothing was published.' : 'Back in the queue.'); route(); }
+    else if ('displayName' in ds) {
+      e.preventDefault(); if (!needMe()) return;
+      if (!ctx.be.setDisplayName) throw new Error('Name changes are not available in this mode.');
+      const name = String(data().display_name || '').trim();
+      if (name.length > 40) throw new Error('Use at most 40 characters.');
+      await ctx.be.setDisplayName(name);
+      await refreshCtx(); toast(name ? 'Display name saved.' : 'Display name cleared. The default name is shown again.'); route();
+    }
     else if (ds.researchStatus) { e.preventDefault(); const d = data(); await ctx.be.setResearchStatus(ds.researchStatus, d.status, d.note || ''); toast('Research request updated.'); route(); }
     else if (ds.moderate) { e.preventDefault(); const [table, id] = ds.moderate.split(':'); const decision = e.submitter?.value; await ctx.be.moderate(table, id, decision, data().note || '', { is_sample: !!data().is_sample }); toast(decision === 'approved' ? (table === 'submissions' ? 'Approved. It’s now part of the full file.' : 'Approved. It’s public now.') : 'Rejected.'); await refreshCtx(); route(); }
     else if (ds.submit) {

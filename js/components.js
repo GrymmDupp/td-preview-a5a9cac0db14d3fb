@@ -151,6 +151,12 @@ export function illusNote() {
 export const newTag = (l) => isNew(l) ? html`<span class="tag-new" title="Added to the archive ${fmtDate(l.addedAt)}">New</span>` : '';
 export const updatedTag = (u) => u ? html`<span class="tag-upd" title="${updateLine(u)}">Updated</span>` : '';
 
+// Display name when the account has set one; otherwise the @handle (reader-xxxx until they change it).
+export const readerLabel = (p) => {
+  const n = String(p?.display_name || '').trim();
+  return n || (p?.handle ? '@' + p.handle : 'Account');
+};
+
 // Admin bypass (ctx.adminBypass): signed-in admins see every file as unlocked. Visitor view leaves this off.
 export const fileUnlocked = (ctx, id) => !!(ctx && (ctx.adminBypass || (ctx.unlocks || []).includes(id)));
 
@@ -177,7 +183,7 @@ export function listingCard(l, { comments = {}, unlocks = [], compact = false, u
 }
 
 // Plain handle, no link: there are no public profiles.
-export const authorName = (p) => p ? html`<span class="author">@${p.handle}</span>` : html`<span class="author muted">deleted account</span>`;
+export const authorName = (p) => p ? html`<span class="author">${readerLabel(p)}</span>` : html`<span class="author muted">deleted account</span>`;
 
 export const reportBtn = (type, id) => html`<button class="link small report-btn" data-report="${type}:${id}">Report</button>`;
 
