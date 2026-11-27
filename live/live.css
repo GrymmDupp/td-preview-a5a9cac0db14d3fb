@@ -15,7 +15,7 @@ a{color:var(--gold2)}
 .chip i{font-style:normal;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:800;background:#352c2d;color:#9a8f7a}
 .chip.on{color:var(--bone);border-color:var(--bronze);background:#241b17}
 .chip.on.c-deed i{background:var(--crimson);color:#fff}.chip.on.c-story i{background:var(--gold);color:#201500}.chip.on.c-lead i{background:#d98a24;color:#241400}
-.chip.on.c-unv i{background:#6d4c9c;color:#fff}.chip.on.c-ctx i{background:#6b737c;color:#fff}
+.chip.on.c-unv i{background:#6d4c9c;color:#fff}.chip.on.c-ctx i{background:#6b737c;color:#fff}.chip.on.c-arch i{background:#7a5b2e;color:#fff}
 #stage{position:relative;flex:1;min-height:0}
 #map{position:absolute;inset:0;background:#1a1a1a}
 .leaflet-top.leaflet-right{margin-top:8px}

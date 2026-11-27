@@ -56,6 +56,7 @@ function pinClass(p) { return P.showOnMap() && stampable(p) && !stamped.has(p.id
 function drawArchive() {
   if (!archLayer) archLayer = L.layerGroup().addTo(api.map);
   archLayer.clearLayers();
+  if (api.show && api.show.archive === false) return;
   for (const m of catalog.values()) {
     if (m.layer !== 'archive' || !m.exact || api.pins.some((p) => p.id === m.id)) continue;
     if (m.priv) {   // private home / township record: its shipped area (outline, else circle around the precomputed offset center), never a pin
@@ -80,6 +81,7 @@ function archDetails(m) {
   api.openSheet('details', 'Details', h); details({ id: m.id, arch: true, meta: m }, $('#sh-body'));
   const t = $('#tdp-tell'); if (t) t.onclick = () => suggestForm(m);
 }
+window.addEventListener('td-arch-toggle', () => drawArchive());
 function redraw() { refreshSet(); api.redraw(); drawArchive(); }
 
 /* ------------------------------------------------ details block (called by live.js) */

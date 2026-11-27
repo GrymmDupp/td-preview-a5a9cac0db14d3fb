@@ -20,8 +20,8 @@ const sess = {
 };
 
 // ---------- settings
-const S = Object.assign({ radius: 0.5, chime: false, speak: false, show: { deed: true, story: true, lead: true, unverified: true, context: false, hmark: true, cem: true } }, store.get('td-live-settings', {}));
-S.show = Object.assign({ deed: true, story: true, lead: true, unverified: true, context: false, hmark: true, cem: true }, S.show);
+const S = Object.assign({ radius: 0.5, chime: false, speak: false, show: { deed: true, story: true, lead: true, unverified: true, context: false, archive: true, hmark: true, cem: true } }, store.get('td-live-settings', {}));
+S.show = Object.assign({ deed: true, story: true, lead: true, unverified: true, context: false, archive: true, hmark: true, cem: true }, S.show);
 const saveS = () => store.set('td-live-settings', S);
 
 // ---------- geometry
@@ -664,7 +664,7 @@ document.querySelectorAll('.rad button').forEach((b) => {
 });
 document.querySelectorAll('.chip').forEach((b) => {
   const k = b.dataset.k; b.classList.toggle('on', !!S.show[k]); b.setAttribute('aria-pressed', !!S.show[k]);
-  b.onclick = () => { S.show[k] = !S.show[k]; saveS(); b.classList.toggle('on', S.show[k]); b.setAttribute('aria-pressed', S.show[k]); if (k === 'hmark' || k === 'cem') { lyrRefresh(); lyrAttr(); refreshNearby(); toast((k === 'hmark' ? 'Historical markers' : 'Cemeteries') + (S.show[k] ? ' on' : ' off'), 1500); } else drawPins(); checkAlerts(); };
+  b.onclick = () => { S.show[k] = !S.show[k]; saveS(); b.classList.toggle('on', S.show[k]); b.setAttribute('aria-pressed', S.show[k]); if (k === 'hmark' || k === 'cem') { lyrRefresh(); lyrAttr(); refreshNearby(); toast((k === 'hmark' ? 'Historical markers' : 'Cemeteries') + (S.show[k] ? ' on' : ' off'), 1500); } else drawPins(); if (k === 'archive') window.dispatchEvent(new Event('td-arch-toggle')); checkAlerts(); };
 });
 $('#speak') && ($('#speak').onclick = () => {
   S.speak = !S.speak; saveS(); paintSpeak();
@@ -894,7 +894,7 @@ map.fire('moveend');
 loadPins().then((src) => { drawPins(); window.__tdLive = { pins: PINS.length, src }; document.documentElement.dataset.ready = '1'; });
 // For live/passport-live.js (Twisted Passport): read-only views of the map state plus the sheet/toast helpers.
 window.__tdLiveApi = { map, get pins() { return PINS; }, get lyr() { return LYR.items; }, get me() { return me; }, get meAcc() { return meAcc; }, get running() { return running; },
-  isPriv, inPrivArea, locLabel, radMi,
+  get show() { return S.show; }, isPriv, inPrivArea, locLabel, radMi,
   redraw() { drawPins(); lyrDraw(); }, openSheet, closeSheet, toast, showDetails };
 window.dispatchEvent(new Event('td-live-api'));
 window.__tdLiveDebug = { center: () => { const c = map.getCenter(); return [+c.lat.toFixed(4), +c.lng.toFixed(4)]; }, find: (q) => findPlace(q).then((r) => { if (r && !r.none && !r.err) findGo(r); return r; }), lyrStats: () => ({ items: LYR.items.size, tiles: LYR.tiles.size, blocks: LYR.blk.size, drawn: lyrLayer.getLayers().length, zoom: map.getZoom() }),  view: (la, lo, z) => map.setView([la, lo], z), lyr: () => [...LYR.items.values()], get state() { return { running, me, alerted: [...alerted], queue: [...queue], showing, lyrItems: LYR.items.size, lyrTiles: [...LYR.tiles.keys()], lyrLast }; } };
