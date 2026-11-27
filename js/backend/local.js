@@ -44,6 +44,31 @@ export class LocalBackend {
   // ---- account
   async getSession() { return this.me(); }
   async setDisplayName(name) { const m = this.requireMe(); m.display_name = String(name || '').trim() || null; this.save(); return m; }
+  async getUserPrefs() { const m = this.me(); return m?.prefs || null; }
+  async setUserPrefs(p) {
+    const m = this.requireMe();
+    m.prefs = { interests: p?.interests || {}, area: p?.area || {}, seen_welcome: p?.seen !== false, updated_at: new Date().toISOString() };
+    this.save(); return m.prefs;
+  }
+  async prefsDemand() {
+    if (!this.isMod()) throw new Error('admins only');
+    const rows = this.db.accounts.map((a) => a.prefs).filter(Boolean);
+    const on = (k) => rows.filter((r) => (r.interests || {})[k] !== false).length;
+    const scoped = rows.filter((r) => (r.area || {}).everywhere === false);
+    const states = {};
+    for (const r of scoped) for (const s of (r.area?.states || [])) states[s] = (states[s] || 0) + 1;
+    const radii = {};
+    let radiusAreas = 0;
+    for (const r of scoped) if (r.area?.lat != null && r.area?.lon != null) { radiusAreas += 1; const mi = r.area.radius_mi; if (mi) radii[mi] = (radii[mi] || 0) + 1; }
+    return {
+      accounts: rows.length,
+      interests: { deeds: on('deeds'), legends: on('legends'), archive: on('archive'), cemeteries: on('cemeteries'), markers: on('markers'), ancestors: on('ancestors') },
+      everywhere: rows.filter((r) => (r.area || {}).everywhere !== false).length,
+      radius_areas: radiusAreas,
+      radius_mi: Object.entries(radii).map(([mi, n]) => ({ mi: +mi, n })).sort((a, b) => a.mi - b.mi),
+      states: Object.entries(states).map(([state, n]) => ({ state, n })).sort((a, b) => b.n - a.n || a.state.localeCompare(b.state)),
+    };
+  }
   async signIn({ handle }) {
     handle = String(handle || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24);
     if (!handle) throw new Error('Pick a handle');

@@ -57,6 +57,12 @@ function line(i, d, ahead) {
 }
 const pl0 = (i) => A.state.tree.places[i];
 function nudge(i, d, ahead) {
+  const P = window.TDPrefs;
+  if (P && !P.showMoreCats() && P.interestOn && !P.interestOn('ancestors')) return;
+  if (P && !P.showMoreArea() && P.inArea) {
+    const pl = A.state.tree.places[i];
+    if (pl && !P.inArea(pl.la, pl.lo, '')) return;
+  }
   if (told.has(i)) return; told.add(i); sessionStorage.setItem('td-anc-told', JSON.stringify([...told]));
   const t = line(i, d, ahead); if (!t) return;
   queue.push({ i, t, k: { cemetery: 0, exact: 0, town: 1, township: 2, county: 3 }[pl0(i).q] ?? 2 }); queue.sort((a, b) => a.k - b.k); flush();

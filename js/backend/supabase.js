@@ -91,6 +91,41 @@ export class SupabaseBackend {
     this._me = row ? { ...row, email, is_admin: row.role === 'admin' || !!this._me?.is_admin } : undefined;
     return this.getSession({ refresh: true });
   }
+  async getUserPrefs() {
+    if (!this.uid) return null;
+    const r = await this.sb.rpc('my_user_prefs');
+    if (r.error) {
+      if (/schema cache|does not exist|not find|404|my_user_prefs/i.test(r.error.message || '')) return null;
+      throw new Error(r.error.message);
+    }
+    return Array.isArray(r.data) ? (r.data[0] || null) : (r.data || null);
+  }
+  async setUserPrefs(p) {
+    this.need();
+    const r = await this.sb.rpc('set_user_prefs', {
+      p_interests: p?.interests || {},
+      p_area: p?.area || {},
+      p_seen: p?.seen !== false,
+    });
+    if (r.error) {
+      if (/schema cache|does not exist|not find|404|set_user_prefs/i.test(r.error.message || '')) {
+        throw new Error('Interests are saved on this device. Run the user-prefs database file to keep them with the account.');
+      }
+      throw new Error(r.error.message);
+    }
+    return Array.isArray(r.data) ? (r.data[0] || null) : (r.data || null);
+  }
+  async prefsDemand() {
+    this.need();
+    const r = await this.sb.rpc('prefs_demand');
+    if (r.error) {
+      if (/schema cache|does not exist|not find|404|prefs_demand/i.test(r.error.message || '')) {
+        throw new Error('Demand counts need the user-prefs database file.');
+      }
+      throw new Error(r.error.message);
+    }
+    return r.data || {};
+  }
   async signIn({ email, password, create = false }) {
     email = String(email || '').trim(); password = String(password || '');
     if (!email || !password) throw new Error('Enter your email and a password');

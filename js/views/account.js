@@ -8,6 +8,7 @@ import { leatherFor, layerInfo } from '../taxonomy.js';
 import { researchScrolls } from './research.js';
 import { analyticsOn, analyticsBlocked } from '../analytics.js';
 import { syncState } from '../sync.js';
+import { prefsFormHtml, current as prefsCurrent, hasSoftFilter, prefsSummary } from '../prefs.js';
 import { unlockPrice, standardPrice, monthlyUnlockPrice, lifetimeUnlockPrice, monthlyPrice, lifetimePrice, money, TIER_LABEL, membershipsOn, isTrial, soonChip, soonButton, trialNote, readerLabel } from '../components.js';
 
 // Plan shown as a plain fact. The "Lifetime" badge appears HERE ONLY (the member's own
@@ -148,6 +149,14 @@ const STATUS = { pending: ['Awaiting review', 'pending'], approved: ['Approved',
 
 // Plain account page: the user's own submissions with moderation status, and their
 // unlocked files. Nothing here is public; there are no profiles.
+
+function prefsBlock(signedIn) {
+  const p = prefsCurrent();
+  return html`<section class="block acct-prefs" id="prefs"><h2>Your interests and area</h2>
+    <p class="small muted">${hasSoftFilter() ? 'Leading with ' + prefsSummary() + '.' : 'The whole shelf and the whole map, until you narrow it.'} Skipped shelves stay in the library, behind Show more.${signedIn ? '' : ' Saved in this browser until you sign in.'}</p>
+    ${raw(prefsFormHtml(p, { id: 'prefs-account', save: true }))}</section>`;
+}
+
 function accountManage(ctx) {
   const me = ctx.me, name = String(me.display_name || '');
   return html`<section class="block acct-manage" id="manage"><h2>Your account</h2>
@@ -163,7 +172,7 @@ function accountManage(ctx) {
 }
 
 export async function account(ctx) {
-  if (!ctx.me) return html`<div class="page-head"><h1>Account</h1></div><div class="acct-world acct-out">${invitation()}
+  if (!ctx.me) return html`<div class="page-head"><h1>Account</h1></div><div class="acct-world acct-out">${invitation()}${prefsBlock(false)}
     <p class="small muted install-inline" data-install-entry>Want it on your home screen? <a href="#" data-install-app>Install the app</a></p>
     ${savedShelf(ctx)}${readingLog(ctx)}${seals(ctx)}${writingDesk(ctx)}</div>`;
   const [unlocks, subs, rf] = await Promise.all([ctx.be.listUnlocks(), ctx.be.listMySubmissions(), ctx.be.myResearchRequests ? ctx.be.myResearchRequests().catch(() => []) : []]);
@@ -172,6 +181,7 @@ export async function account(ctx) {
     ${ctx.be.isPreview ? html`<p class="small muted">Preview: this is a test account in this browser. In live mode your account is your email sign-in, so unlocks follow you to every device.</p>` : ''}</div>
   <div class="with-side acct-world"><div>
     ${accountManage(ctx)}
+    ${prefsBlock(true)}
     ${libraryCard(ctx)}
     <section class="block"><h2>Plan</h2>${planBlock(ctx)}</section>
     <section class="block"><h2>Unlocked files <small class="muted">${unlocks.length}</small></h2>

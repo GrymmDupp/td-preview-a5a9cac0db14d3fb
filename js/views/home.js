@@ -5,6 +5,7 @@ import { listingCard, shelfTabs, gradeBadge, unlockPrice, standardPrice, monthly
 import { LAYERS, PRICE_BANDS, STATES, layerInfo } from '../taxonomy.js';
 import { newThisWeek, displayableImages } from '../feed.js';
 import { CONFIG } from '../config.js';
+import { hasSoftFilter, prefsSummary, partitionList, interestOn } from '../prefs.js';
 
 const PER = 10;
 
@@ -72,7 +73,8 @@ function packsTeaser() {
 // day stay in their own honest order.
 const SHOWN_KEY = 'td-home-shown-v1';
 const VISIT_CAP = 2;
-let visitMix = null;   // this page-load's order; not reshuffled on hash changes
+let visitMix = null, homeMore = [];   // this page-load's order; not reshuffled on hash changes
+export function resetHomeMix() { visitMix = null; homeMore = []; }
 
 function recentShown() {
   try {
@@ -103,10 +105,26 @@ function cardWeight(l) {
 function weightedShuffle(list, wfn = cardWeight) {
   return list.map((l) => ({ l, k: Math.pow(Math.random(), 1 / wfn(l)) })).sort((a, b) => b.k - a.k).map((x) => x.l);
 }
+function prefsBanner() {
+  if (!hasSoftFilter()) return '';
+  return html`<p class="prefs-banner">Leading with ${prefsSummary()}. Everything else is behind <b>Show more</b>. <a href="#/account?at=prefs">Change this in Account</a>.</p>`;
+}
+function moreBlock(list, ctx) {
+  if (!list.length) return '';
+  return html`<details class="prefs-more"><summary>Show more · ${list.length === 1 ? '1 place' : list.length + ' places'} outside your picks</summary>
+    <p class="small muted">These stayed in the library. <a href="#/account?at=prefs">Change your interests or area</a>.</p>
+    <div class="grid">${list.slice(0, 24).map((l) => listingCard(l, { ...ctx, compact: true }))}</div>
+    ${list.length > 24 ? html`<p class="small muted">${list.length - 24} more are in <a href="#/browse">Browse</a>.</p>` : ''}</details>`;
+}
 function homeMix(ctx) {
-  const sale = ctx.feed.catalog || [];
-  const shelf = ctx.feed.theArchive || [];
-  const live = new Map([...sale, ...shelf].map((l) => [l.id, l]));
+  const saleAll = ctx.feed.catalog || [];
+  const shelfAll = ctx.feed.theArchive || [];
+  const saleWant = partitionList(saleAll);
+  const archWant = partitionList(shelfAll);
+  const sale = hasSoftFilter() ? saleWant.primary : saleAll;
+  const shelf = hasSoftFilter() ? (interestOn('archive') ? archWant.primary : []) : shelfAll;
+  homeMore = hasSoftFilter() ? [...saleWant.more, ...archWant.more] : [];
+  const live = new Map([...saleAll, ...shelfAll].map((l) => [l.id, l]));
   if (visitMix) {
     const kept = visitMix.map((l) => live.get(l.id)).filter(Boolean);
     const have = new Set(kept.map((l) => l.id));
@@ -166,11 +184,13 @@ export async function home(ctx, q) {
     <div class="hero-stats"><span><b>${actT1}</b> ${actT1 === 1 ? 'Twisted Deed' : 'Twisted Deeds'}</span><span><b>${actT2}</b> ${actT2 === 1 ? 'Strong Story' : 'Strong Stories'} on the market now</span><span>Full files <b>${standardPrice()}</b>${isTrial() ? ' at the founder price' : ''}</span></div></div>
   </section>${shelfTabs(ctx, 'sale')}${newThisWeekBlock(ctx)}${archiveDoor(ctx)}${sponsorSlots('inline')}${CONFIG.show?.packs ? packsTeaser() : ''}` : ''}
   <div class="with-side"><div class="feed">
-    <div class="feed-head"><h2>${page === 1 ? 'From the collection' : `Listings · page ${page}`}</h2><span class="muted">${page === 1 ? 'A fresh mix each visit' : 'More from the collection'}</span></div>
-    ${slice.map((l) => listingCard(l, ctx))}
+    ${page === 1 ? prefsBanner() : ''}
+    <div class="feed-head"><h2>${page === 1 ? 'From the collection' : `Listings · page ${page}`}</h2><span class="muted">${page === 1 ? (hasSoftFilter() ? 'A fresh mix from your usual shelf' : 'A fresh mix each visit') : 'More from the collection'}</span></div>
+    ${slice.length ? slice.map((l) => listingCard(l, ctx)) : html`<p class="muted">Nothing on your usual shelf for this page. ${homeMore.length ? 'Show more, below, still holds the rest of the library.' : 'The library is empty right now.'}</p>`}
     <nav class="pager">${page > 1 ? html`<a class="btn ghost" href="#/?page=${page - 1}">← Previous</a>` : html`<span></span>`}
-      <span class="muted">Page ${page} of ${pages}</span>
+      <span class="muted">Page ${page} of ${Math.max(1, pages)}</span>
       ${page < pages ? html`<a class="btn ghost" href="#/?page=${page + 1}">More listings →</a>` : html`<span></span>`}</nav>
+    ${page >= pages || page === 1 ? moreBlock(homeMore, ctx) : ''}
     ${ctx.feed.archive.length ? html`<p class="small muted archive-line">${plural(ctx.feed.archive.length, 'property', 'properties')} no longer for sale ${ctx.feed.archive.length === 1 ? 'is' : 'are'} kept in the <a href="#/archive?at=sold">Sold & Off market list</a>.</p>` : ''}
   </div>${sidebar(ctx)}</div>`;
 }

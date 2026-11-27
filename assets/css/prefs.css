@@ -1,0 +1,50 @@
+/* Interests and area: welcome sheet, Account form, Show more. Dark ornate, same family as capture. */
+#td-prefs{position:fixed;inset:0;z-index:4100;background:rgba(8,6,6,.78);display:flex;align-items:flex-end;justify-content:center}
+#td-prefs[hidden]{display:none}
+.prefs-sheet{width:100%;max-width:560px;max-height:94dvh;display:flex;flex-direction:column;background:#141413;color:#f2efe8;border-top:2px solid #c9a227;border-radius:18px 18px 0 0;box-shadow:0 -8px 32px rgba(0,0,0,.7)}
+.prefs-bar{display:flex;align-items:center;gap:8px;padding:8px 8px 6px 16px;border-bottom:1px solid #4a4a47}
+.prefs-bar b{flex:1;font:600 1.15rem "IM Fell English SC","Cinzel",Georgia,serif;letter-spacing:.04em;color:#e6c352}
+.prefs-x{width:48px;height:48px;border-radius:50%;border:1px solid #4a4a47;background:#00000055;color:#f2efe8;font-size:26px;line-height:1;cursor:pointer}
+.prefs-body{overflow:auto;padding:12px 16px calc(env(safe-area-inset-bottom) + 16px);-webkit-overflow-scrolling:touch}
+.prefs-lead,.prefs-note,.prefs-or,.prefs-geo{margin:0 0 12px;font-size:.92rem;line-height:1.45;color:#cfc8bb}
+.prefs-note,.prefs-or,.prefs-geo{color:#a19d95;font-size:.85rem}
+.prefs-fs{border:0;margin:0 0 16px;padding:0}
+.prefs-fs legend{font:600 1.02rem "IM Fell English SC","Cinzel",Georgia,serif;letter-spacing:.04em;color:#e6c352;margin:0 0 8px}
+.prefs-togs{display:flex;flex-direction:column;gap:8px}
+.prefs-tog{display:flex;align-items:flex-start;gap:12px;width:100%;text-align:left;padding:10px 12px;border:1px solid #4a4a47;border-radius:12px;background:#1c1816;color:#f2efe8;cursor:pointer}
+.prefs-tog.on{border-color:#c9a227;background:#2a2218}
+.prefs-tog-t{display:flex;flex-direction:column;gap:2px;min-width:0}
+.prefs-tog-t b{font:650 1rem/1.3 Inter,system-ui,sans-serif}
+.prefs-tog-t small{color:#a19d95;font:400 .8rem/1.35 Inter,system-ui,sans-serif}
+.prefs-lever{flex:0 0 40px;width:40px;height:24px;margin-top:4px;border-radius:999px;background:#2a2422;border:1px solid #5a5048;position:relative}
+.prefs-lever i{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#8a7f72;transition:left .15s}
+.prefs-tog.on .prefs-lever{background:#5a3a12;border-color:#c9a227}
+.prefs-tog.on .prefs-lever i{left:18px;background:#e6c352}
+.prefs-area{margin-top:12px}
+.prefs-area.is-off{opacity:.45;pointer-events:none}
+.prefs-sub{margin:12px 0 6px;font:650 .82rem Inter,system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;color:#c9a227}
+.prefs-states{display:flex;flex-wrap:wrap;gap:6px;max-height:28vh;overflow:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
+.prefs-st,.prefs-rad{border:1px solid #4a4a47;background:#1c1816;color:#e8dcc4;border-radius:999px;padding:7px 10px;font:650 .82rem Inter,system-ui,sans-serif;cursor:pointer}
+.prefs-st.on,.prefs-rad.on{border-color:#c9a227;background:#2a2218;color:#e6c352}
+.prefs-lab{display:block;margin:0 0 8px;font-size:.9rem;color:#d9d5cc}
+.prefs-lab input{display:block;width:100%;margin-top:6px;background:#100c0c;color:#f2efe8;border:1px solid #4a4a47;border-radius:10px;padding:10px;font:inherit}
+.prefs-radii{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 8px}
+.prefs-actions{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.prefs-actions .btn{min-height:52px}
+.prefs-save{background:linear-gradient(180deg,#e6c352,#c9a227);color:#1a1200;border:2px solid #e6c352}
+.prefs-x:focus-visible,.prefs-tog:focus-visible,.prefs-st:focus-visible,.prefs-rad:focus-visible,.prefs-save:focus-visible{outline:2px solid #e6c352;outline-offset:2px}
+
+.acct-prefs{margin:0 0 1.25rem}
+.prefs-more{margin:18px 0 8px;border:1px solid #3d3033;border-radius:12px;background:#141213;padding:8px 12px 12px}
+.prefs-more summary{cursor:pointer;font:650 1rem "IM Fell English SC",Georgia,serif;color:#e6c352;padding:8px 0}
+.prefs-more .muted,.prefs-banner{color:#a3967f}
+.prefs-banner{margin:0 0 14px;padding:10px 12px;border-left:3px solid #c9a227;background:#1e1718;border-radius:0 8px 8px 0;font-size:.9rem;line-height:1.45}
+.prefs-banner a{color:#e6c352}
+.prefs-demand .pd-row{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid #2e2426;font-size:.92rem}
+.prefs-demand .pd-bar{display:block;height:6px;margin-top:4px;background:#2a2218;border-radius:99px;overflow:hidden}
+.prefs-demand .pd-bar i{display:block;height:100%;background:linear-gradient(90deg,#c9a227,#e6c352);border-radius:99px}
+.prefs-live-more{display:inline-flex;align-items:center;gap:6px;margin:6px 8px 0;padding:6px 10px;border:1px solid #c9a227;border-radius:999px;background:#1c1410;color:#e6c352;font:700 .75rem/1.2 Inter,system-ui,sans-serif;cursor:pointer}
+@media (min-width:720px){
+  #td-prefs{align-items:center}
+  .prefs-sheet{border-radius:16px;border:2px solid #c9a227;max-height:88vh}
+}

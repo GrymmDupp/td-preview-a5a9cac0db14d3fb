@@ -8,6 +8,7 @@ import { sortListings, sortShelf } from '../feed.js';
 import { STATES } from '../taxonomy.js';
 import { web } from '../reveals.js';
 import { isUnwritten, unwrittenCard } from '../unwritten.js';
+import { hasSoftFilter, prefsSummary, partitionList } from '../prefs.js';
 
 // The locked glass museum case. Pure CSS + inline SVG; the padlock rattles when tapped (see app.js, data-caselock).
 export const glassCase = () => html`<section class="glass-case" aria-labelledby="gc-h">
@@ -55,7 +56,9 @@ export async function archive(ctx, q) {
   const st = (q.get('state') || '').toUpperCase(), show = q.get('show') || '', crew = q.get('crew') === '1';
   const states = [...new Set(S.map((l) => l.state).filter(Boolean))].sort();
   const shows = [...new Set(S.flatMap((l) => (l.media || []).map((m) => m.show)))].sort();
-  const list = sortShelf(S.filter((l) => (!st || l.state === st) && (!show || l.media.some((m) => m.show === show)) && (!crew || l.crewFeatured)));
+  const filtered = sortShelf(S.filter((l) => (!st || l.state === st) && (!show || l.media.some((m) => m.show === show)) && (!crew || l.crewFeatured)));
+  const split = hasSoftFilter() ? partitionList(filtered) : { primary: filtered, more: [] };
+  const list = split.primary, tucked = split.more;
   const href = (o) => '#/archive?' + new URLSearchParams(Object.entries({ state: st, show, crew: crew ? '1' : '', ...o }).filter(([, v]) => v));
   const chip = (label, on, to) => html`<a class="chip ${on ? 'on' : ''}" href="${to}" aria-pressed="${on ? 'true' : 'false'}">${label}</a>`;
   return html`<div class="page-head archive-head"><h1>The Archive</h1>
@@ -67,9 +70,13 @@ export async function archive(ctx, q) {
         ${states.length > 1 ? states.map((s) => chip(STATES[s] || s, st === s, href({ state: st === s ? '' : s }))) : ''}
         ${shows.map((x) => chip(x, show === x, href({ show: show === x ? '' : x })))}
         ${S.some((l) => l.crewFeatured) ? chip('✦ With the Twisted History crew', crew, href({ crew: crew ? '' : '1' })) : ''}</div>` : ''}
-      <p class="result-bar"><strong>${plural(list.length, 'place')}</strong> <span class="muted small">in the Archive${list.length !== S.length ? ` (of ${S.length})` : ''}</span> <a class="small" href="#/map?shelf=archive">Show them on the map →</a></p>
+      ${hasSoftFilter() ? html`<p class="prefs-banner">Leading with ${prefsSummary()}. <a href="#/account?at=prefs">Change this in Account</a>.</p>` : ''}
+      <p class="result-bar"><strong>${plural(list.length, 'place')}</strong> <span class="muted small">in the Archive${list.length !== S.length || tucked.length ? ` (of ${S.length})` : ''}${tucked.length ? html` · ${plural(tucked.length, 'more')} behind Show more` : ''}</span> <a class="small" href="#/map?shelf=archive">Show them on the map →</a></p>
       <div class="arch-cabinet"><div class="grid">${list.map((l) => isUnwritten(l) ? unwrittenCard(l, { compact: true }) : listingCard(l, { ...ctx, compact: false }))}</div></div>
-      ${list.length ? '' : html`<div class="empty-state"><p>Nothing in the Archive matches. <a href="#/archive">See all of it</a>.</p></div>`}
+      ${list.length ? '' : html`<div class="empty-state"><p>${tucked.length ? 'Nothing on your usual Archive shelf matches.' : html`Nothing in the Archive matches. <a href="#/archive">See all of it</a>.`}</p></div>`}
+      ${tucked.length ? html`<details class="prefs-more" ${!list.length ? 'open' : ''}><summary>Show more · ${plural(tucked.length, 'place')} outside your picks</summary>
+        <p class="small muted">These stayed in the Archive. <a href="#/account?at=prefs">Change your interests or area</a>.</p>
+        <div class="grid">${tucked.map((l) => isUnwritten(l) ? unwrittenCard(l, { compact: true }) : listingCard(l, { ...ctx, compact: false }))}</div></details>` : ''}
     </section>` : glassCase()}
   ${onceForSale(ctx)}`;
 }

@@ -6,6 +6,7 @@ import { displayableImages } from '../feed.js';
 import { applyFilters } from './browse.js';
 import { isPrivateHome, isAreaOnly, outlineRing, publicAreaLabel, radiusM as privacyRadiusM, TOWN_RADIUS_M } from '../privacy.js';
 import { mountCaptureFab } from '../capture.js';
+import { hasSoftFilter, listingWanted, showMoreCats, setShowMoreCats, setShowMoreArea, prefsSummary, current as prefsCurrent } from '../prefs.js';
 
 let maplibreP;
 const loadLib = () => maplibreP ||= new Promise((res, rej) => {
@@ -22,7 +23,7 @@ export async function mapView(ctx, q) {
     <div class="map-bar">
       <div class="chips-row tight" data-map-chips>${layers.map((k) => { const i = layerInfo(k); const n = L.filter((l) => l.layer === k && l.lat != null).length;
         return html`<button class="chip on ${n ? '' : 'dim'}" data-layer="${k}" aria-pressed="true" style="--c:${i.color}"><span class="dot"></span>${i.label}<small>${n}</small></button>`; })}</div>
-      <div class="map-tools"><button class="chip arch-chip ${nArch ? '' : 'dim'}" data-archive aria-pressed="${showArch ? 'true' : 'false'}" title="Places with a verified dark history that are not for sale">The Archive <small>${nArch}</small></button><button class="chip" data-tier="1" aria-pressed="false">Twisted Deeds only</button><button class="chip" data-fly="mi">Michigan</button><button class="chip" data-fly="all">All US</button></div>
+      <div class="map-tools">${hasSoftFilter() ? html`<button class="chip" data-prefs-map-more aria-pressed="false">Show more</button>` : ''}<button class="chip arch-chip ${nArch ? '' : 'dim'}" data-archive aria-pressed="${showArch ? 'true' : 'false'}" title="Places with a verified dark history that are not for sale">The Archive <small>${nArch}</small></button><button class="chip" data-tier="1" aria-pressed="false">Twisted Deeds only</button><button class="chip" data-fly="mi">Michigan</button><button class="chip" data-fly="all">All US</button></div>
     </div>
     <div id="map" aria-label="Map of listings"></div>
     <div class="map-card" data-map-card hidden></div>
@@ -56,7 +57,10 @@ export async function mountMap(ctx, q, root) {
   const showArch = q.get('shelf') === 'archive';
   let maplibregl;
   try { maplibregl = await loadLib(); } catch { el.innerHTML = '<div class="empty-state"><p>Map unavailable offline. <a href="#/browse">Use the list instead.</a></p></div>'; return; }
-  const base = applyFilters(ctx.feed.listings, q, ctx.updates).filter((l) => l.lat != null && l.lon != null);
+  const allBase = applyFilters(ctx.feed.listings, q, ctx.updates).filter((l) => l.lat != null && l.lon != null);
+  let includeMore = showMoreCats() || !hasSoftFilter();
+  const wanted = (l) => includeMore || listingWanted(l) || (q.get('focus') === l.id);
+  const base = allBase.filter(wanted);
   // Spread pins that share coordinates so each stays tappable.
   const seen = {};
   const feats = base.map((l) => {
@@ -96,7 +100,8 @@ export async function mountMap(ctx, q, root) {
   // home is NEVER a pin: it is a dashed circle (neighborhood: circle_mi wide, 0.5 mi rural / 0.25 mi in town,
   // or a town area when only a town centroid was published). A whole-township record (site unknown) is its
   // shipped township outline, or a circle_mi circle. Centers are precomputed offsets or coarsened; never the site.
-  const arch = (ctx.feed.theArchive || []).filter((l) => l.lat != null && l.lon != null);
+  const archAll = (ctx.feed.theArchive || []).filter((l) => l.lat != null && l.lon != null);
+  const arch = []; arch.push(...archAll.filter(wanted));
   const circle = (lat, lon, km, n = 48) => { const dLat = km / 110.57, dLon = km / (111.32 * Math.cos(lat * Math.PI / 180)); return { type: 'Polygon', coordinates: [Array.from({ length: n + 1 }, (_, i) => { const a = (i / n) * Math.PI * 2; return [lon + Math.cos(a) * dLon, lat + Math.sin(a) * dLat]; })] }; };
   const isArea = (l) => isAreaOnly(l);
   const areaKm = (l) => (privacyRadiusM(l) || TOWN_RADIUS_M) / 1000;
@@ -154,6 +159,31 @@ export async function mountMap(ctx, q, root) {
   root.querySelector('[data-tier]').onclick = (e) => { state.tier1 = !state.tier1; e.currentTarget.classList.toggle('on', state.tier1); e.currentTarget.setAttribute('aria-pressed', state.tier1); refresh(); };
   root.querySelector('[data-fly="mi"]').onclick = () => map.fitBounds([[-90.5, 41.6], [-82.1, 47.5]], { padding: 20 });
   root.querySelector('[data-fly="all"]').onclick = () => map.fitBounds([[-125, 24], [-66, 49.5]], { padding: 20 });
+  const moreBtn = root.querySelector('[data-prefs-map-more]');
+  if (moreBtn) moreBtn.onclick = () => {
+    includeMore = !includeMore;
+    setShowMoreCats(includeMore); setShowMoreArea(includeMore);
+    moreBtn.classList.toggle('on', includeMore); moreBtn.setAttribute('aria-pressed', includeMore);
+    moreBtn.textContent = includeMore ? 'Showing the rest' : 'Show more';
+    const next = allBase.filter((l) => includeMore || listingWanted(l) || (q.get('focus') === l.id));
+    feats.length = 0;
+    const seen2 = {};
+    for (const l of next) {
+      const k = l.lat.toFixed(4) + ',' + l.lon.toFixed(4); const n = seen2[k] = (seen2[k] || 0) + 1;
+      const a = n * 2.4, r = n > 1 ? 0.0009 * Math.sqrt(n) : 0;
+      feats.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [l.lon + r * Math.cos(a), l.lat + r * Math.sin(a)] },
+        properties: { id: l.id, layer: l.layer, color: l.layerI.color, tier: l.tier, sov: l.grade === 'sovereign' ? 1 : 0, approx: l.geo_precision === 'town' ? 1 : 0 } });
+    }
+    arch.length = 0; arch.push(...archAll.filter((l) => includeMore || listingWanted(l) || (q.get('focus') === l.id)));
+    if (map.getSource('arc-a')) { map.getSource('arc-a').setData(archData('area')); map.getSource('arc-p').setData(archData('pin')); }
+    refresh();
+    toast(includeMore ? 'Showing the rest of the library.' : 'Back to your usual shelf: ' + (prefsSummary() || 'your picks') + '.', 3000);
+  };
+  const area = prefsCurrent().area;
+  if (!saved && !q.get('focus') && area && !area.everywhere && area.lat != null && area.lon != null) {
+    const d = area.radius_mi / 69;
+    map.fitBounds([[area.lon - d, area.lat - d], [area.lon + d, area.lat + d]], { padding: 40, maxZoom: 10, duration: 0 });
+  }
   window._tdMap = map;
   const wrap = root.classList.contains('map-wrap') ? root : root.querySelector('.map-wrap') || root;
   mountCaptureFab(wrap);

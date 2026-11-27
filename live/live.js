@@ -111,7 +111,8 @@ async function loadPins() {
   PINS = [...byId.values()].map((p) => sanitizePrivacy(Object.assign({ src: [], hook: '', price: '', addr: '' }, p, { label: CATS[p.cat] })));
   return src;
 }
-function visible(p) { return !!S.show[p.cat]; }
+function prefAreaOk(p) { const P = window.TDPrefs; if (!P || P.showMoreArea()) return true; return P.inArea(p.lat, p.lon, P.placeState(p)); }
+function visible(p) { return !!S.show[p.cat] && prefAreaOk(p); }
 const isLyr = (id) => typeof id === 'string' && id.startsWith('L:');
 function findAny(id) { return isLyr(id) ? LYR.items.get(id) : PINS.find((x) => x.id === id); }
 function alertable(p) { return visible(p) && !inactive(p) && (!p.approx || isPriv(p)); }
@@ -229,7 +230,7 @@ async function lyrLoad(s, w, n, e) {
   if (jobs.length) { await Promise.all(jobs); lyrEvict(); lyrDraw(); }
 }
 function lyrNear(pt) { const d = 0.05; return lyrLoad(pt[0] - d, pt[1] - d * 1.4, pt[0] + d, pt[1] + d * 1.4).catch(() => {}); }
-function lyrOn(x) { return !!S.show[x.kind]; }
+function lyrOn(x) { return !!S.show[x.kind] && prefAreaOk(x); }
 function lyrIcon(x) {
   const big = x.r >= 2, tp = TDP(), sh = tp && tp.pinHtml(x);
   if (sh) return L.divIcon({ className: '', html: sh, iconSize: [30, 30], iconAnchor: [15, 15] });
@@ -578,6 +579,7 @@ function onFix(pos) {
   lyrNear(me).then(() => { checkAlerts(); refreshNearby(); }); checkAlerts(); markPassed(); refreshNearby();
   try { TDP() && TDP().onFix(pos); } catch (e) { console.warn('passport', e); }
   try { window.TDAncestors && window.TDAncestors.onFix(pos); } catch (e) { console.warn('ancestors', e); }
+  try { if (window.TDPrefs && window.TDPrefs.noteGps && window.TDPrefs.noteGps(me[0], me[1])) { toast('You\'re outside your usual area. Showing what\'s around you. You can switch back with Show more.', 5000); drawPins(); lyrRefresh(); } } catch (e) { /* */ }
 }
 function markPassed() {
   if (!me || (meAcc && meAcc > 500)) return;
@@ -893,9 +895,15 @@ paintLeads();
 map.fire('moveend');
 loadPins().then((src) => { drawPins(); window.__tdLive = { pins: PINS.length, src }; document.documentElement.dataset.ready = '1'; });
 // For live/passport-live.js (Twisted Passport): read-only views of the map state plus the sheet/toast helpers.
+function setShowChip(k, on) {
+  const b = document.querySelector('#chips [data-k="' + k + '"], #lyrs [data-k="' + k + '"]');
+  if (b && !!S.show[k] !== !!on) b.click();
+  else if (!b) { S.show[k] = !!on; saveS(); }
+  return !!S.show[k];
+}
 window.__tdLiveApi = { map, get pins() { return PINS; }, get lyr() { return LYR.items; }, get me() { return me; }, get meAcc() { return meAcc; }, get running() { return running; },
   get show() { return S.show; }, isPriv, inPrivArea, locLabel, radMi,
-  redraw() { drawPins(); lyrDraw(); }, openSheet, closeSheet, toast, showDetails };
+  redraw() { drawPins(); lyrDraw(); }, openSheet, closeSheet, toast, showDetails, setShowChip, findGo, findPlace };
 window.dispatchEvent(new Event('td-live-api'));
 window.__tdLiveDebug = { center: () => { const c = map.getCenter(); return [+c.lat.toFixed(4), +c.lng.toFixed(4)]; }, find: (q) => findPlace(q).then((r) => { if (r && !r.none && !r.err) findGo(r); return r; }), lyrStats: () => ({ items: LYR.items.size, tiles: LYR.tiles.size, blocks: LYR.blk.size, drawn: lyrLayer.getLayers().length, zoom: map.getZoom() }),  view: (la, lo, z) => map.setView([la, lo], z), lyr: () => [...LYR.items.values()], get state() { return { running, me, alerted: [...alerted], queue: [...queue], showing, lyrItems: LYR.items.size, lyrTiles: [...LYR.tiles.keys()], lyrLast }; } };
 })();

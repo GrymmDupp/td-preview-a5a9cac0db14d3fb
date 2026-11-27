@@ -7,7 +7,7 @@ import { CONFIG } from './config.js';
 import { loadFeed, feed, updatesMap } from './feed.js';
 import { getBackend } from './backend/adapter.js';
 import { $, toast, esc } from './util.js';
-import { home } from './views/home.js';
+import { home, resetHomeMix } from './views/home.js';
 import { browse, filterPanel } from './views/browse.js';
 import { listing } from './views/listing.js';
 import { mapView, mountMap } from './views/map.js';
@@ -34,6 +34,7 @@ import { bootCapture, startCaptureForPlace, flushQueue } from './capture.js';
 import { setFieldCovers } from './field-covers.js';
 import { isPrivateHome } from './privacy.js';
 import * as Passport from './passport.js';
+import { bootPrefs, maybeOpenWelcome, bindPrefsForm, readPrefsForm, savePrefs, onPrefsChange } from './prefs.js';
 
 const ctx = { feed, be: null, me: null, membership: null, unlocks: [], comments: {}, config: CONFIG };
 
@@ -72,6 +73,7 @@ async function refreshCtx() {
     ctx.fieldCovers = await ctx.be.fieldReportCovers().catch(() => []);
     setFieldCovers(ctx.fieldCovers);
   }
+  await bootPrefs(ctx.be).catch(() => {});
 }
 
 // Instant unlock (Payment Link mode): ask the server whether pending payments have landed. It runs on
@@ -151,7 +153,7 @@ async function route() {
       if (view === mapView) await mountMap(ctx, q, main);
       let paid = false; try { paid = !!l && sessionStorage.getItem('td-paid') === l.id; if (paid) sessionStorage.removeItem('td-paid'); } catch { /* ignore */ }
       mountTomes(main, { openScroll: !!(q.get('unlocked') || q.get('at') === 'file'), paid });
-      afterRender(main, { path }); syncRm(); syncFx(); syncSound(); syncRadio(); syncHaptics();
+      afterRender(main, { path }); syncRm(); syncFx(); syncSound(); syncRadio(); syncHaptics(); wirePrefs(main);
       if (l) keepBook(l);
       track('view', routeName(path)); if (l) track('listing_open', l.id); if (view === patronage) track('pricing_view', 'patronage'); if (view === unlock) track('pricing_view', 'unlock-page');
       window.TD_ATMO_SYNC?.();
@@ -174,6 +176,14 @@ function modal(inner, cls = '') {
   d.addEventListener('click', (e) => { if (e.target === d) d.close(); });
   return d;
 }
+function wirePrefs(root) {
+  root.querySelectorAll('form[data-user-prefs]').forEach((f) => {
+    if (f.dataset.wired) return;
+    f.dataset.wired = '1';
+    bindPrefsForm(f, { toast });
+  });
+}
+
 function signInModal() {
   const local = ctx.be.mode === 'local';
   const d = modal(`<form method="dialog" class="form" data-signin-form><div class="lc-head" aria-hidden="true"><span>Twisted Deeds Reading Room</span><small>Reader’s card · No. ${String(Math.floor(Date.now() / 1000) % 100000).padStart(5, '0')}</small></div><h2>${local ? 'Sign in (preview)' : 'Sign in'}</h2>
@@ -191,7 +201,7 @@ function signInModal() {
     const f = Object.fromEntries(new FormData(e.target)); f.create = !!f.create;
     try {
       const r = await ctx.be.signIn(f); d.close();
-      if (r?.sent) toast('Check your email to confirm your account, then sign in.'); else { toast(`Signed in as ${readerLabel(r)}.`); await refreshCtx(); route(); }
+      if (r?.sent) toast('Check your email to confirm your account, then sign in.'); else { toast(`Signed in as ${readerLabel(r)}.`); await refreshCtx(); await route(); maybeOpenWelcome(ctx.me, { toast }); }
     } catch (err) { toast(err.message); }
   });
 }
@@ -305,6 +315,12 @@ document.addEventListener('submit', async (e) => {
       f.reset(); toast('Thank you. Your note has been sent to the curator.'); }
     else if (ds.correctionStatus) { e.preventDefault(); const d = data(); await ctx.be.setCorrectionStatus(ds.correctionStatus, d.status, d.note || ''); toast('Updated.'); route(); }
     else if (ds.placeSuggestion) { e.preventDefault(); const d = e.submitter?.value; await ctx.be.reviewPlaceSuggestion(ds.placeSuggestion, d, data().note || ''); toast(d === 'approved' ? 'Approved. It’s on the research list, and the traveler gets a Scout stamp.' : d === 'rejected' ? 'Turned down. Nothing was published.' : 'Back in the queue.'); route(); }
+    else if ('userPrefs' in ds) {
+      e.preventDefault();
+      await savePrefs(readPrefsForm(f));
+      toast('Your interests and area are saved. The shelf and the live map will lead with them.');
+      route();
+    }
     else if ('displayName' in ds) {
       e.preventDefault(); if (!needMe()) return;
       if (!ctx.be.setDisplayName) throw new Error('Name changes are not available in this mode.');
@@ -391,9 +407,11 @@ matchMedia('(prefers-reduced-motion: reduce)').addEventListener?.('change', (e) 
   const fm = $('#feed-meta'); fm.title = `Feed v${feed.meta.version} · ${feed.meta.count} listings · ${feed.source}`; fm.textContent = feed.source === 'live' ? '' : 'Showing the saved offline copy of the listings.';
   initAnalytics(ctx.be);
   await refreshCtx();
+  onPrefsChange(() => { resetHomeMix(); });
   window.addEventListener('hashchange', route);
   await route();
   showFirstRun(standardPrice());
+  maybeOpenWelcome(ctx.me, { toast });
   // Back from Stripe (or any load with a pending payment): check now, then keep watching briefly.
   if (hasPending()) { checkPayments(); startPoll(60000); }
 })();

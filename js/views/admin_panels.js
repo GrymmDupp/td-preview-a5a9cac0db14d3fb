@@ -1,6 +1,8 @@
 // Admin-only panels for the moderation page (#/moderate): corrections / removal requests, and simple visit counts.
 // Roles come from public.admin_emails -> profiles.role = 'admin'; RLS enforces it (this file only displays).
 import { html, ago, esc } from '../util.js';
+import { STATES } from '../taxonomy.js';
+import { INTERESTS } from '../prefs.js';
 
 const LABEL = { view: 'Page views', listing_open: 'Listings opened', unlock_click: 'Unlock clicks', pricing_view: 'Pricing views', pricing_click: 'Pricing button clicks', share_click: 'Share clicks', radio_toggle: 'Radio toggles', effects_toggle: 'Effects toggles' };
 const KIND = { correction: 'Correction', removal: 'Removal', other: 'Other' };
@@ -77,3 +79,27 @@ export async function exportSuggestions(ctx) {
   a.download = 'passport-suggestions-' + new Date().toISOString().slice(0, 10) + '.json'; document.body.appendChild(a); a.click(); a.remove();
   return rows.length;
 }
+
+export async function prefsDemandPanel(ctx) {
+  const head = html`<h2>What travelers asked to see first</h2>`;
+  if (!ctx.be.prefsDemand) return html`<section class="prefs-demand">${head}<p class="muted small">Not available in this mode.</p></section>`;
+  let d;
+  try { d = await ctx.be.prefsDemand(); }
+  catch (e) { return html`<section class="prefs-demand">${head}<p class="muted small">${esc(e.message)}</p></section>`; }
+  const n = Number(d.accounts || 0);
+  const bar = (c) => n ? Math.round(100 * Number(c) / n) : 0;
+  const row = (label, c) => html`<div class="pd-row"><span>${label}</span><b>${c} of ${n}</b><span class="pd-bar" aria-hidden="true"><i style="width:${bar(c)}%"></i></span></div>`;
+  return html`<section class="prefs-demand">${head}
+    <p class="small muted">Aggregates only, from ${n === 1 ? '1 account' : n + ' accounts'} that have saved or dismissed the interests welcome. No towns, ZIP codes, or coordinates are shown.</p>
+    ${n ? html`<h4>Interests</h4>
+      ${INTERESTS.map((x) => row(x.label, d.interests?.[x.key] || 0))}
+      <h4>Area</h4>
+      ${row('Show me everything / road trip', d.everywhere || 0)}
+      ${(d.states || []).length ? html`<p class="small">States chosen (a reader may pick more than one):</p>
+        <ul class="small">${d.states.map((s) => html`<li>${STATES[s.state] || s.state} · ${s.n}</li>`)}</ul>` : html`<p class="small muted">No one has picked specific states yet.</p>`}
+      <p class="small">${d.radius_areas || 0} ${d.radius_areas === 1 ? 'reader set' : 'readers set'} a radius around a town or ZIP (places themselves are not listed):</p>
+      ${(d.radius_mi || []).length ? html`<ul class="small">${d.radius_mi.map((r) => html`<li>${r.mi} miles · ${r.n}</li>`)}</ul>` : html`<p class="small muted">No radius sizes yet.</p>`}`
+    : html`<p class="muted">No one has saved interests yet.</p>`}
+  </section>`;
+}
+
