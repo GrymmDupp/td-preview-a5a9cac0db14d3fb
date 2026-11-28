@@ -23,6 +23,7 @@
     { "name": "Passport", "url": "./passport/", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] },
     { "name": "Map", "url": "./#/map", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] },
     { "name": "Browse", "url": "./#/browse", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "Moderate (staff)", "short_name": "Moderate", "description": "The Keeper's Desk: moderation queue. Staff sign-in required.", "url": "./#/moderate", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] },
     { "name": "Account", "url": "./#/account", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] }
   ]
 }

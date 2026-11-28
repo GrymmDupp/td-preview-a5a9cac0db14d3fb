@@ -19,7 +19,7 @@ import { initAnalytics, track, routeName, analyticsOn, analyticsBlocked, setAnal
 import { syncStart } from './sync.js';
 import { account } from './views/account.js';
 import { contribute } from './views/contribute.js';
-import { moderation } from './views/moderation.js';
+import { moderation, modBadgeTotal } from './views/moderation.js';
 import { exportSuggestions } from './views/admin_panels.js';
 import { rules, about, DISCLAIMER } from './views/pages.js';
 import { packs } from './views/packs.js';
@@ -56,6 +56,7 @@ async function refreshCtx() {
   // View as visitor (staff only, this device): the app renders as a signed-in free user sees it. Client-side only.
   ctx.staff = !!ctx.me && (['moderator', 'admin'].includes(ctx.me.role) || ctx.me.is_admin);
   ctx.visitor = ctx.staff && visitorView();
+  ctx.canMod = ctx.staff && !ctx.visitor;   // staff-only entry points: hidden for normal users and in View as visitor
   // Server RLS also grants admins every full file / dossier. Visitor view keeps this off.
   ctx.adminBypass = !!ctx.me && (ctx.me.role === 'admin' || ctx.me.is_admin) && !ctx.visitor;
   if (ctx.visitor) ctx.me = { ...ctx.me, role: 'user' };
@@ -74,6 +75,7 @@ async function refreshCtx() {
     setFieldCovers(ctx.fieldCovers);
   }
   await bootPrefs(ctx.be).catch(() => {});
+  await refreshModCounts();
 }
 
 // Instant unlock (Payment Link mode): ask the server whether pending payments have landed. It runs on
@@ -110,21 +112,39 @@ function startPoll(ms = 120000) {
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && hasPending()) { checkPayments(); startPoll(60000); } });
 
+// ---- Staff-only Moderate badge: a live pending count (counts only), refreshed on load, after each decision,
+// when the app regains focus, and every 90 s while it is visible. Nothing here runs for normal users.
+ctx.setModBadge = (n) => {
+  const t = Number(n) || 0;
+  document.querySelectorAll('[data-mod-badge]').forEach((b) => { b.textContent = t > 99 ? '99+' : String(t); b.hidden = !t; });
+  document.querySelectorAll('[data-mod-count]').forEach((b) => { b.textContent = t ? (t === 1 ? '1 thing waits' : t + ' things wait') : 'All caught up'; });
+};
+async function refreshModCounts() {
+  if (!ctx.canMod || !ctx.be?.modCounts) { ctx.modCounts = null; return; }
+  const c = await ctx.be.modCounts().catch(() => null);
+  ctx.modCounts = c ? { ...c, total: modBadgeTotal(c) } : null;
+  ctx.setModBadge(ctx.modCounts?.total ?? 0);
+}
+setInterval(() => { if (ctx.canMod && document.visibilityState === 'visible') refreshModCounts(); }, 90000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && ctx.canMod) refreshModCounts(); });
+
 function renderChrome(path) {
   const nav = [['#/', 'Listings', /^\/?$/], ['#/browse', 'Browse', /^\/browse/], ['#/map', 'Map', /^\/map/], ['live/', 'Live', /^$/], ['passport/', 'Passport', /^$/], ['ancestors/', 'Ancestors', /^$/], ...(CONFIG.show?.packs ? [['#/packs', 'Dossier Packs', /^\/packs/]] : []), ...(CONFIG.show?.heritage || (feed.heritage || []).length ? [['#/heritage', 'Heritage Homes', /^\/heritage/]] : []), ['#/board', 'Board', /^\/board/]];
   $('#nav').innerHTML = nav.map(([h, t, re]) => `<a href="${h}" class="${re.test(path) ? 'on' : ''}">${t}</a>`).join('') + `<a href="#/contribute" class="nav-cta ${/contribute|suggest/.test(path) ? 'on' : ''}">Submit</a>`;
   $('#who').innerHTML = (ctx.me
-    ? `${ctx.staff && !ctx.visitor ? '<a class="modlink" href="#/moderate" title="Moderation queue">⚖</a>' : ''}
+    ? `${ctx.canMod ? `<a class="modlink" href="#/moderate" title="The Keeper’s Desk: moderation queue" aria-label="Moderate"><span class="ml-ic" aria-hidden="true">⚖</span><span class="ml-t">Moderate</span><b class="mod-badge" data-mod-badge ${ctx.modCounts?.total ? '' : 'hidden'}>${ctx.modCounts?.total > 99 ? '99+' : ctx.modCounts?.total || 0}</b></a>` : ''}
        ${ctx.staff ? `<button class="vis-toggle" data-visitor aria-pressed="${ctx.visitor}" title="${ctx.visitor ? 'Visitor view is on. Tap for your admin view' : 'View the app as a visitor sees it'}" aria-label="${ctx.visitor ? 'Back to admin view' : 'View as visitor'}">◐</button>` : ''}
        <a class="me" href="#/account" title="Your account"><span class="avatar" aria-hidden="true">☺</span><span class="me-name">${esc(readerLabel(ctx.me))}</span></a>
        <button class="link small" data-signout>Sign out</button>`
     : `<button class="btn sm" data-signin>Sign in</button>`);
   const vb = $('#visitor-banner'); if (vb) vb.hidden = !ctx.visitor;
   const tabs = [['#/', 'Feed', '⌂', /^\/?$/], ['#/browse', 'Browse', '☰', /^\/browse/], ['#/map', 'Map', '◎', /^\/map/], ['live/', 'Live', '◉', /^$/], ['#/board', 'Board', '✉', /^\/board/], ['#/account', 'Account', '☺', /^\/account/]];
-  $('#tabbar').innerHTML = tabs.map(([h, t, i, re]) => `<a href="${h}" class="${re.test(path) ? 'on' : ''}"><span>${i}</span>${t}</a>`).join('');
+  $('#tabbar').innerHTML = tabs.map(([h, t, i, re]) => `<a href="${h}" class="${re.test(path) ? 'on' : ''}"><span>${i}</span>${t}</a>`).join('')
+    + (ctx.canMod ? `<a href="#/moderate" class="tab-mod ${/^\/moderate/.test(path) ? 'on' : ''}" aria-label="Moderate"><span>⚖<b class="mod-badge" data-mod-badge ${ctx.modCounts?.total ? '' : 'hidden'}>${ctx.modCounts?.total > 99 ? '99+' : ctx.modCounts?.total || 0}</b></span>Moderate</a>` : '');
+  document.body.classList.toggle('has-modtab', !!ctx.canMod);
   document.body.classList.toggle('is-map', /^\/map/.test(path));
   // Footer "Moderation" link: moderators and admins only.
-  const fm = $('#foot-mod'); if (fm) fm.hidden = !(ctx.me && ['moderator', 'admin'].includes(ctx.me.role));
+  const fm = $('#foot-mod'); if (fm) fm.hidden = !ctx.canMod;
 }
 
 // random pick: the listings shown on this page (browse results), else the whole catalog
@@ -157,6 +177,7 @@ async function route() {
       if (l) keepBook(l);
       track('view', routeName(path)); if (l) track('listing_open', l.id); if (view === patronage) track('pricing_view', 'patronage'); if (view === unlock) track('pricing_view', 'unlock-page');
       window.TD_ATMO_SYNC?.();
+      if (view === moderation) { const h = document.querySelector('.site-head'); if (h) document.documentElement.style.setProperty('--head-h', Math.round(h.getBoundingClientRect().height) + 'px'); main.querySelector('.mod-tab.on')?.scrollIntoView({ inline: 'center', block: 'nearest' }); }
       if (view === account && hasPending()) checkPayments();
       const at = q.get('at') || (q.get('tab') === 'talk' ? 'comments' : '') || (q.get('unlocked') ? 'file' : '');
       const refocus = (view === browse && refocusFilter && main.querySelector(`form[data-filters] [name="${refocusFilter}"]`)) || null; refocusFilter = null;

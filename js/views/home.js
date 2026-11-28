@@ -1,7 +1,7 @@
 import { web, nyx } from '../reveals.js';
 import { onThisDayLine } from '../world.js';
 import { html, raw, plural, ago, fmtDate, safeUrl } from '../util.js';
-import { listingCard, shelfTabs, gradeBadge, unlockPrice, standardPrice, monthlyUnlockPrice, lifetimeUnlockPrice, monthlyPrice, lifetimePrice, membershipsOn, trialNote, soonChip, isTrial } from '../components.js';
+import { modDeskCard, listingCard, shelfTabs, gradeBadge, unlockPrice, standardPrice, monthlyUnlockPrice, lifetimeUnlockPrice, monthlyPrice, lifetimePrice, membershipsOn, trialNote, soonChip, isTrial } from '../components.js';
 import { LAYERS, PRICE_BANDS, STATES, layerInfo } from '../taxonomy.js';
 import { newThisWeek, displayableImages } from '../feed.js';
 import { CONFIG } from '../config.js';
@@ -163,6 +163,7 @@ export async function home(ctx, q) {
   const act = catalog.filter((l) => l.status === 'Active');     // hero counts: Active only
   const actT1 = act.filter((l) => l.tier === 1).length, actT2 = act.length - actT1;
   return html`
+  ${modDeskCard(ctx, 'home')}
   ${page === 1 ? html`<section class="th-card" aria-label="Twisted Deeds">
     <img class="thc-vine l" src="assets/th/vine-corner.png" alt="" aria-hidden="true"><img class="thc-vine r" src="assets/th/vine-corner.png" alt="" aria-hidden="true">
     <div class="thc-gent" aria-hidden="true"><img src="assets/th/gentleman.webp" alt="" width="372" height="410"></div>

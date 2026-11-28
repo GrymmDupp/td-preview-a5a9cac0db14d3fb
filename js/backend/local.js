@@ -245,6 +245,12 @@ export class LocalBackend {
     return { submissions: pend(this.db.submissions), comments: pend(this.db.comments),
       board: pend(this.db.board).map((b) => ({ ...b, parent: b.parent_id ? this.db.board.find((x) => x.id === b.parent_id) : null })), reports };
   }
+  async modCounts() {
+    if (!this.isMod()) return null;
+    const q = await this.listQueue(), np = q.submissions.filter((s) => !s.field_capture && s.kind === 'link' && !s.listing_id).length;
+    return { photos: q.submissions.filter((s) => !s.field_capture && !(s.kind === 'link' && !s.listing_id)).length, field: q.submissions.filter((s) => s.field_capture).length,
+      places: np, board: q.board.length, comments: q.comments.length, reports: q.reports.length, payments: 0, corrections: 0, research: 0 };
+  }
   findTarget(type, id) { const row = this.db[TARGET[type]]?.find((x) => x.id === id); return row ? this.withAuthor(row) : null; }
   async moderate(table, id, decision, note = '', opts = {}) {
     if (!this.isMod()) throw new Error('Moderators only');

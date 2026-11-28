@@ -203,3 +203,13 @@ export const sourceLinks = (l, full) => {
   return [...urls.entries()];
 };
 export { tierInfo, kindLabel };
+
+// Staff-only card: "The Keeper's Desk" with a live pending count. Rendered at the top of Home and Account
+// for moderators/admins only; returns '' for everyone else and while "View as visitor" is on (ctx.canMod).
+export function modDeskCard(ctx, where = 'home') {
+  if (!ctx?.canMod) return '';
+  const n = ctx.modCounts?.total || 0;
+  return html`<a class="mod-card mod-card--${where}" href="#/moderate" aria-label="Open the Keeper’s Desk, moderation queue"><span class="mc-ic" aria-hidden="true">⚖</span>
+    <span class="mc-t"><b>The Keeper’s Desk</b><small data-mod-count>${n ? (n === 1 ? '1 thing waits' : n + ' things wait') : 'All caught up'}</small></span>
+    <span class="mod-badge" data-mod-badge ${n ? '' : 'hidden'}>${n > 99 ? '99+' : n}</span><span class="mc-go" aria-hidden="true">Open ›</span></a>`;
+}

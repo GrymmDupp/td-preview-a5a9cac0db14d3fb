@@ -396,6 +396,12 @@ export class SupabaseBackend {
     return { submissions: await this._withUrls(s), comments: c,
       board: board.map((x) => ({ ...x, parent: x.parent_id ? pmap.get(x.parent_id) || null : null })), reports };
   }
+  // Staff-only pending counts for the Moderate badge (migration 20261127_mod_dashboard.sql). Counts only. null if unavailable.
+  async modCounts() {
+    const { data, error } = await this.sb.rpc('mod_pending_counts');
+    if (error) { console.warn('mod_pending_counts unavailable', error.message); return null; }
+    return data || null;
+  }
   // Per-listing "Updated" signal: rpc returns listing_id, kinds, last_approved_at only (no content).
   async recentUpdates(days = 7) {
     const { data, error } = await this.sb.rpc('recent_listing_updates', { days });

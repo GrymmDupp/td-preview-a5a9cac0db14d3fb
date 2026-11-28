@@ -76,3 +76,6 @@ export const CONFIG = {
     },
   },
 };
+
+// Staff-only shortcut on the moderation screen (the Master Sheet's Scout Staging tab). Not a secret: Google sign-in still gates it.
+export const MASTER_SHEET_STAGING_URL = 'https://docs.google.com/spreadsheets/d/1OlJxQZRatOH-CQUrUynpRFJe-UqEh8IJzdUDoSxSUzY/edit?gid=1486667321#gid=1486667321';

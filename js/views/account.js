@@ -9,7 +9,7 @@ import { researchScrolls } from './research.js';
 import { analyticsOn, analyticsBlocked } from '../analytics.js';
 import { syncState } from '../sync.js';
 import { prefsFormHtml, current as prefsCurrent, hasSoftFilter, prefsSummary } from '../prefs.js';
-import { unlockPrice, standardPrice, monthlyUnlockPrice, lifetimeUnlockPrice, monthlyPrice, lifetimePrice, money, TIER_LABEL, membershipsOn, isTrial, soonChip, soonButton, trialNote, readerLabel } from '../components.js';
+import { modDeskCard, unlockPrice, standardPrice, monthlyUnlockPrice, lifetimeUnlockPrice, monthlyPrice, lifetimePrice, money, TIER_LABEL, membershipsOn, isTrial, soonChip, soonButton, trialNote, readerLabel } from '../components.js';
 
 // Plan shown as a plain fact. The "Lifetime" badge appears HERE ONLY (the member's own
 // account page), never next to comments, board posts or listings.
@@ -179,6 +179,7 @@ export async function account(ctx) {
   const L = (id) => ctx.feed.byId.get(id);
   return html`<div class="page-head"><h1>Account</h1><p class="muted">Signed in as <b>${readerLabel(ctx.me)}</b>. Only you see this page.</p>
     ${ctx.be.isPreview ? html`<p class="small muted">Preview: this is a test account in this browser. In live mode your account is your email sign-in, so unlocks follow you to every device.</p>` : ''}</div>
+  ${modDeskCard(ctx, 'account')}
   <div class="with-side acct-world"><div>
     ${accountManage(ctx)}
     ${prefsBlock(true)}
