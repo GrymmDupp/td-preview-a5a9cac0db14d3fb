@@ -20,8 +20,14 @@ const sess = {
 };
 
 // ---------- settings
-const S = Object.assign({ radius: 0.5, chime: false, speak: false, show: { deed: true, story: true, lead: true, unverified: true, context: false, archive: true, hmark: true, cem: true } }, store.get('td-live-settings', {}));
-S.show = Object.assign({ deed: true, story: true, lead: true, unverified: true, context: false, archive: true, hmark: true, cem: true }, S.show);
+// First open / no saved live prefs: every layer chip starts off so testers pick what they want.
+// Returning visitors who already saved td-live-settings keep those picks; missing keys keep the
+// former on-by-default so a layer they never toggled does not silently vanish.
+const SHOW_OFF = { deed: false, story: false, lead: false, unverified: false, context: false, archive: false, hmark: false, cem: false };
+const SHOW_LEGACY = { deed: true, story: true, lead: true, unverified: true, context: false, archive: true, hmark: true, cem: true };
+const savedS = store.get('td-live-settings', null);
+const S = Object.assign({ radius: 0.5, chime: false, speak: false, show: { ...SHOW_OFF } }, savedS && typeof savedS === 'object' ? savedS : {});
+S.show = Object.assign({}, (savedS && typeof savedS === 'object') ? SHOW_LEGACY : SHOW_OFF, (savedS && savedS.show && typeof savedS.show === 'object') ? savedS.show : {});
 const saveS = () => store.set('td-live-settings', S);
 
 // ---------- geometry

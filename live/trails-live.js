@@ -19,7 +19,7 @@ const CAT = {
 const DAYS = ['su', 'mo', 'tu', 'we', 'th', 'fr', 'sa'], DAYN = { mo: 'Mon', tu: 'Tue', we: 'Wed', th: 'Thu', fr: 'Fri', sa: 'Sat', su: 'Sun' };
 let api = null, lyr = null, on = true, places = [], uid = null, lastNudge = 0, queue = [], last = null;
 const told = new Set(JSON.parse(sessionStorage.getItem('td-trails-told') || '[]'));
-try { on = localStorage.getItem(SHOW) !== '0'; } catch { /* */ }
+try { on = localStorage.getItem(SHOW) === '1'; } catch { /* */ }
 const R = 6371000;
 function meters(a, b, c, d) { const r = Math.PI / 180, x = Math.sin((c - a) * r / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin((d - b) * r / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(x)); }
 function bearing(a, b, c, d) { const r = Math.PI / 180, y = Math.sin((d - b) * r) * Math.cos(c * r), x = Math.cos(a * r) * Math.sin(c * r) - Math.sin(a * r) * Math.cos(c * r) * Math.cos((d - b) * r); return (Math.atan2(y, x) / r + 360) % 360; }

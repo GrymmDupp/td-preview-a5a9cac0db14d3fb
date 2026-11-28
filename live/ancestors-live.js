@@ -15,7 +15,7 @@ function meters(a, b, c, d) { const r = Math.PI / 180, x = Math.sin((c - a) * r 
 function bearing(a, b, c, d) { const r = Math.PI / 180, y = Math.sin((d - b) * r) * Math.cos(c * r), x = Math.cos(a * r) * Math.sin(c * r) - Math.sin(a * r) * Math.cos(c * r) * Math.cos((d - b) * r); return (Math.atan2(y, x) / r + 360) % 360; }
 const COL = { exact: '#e6c352', cemetery: '#d7dcd2', town: '#c9a227', township: '#b0813a', county: '#8a5a2c', living: '#7f9a6a' };
 const colOf = (pl) => (pl.lv ? COL.living : COL[pl.q] || COL.town);
-try { on = localStorage.getItem(SHOW) !== '0'; } catch { /* */ }
+try { on = localStorage.getItem(SHOW) === '1'; } catch { /* */ }
 
 function draw() {
   if (!lyr) lyr = L.layerGroup().addTo(api.map);
