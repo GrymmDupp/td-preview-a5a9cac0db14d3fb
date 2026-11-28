@@ -26,9 +26,14 @@ const sess = {
 const SHOW_OFF = { deed: false, story: false, lead: false, unverified: false, context: false, archive: false, hmark: false, cem: false };
 const SHOW_LEGACY = { deed: true, story: true, lead: true, unverified: true, context: false, archive: true, hmark: true, cem: true };
 const savedS = store.get('td-live-settings', null);
-const S = Object.assign({ radius: 0.5, chime: false, speak: false, show: { ...SHOW_OFF } }, savedS && typeof savedS === 'object' ? savedS : {});
+const RAD_MIN = 1, RAD_MAX = 25;
+function clampRad(v) { const n = Number(v); if (!Number.isFinite(n)) return RAD_MIN; return Math.min(RAD_MAX, Math.max(RAD_MIN, Math.round(n))); }
+function radLabel(mi) { return mi + ' mi'; }
+const S = Object.assign({ radius: RAD_MIN, chime: false, speak: false, show: { ...SHOW_OFF } }, savedS && typeof savedS === 'object' ? savedS : {});
 S.show = Object.assign({}, (savedS && typeof savedS === 'object') ? SHOW_LEGACY : SHOW_OFF, (savedS && savedS.show && typeof savedS.show === 'object') ? savedS.show : {});
+S.radius = clampRad(S.radius);
 const saveS = () => store.set('td-live-settings', S);
+if (savedS && typeof savedS === 'object' && Number(savedS.radius) !== S.radius) saveS();
 
 // ---------- geometry
 const R_MI = 3958.8;
@@ -667,10 +672,17 @@ map.on('dragstart', () => { if (running && follow) { follow = false; $('#recente
 $('#recenter').onclick = () => { follow = true; $('#recenter').hidden = true; if (me) map.setView(me, Math.max(map.getZoom(), 15)); };
 
 // ---------- controls
-document.querySelectorAll('.rad button').forEach((b) => {
-  b.classList.toggle('on', +b.dataset.r === S.radius);
-  b.onclick = () => { S.radius = +b.dataset.r; saveS(); document.querySelectorAll('.rad button').forEach((x) => x.classList.toggle('on', x === b)); checkAlerts(); refreshNearby(); toast('Alerting within ' + (S.radius === 0.25 ? '¼' : S.radius === 0.5 ? '½' : S.radius) + ' mile', 1800); };
-});
+const radEl = $('#rad-range'), radVal = $('#rad-val');
+function paintRad() {
+  if (!radEl) return;
+  radEl.value = String(S.radius);
+  radEl.style.setProperty('--rad-pct', ((S.radius - RAD_MIN) / (RAD_MAX - RAD_MIN) * 100) + '%');
+  radEl.setAttribute('aria-valuenow', S.radius);
+  radEl.setAttribute('aria-valuetext', S.radius === 1 ? '1 mile' : S.radius + ' miles');
+  if (radVal) radVal.textContent = radLabel(S.radius);
+}
+function applyRad() { S.radius = clampRad(radEl && radEl.value); paintRad(); saveS(); checkAlerts(); refreshNearby(); }
+if (radEl) { paintRad(); radEl.addEventListener('input', applyRad); }
 document.querySelectorAll('.chip').forEach((b) => {
   const k = b.dataset.k; b.classList.toggle('on', !!S.show[k]); b.setAttribute('aria-pressed', !!S.show[k]);
   b.onclick = () => { S.show[k] = !S.show[k]; saveS(); b.classList.toggle('on', S.show[k]); b.setAttribute('aria-pressed', S.show[k]); if (k === 'hmark' || k === 'cem') { lyrRefresh(); lyrAttr(); refreshNearby(); toast((k === 'hmark' ? 'Historical markers' : 'Cemeteries') + (S.show[k] ? ' on' : ' off'), 1500); } else drawPins(); if (k === 'archive') window.dispatchEvent(new Event('td-arch-toggle')); checkAlerts(); };

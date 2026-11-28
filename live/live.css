@@ -64,10 +64,15 @@ a{color:var(--gold2)}
 textarea{width:100%;min-height:76px;background:#100c0c;color:var(--bone);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit}
 .photo{width:100%;border-radius:10px;margin:8px 0 2px;display:block}
 #dock{background:#100c0c;border-top:1px solid var(--bronze);padding:8px 10px calc(env(safe-area-inset-bottom) + 8px)}
-.rad{display:flex;align-items:center;gap:6px}
-.rad span{font-size:.78rem;color:var(--muted);flex:0 0 auto;max-width:64px;line-height:1.1}
-.rad button{flex:1;min-height:46px;border-radius:12px;border:2px solid var(--line);background:#1a1415;font-weight:800;color:var(--muted)}
-.rad button.on{border-color:var(--gold);color:#1a1200;background:var(--gold)}
+.rad{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 2px}
+.rad label{flex:0 0 auto;font-size:.78rem;font-weight:700;color:var(--muted);white-space:nowrap}
+.rad output{flex:0 0 3.4em;text-align:right;font-weight:800;font-size:.85rem;color:var(--gold2);white-space:nowrap}
+.rad input[type=range]{flex:1;min-width:0;height:44px;margin:0;background:transparent;-webkit-appearance:none;appearance:none;cursor:pointer}
+.rad input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:linear-gradient(to right,var(--gold) var(--rad-pct,0%),#3a3330 var(--rad-pct,0%))}
+.rad input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:28px;height:28px;margin-top:-11px;border-radius:50%;background:var(--gold2);border:2px solid #1a1200;box-shadow:0 1px 4px rgba(0,0,0,.55)}
+.rad input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:#3a3330}
+.rad input[type=range]::-moz-range-progress{height:6px;border-radius:3px;background:var(--gold)}
+.rad input[type=range]::-moz-range-thumb{width:28px;height:28px;border-radius:50%;background:var(--gold2);border:2px solid #1a1200;box-shadow:0 1px 4px rgba(0,0,0,.55)}
 .main{display:flex;gap:8px;margin:8px 0}
 .big{flex:1;min-height:68px;border-radius:18px;font:800 1.25rem var(--sans);border:2px solid var(--gold2);box-shadow:0 3px 8px rgba(0,0,0,.5)}
 .big.go{background:#1d6a3a;border-color:#6fd196;color:#fff}.big.go.running{background:#8a1a22;border-color:#ff8b94}
@@ -96,7 +101,7 @@ textarea{width:100%;min-height:76px;background:#100c0c;color:var(--bone);border:
 .brand b{font-weight:400}.brand i{color:#d8312a}
 .brand em{font:400 .8rem 'IM Fell English SC',Georgia,serif;letter-spacing:.06em;color:#f2efe8;border-color:#d8312a;background:#60130b;padding:1px 6px;vertical-align:3px}
 .chip{background:#232322}.chip.on{background:#2d2d2d;border-color:#a19d95}
-.mini button,.rad button{background:#232322}
+.mini button{background:#232322}
 #toast{background:#2d2d2d;border-color:#6f6a62}
 
 /* reveals (subtle): lantern flicker outside the alert card; passed pins as small gravestones */

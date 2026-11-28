@@ -52,8 +52,11 @@
     <section id="sheet" hidden aria-live="polite"><div class="sh-bar"><b id="sh-title"></b><button id="sh-close" aria-label="Close">×</button></div><div id="sh-body"></div></section>
   </div>
   <footer id="dock">
-    <div class="rad" role="group" aria-label="Alert radius"><span>Alert me within</span>
-      <button data-r="0.25">¼ mi</button><button data-r="0.5" class="on">½ mi</button><button data-r="1">1 mi</button><button data-r="2">2 mi</button></div>
+    <div class="rad">
+      <label for="rad-range">Within</label>
+      <input id="rad-range" type="range" min="1" max="25" step="1" value="1" aria-valuemin="1" aria-valuemax="25" aria-valuenow="1" aria-valuetext="1 mile">
+      <output id="rad-val" for="rad-range">1 mi</output>
+    </div>
     <div class="main">
       <button id="start" class="big go">▶ Start</button>
       <button id="here" class="big here">What’s here?</button>
