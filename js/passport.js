@@ -145,12 +145,12 @@ export function addStamp(meta, at = new Date(), rare = null) {
   const s = { id: meta.id, name: meta.name || '', town: meta.town || '', county: meta.county || '', state: meta.state || '', layer: meta.layer || 'place', sub: meta.sub || '',
     theme: meta.theme || '', crew: !!meta.crew, priv: !!meta.priv, area: meta.area ? String(meta.areaLabel || '') : '', firstOk: !!meta.firstOk, at: at.toISOString(), rare: rare || rareNow(meta.lat, meta.lon, at), u: null, synced: false, tier: 'ink' };
   // Markers and cemeteries keep their public spot (5 decimals) so the passport book can open their card. Homes never do.
-  if ((s.layer === 'marker' || s.layer === 'cemetery') && !meta.area && isFinite(meta.lat) && isFinite(meta.lon)) { s.lat = Math.round(meta.lat * 1e5) / 1e5; s.lon = Math.round(meta.lon * 1e5) / 1e5; }
+  if ((s.layer === 'marker' || s.layer === 'cemetery' || s.layer === 'trail') && !meta.area && isFinite(meta.lat) && isFinite(meta.lon)) { s.lat = Math.round(meta.lat * 1e5) / 1e5; s.lon = Math.round(meta.lon * 1e5) / 1e5; }
   b.stamps.push(s); saveBook(b);
   return s;
 }
 export function patchStamp(id, patch) { const b = book(); const s = b.stamps.find((x) => x.id === id && (!x.u || x.u === curUid())); if (s) { Object.assign(s, patch); saveBook(b); return s; } }
-const SEAL_LAYERS = new Set(['listing', 'archive', 'marker', 'cemetery', 'lead', 'place']);
+const SEAL_LAYERS = new Set(['listing', 'archive', 'marker', 'cemetery', 'lead', 'place', 'trail']);
 // Wax seal: a traveler stopped (dwell) or took a photo on site. Never downgrades an existing wax seal.
 export async function awardSeal(meta, { how = 'dwell', file = null } = {}) {
   if (!meta?.id || !SEAL_LAYERS.has(meta.layer || meta.kind || 'place')) return null;
@@ -213,7 +213,7 @@ export function ranks(list = stamps()) {
 
 /* ---------------------------------------------------------------- stamp art (procedural SVG) */
 function hash(s) { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
-const INK = { listing: '#8e1b22', archive: '#27405f', marker: '#2f5233', cemetery: '#2e2e33', lead: '#5b3a80', scout: '#8a6214', place: '#6b2a1a', family: '#3e5a2b' };
+const INK = { listing: '#8e1b22', archive: '#27405f', marker: '#2f5233', cemetery: '#2e2e33', lead: '#5b3a80', scout: '#8a6214', place: '#6b2a1a', family: '#3e5a2b', trail: '#4a2366' };
 const RARE_INK = { moon: '#3d5f8f', dark: '#1d1a2e', october: '#b0501a' };
 let uidN = 0;
 const GLYPH = {
@@ -225,6 +225,8 @@ const GLYPH = {
   museum: '<path d="M-11-3 0-10 11-3z" fill="none" stroke-width="1.8" stroke-linejoin="round"/><path d="M-8-1v9M-3-1v9M3-1v9M8-1v9" stroke-width="2"/><path d="M-11 10h22" stroke-width="2"/>',
   register: '<path d="M-10 10V-2h20v12M-12-2 0-9 12-2" fill="none" stroke-width="1.8" stroke-linejoin="round"/><path d="M-5 10V3h4v7M3 2h4v3h-4z" fill="none" stroke-width="1.4"/>',
   family: '<path d="M0 11V0M0 0-6-6M0 0l6-6M0 5l-5-4M0 5l5-4" fill="none" stroke-width="2" stroke-linecap="round"/><circle cx="-6" cy="-7" r="2.2"/><circle cx="6" cy="-7" r="2.2"/><circle cx="0" cy="-9" r="2"/><path d="M-8 11h16" stroke-width="1.8"/>',
+  // Twisted Trails "Curiosity" stamp: a lantern with a keyhole flame
+  trail: '<path d="M-4-11h8M0-13v2" stroke-width="1.8" stroke-linecap="round"/><path d="M-7-8h14l-2 3v12l2 3h-14l2-3V-5z" fill="none" stroke-width="2" stroke-linejoin="round"/><circle cx="0" cy="-0.5" r="2.2"/><path d="M-1 1h2l1 5h-4z"/><path d="M-10 12h20" stroke-width="1.8"/>',
   scout: '<circle r="9" fill="none" stroke-width="2"/><path d="M0-12v5M0 7v5M-12 0h5M7 0h5" stroke-width="1.6"/><path d="M-3 3 0-6 3 3 0 1z"/>',
 };
 const RGLYPH = {
@@ -245,6 +247,7 @@ export function faceText(s, forShare) {
   if (s.area) return { top: s.area, bottom: town || 'PRIVATE HOME · AREA ONLY' };   // private home: its public area label, never an address
   if (forShare && s.priv) return { top: town || 'A private home', bottom: 'PRIVATE HOME · ROADSIDE' };
   if (s.layer === 'scout') return { top: 'SCOUT · ' + (s.name || 'A new place'), bottom: 'SUGGESTED & APPROVED' };
+  if (s.layer === 'trail') return { top: noAddr(s.name) || 'A curiosity', bottom: town ? 'CURIOSITY · ' + town : 'CURIOSITY' };
   return { top: noAddr(s.name) || 'Unnamed place', bottom: town || (s.layer === 'cemetery' ? 'CEMETERY' : s.layer === 'marker' ? 'HISTORICAL MARKER' : '') };
 }
 // opts: { size, mini (map pin: no lettering), forShare, ghost (an empty slot in the book) }
@@ -252,7 +255,7 @@ export function stampSvg(s, opts = {}) {
   const size = opts.size || 120, n = ++uidN, h = hash(s.id), mini = !!opts.mini;
   const rare = (s.rare || []).filter((r) => RARE[r]);
   const ink = opts.ghost ? '#8a7d66' : rare.length ? RARE_INK[rare[0]] : (INK[s.layer] || INK.place);
-  const shape = s.layer === 'scout' ? 3 : s.layer === 'cemetery' ? [4, 1][h % 2] : s.layer === 'marker' ? [3, 2][h % 2] : (h % 5);
+  const shape = s.layer === 'scout' ? 3 : s.layer === 'trail' ? 2 : s.layer === 'cemetery' ? [4, 1][h % 2] : s.layer === 'marker' ? [3, 2][h % 2] : (h % 5);
   const rot = opts.ghost ? 0 : ((h >> 3) % 25) - 12;
   const glyph = (s.sub === 'U' && GLYPH.museum) || (s.sub === 'N' && GLYPH.register) || GLYPH[s.layer] || GLYPH.listing;
   const f = { top: '', bottom: '' }; Object.assign(f, opts.ghost ? { top: noAddr(s.name), bottom: [s.town, s.state].filter(Boolean).join(', ') } : faceText(s, opts.forShare));
@@ -309,6 +312,7 @@ export function computeSets(catalog, list = stamps()) {
   const keysFor = (m) => {
     const k = [];
     if (m.layer === 'scout') return [['c:scout', 'collection', 'Scout stamps']];
+    if (m.layer === 'trail') return [['c:trail', 'collection', 'Twisted Trails curiosities']];
     if (m.layer === 'marker' || m.layer === 'cemetery') {
       // their own sets, open-ended (thousands of them), so they never dilute a town's "3 of 11"
       const cem = m.layer === 'cemetery', word = cem ? 'Cemeteries' : 'Markers';
@@ -329,7 +333,7 @@ export function computeSets(catalog, list = stamps()) {
   const out = [];
   for (const S of sets.values()) {
     if (!S.got.size) continue;                       // only sets you have started
-    S.open = S.kind === 'layer' || S.key.startsWith('c:scout');
+    S.open = S.kind === 'layer' || S.key.startsWith('c:scout') || S.key.startsWith('c:trail');
     for (const id of S.got.keys()) if (!S.places.has(id)) S.places.set(id, S.got.get(id));
     S.total = S.open ? null : S.places.size;
     S.complete = !S.open && S.total >= 2 && S.got.size >= S.total;

@@ -15,6 +15,8 @@ function applyChips() {
   api.redraw();
   const fam = $('#anc-chip');
   if (fam && !!fam.classList.contains('on') !== !!d.ancestors) fam.click();
+  const trl = $('#trl-chip');   // Twisted Trails preview chip (only exists for accounts with access)
+  if (trl && !!trl.classList.contains('on') !== !!d.trails) trl.click();
 }
 
 function moreButton() {

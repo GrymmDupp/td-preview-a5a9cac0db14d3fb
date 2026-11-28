@@ -115,7 +115,7 @@ function wireTaps(root) {
     f.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openCard(f.dataset.open); } };
   });
 }
-const LAYER_NAME = { listing: 'For sale now', archive: 'From the Archive', marker: 'Historical marker', cemetery: 'Cemetery', lead: 'Twisted place', place: 'Twisted place', scout: 'Scout stamp' };
+const LAYER_NAME = { listing: 'For sale now', archive: 'From the Archive', marker: 'Historical marker', cemetery: 'Cemetery', lead: 'Twisted place', place: 'Twisted place', scout: 'Scout stamp', trail: 'Twisted Trails · Curiosity stamp' };
 const unwritten = (r) => !!r && [r.story_status, r.storyStatus].some((v) => String(v || '').toLowerCase() === 'unwritten');
 function openCard(id) {
   const s = list().find((x) => x.id === id); if (!s) return;

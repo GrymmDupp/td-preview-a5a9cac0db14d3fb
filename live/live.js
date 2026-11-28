@@ -579,6 +579,7 @@ function onFix(pos) {
   lyrNear(me).then(() => { checkAlerts(); refreshNearby(); }); checkAlerts(); markPassed(); refreshNearby();
   try { TDP() && TDP().onFix(pos); } catch (e) { console.warn('passport', e); }
   try { window.TDAncestors && window.TDAncestors.onFix(pos); } catch (e) { console.warn('ancestors', e); }
+  try { window.TDTrails && window.TDTrails.onFix(pos); } catch (e) { console.warn('trails', e); }
   try { if (window.TDPrefs && window.TDPrefs.noteGps && window.TDPrefs.noteGps(me[0], me[1])) { toast('You\'re outside your usual area. Showing what\'s around you. You can switch back with Show more.', 5000); drawPins(); lyrRefresh(); } } catch (e) { /* */ }
 }
 function markPassed() {
@@ -643,7 +644,7 @@ function stop() {
   if (me) setGps('Stopped · tap', 'off'); else setGps('GPS off · tap', 'off');
   try { if (wakeLock) wakeLock.release(); } catch (e) { /* ignore */ } wakeLock = null;
   $('#recenter').hidden = true;
-  TDP() && TDP().onStop(); try { window.TDAncestors && window.TDAncestors.onStop(); } catch (e) { /* ignore */ }
+  TDP() && TDP().onStop(); try { window.TDAncestors && window.TDAncestors.onStop(); } catch (e) { /* ignore */ } try { window.TDTrails && window.TDTrails.onStop(); } catch (e) { /* ignore */ }
 }
 // Phones stop sending GPS to a web page that is off screen (screen locked, or another app such as Google Maps in front),
 // so nothing can be stamped or announced then. Say so when the map comes back after a gap.

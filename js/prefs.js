@@ -10,7 +10,12 @@ export const INTERESTS = [
   { key: 'cemeteries', label: 'Cemeteries', note: 'Cemetery layers and alerts along the road.' },
   { key: 'markers', label: 'Historic markers', note: 'Historical markers and plaques.' },
   { key: 'ancestors', label: 'Ancestors Trail', note: 'Your family’s places, private to your account.' },
+  // Twisted Trails is a preview: only offered to accounts the server lets in (public.trails_access()).
+  { key: 'trails', label: 'Twisted Trails', note: 'Oddities, occult and metaphysical shops, dark museums and spiritual places.', gated: true },
 ];
+let trailsOk = false;
+export const hasTrails = () => trailsOk;
+const shownInterests = () => INTERESTS.filter((x) => !x.gated || trailsOk);
 export const RADII = [25, 50, 100, 250];
 export const INTEREST_KEYS = INTERESTS.map((x) => x.key);
 const LS = 'td-user-prefs';
@@ -171,6 +176,7 @@ export function chipDefaults() {
     hmark: more || interestOn('markers'),
     cem: more || interestOn('cemeteries'),
     ancestors: more || interestOn('ancestors'),
+    trails: more || interestOn('trails'),
   };
 }
 
@@ -190,11 +196,11 @@ export function areaLabel() {
 
 export function prefsSummary() {
   if (!hasSoftFilter()) return '';
-  const off = INTERESTS.filter((x) => !interestOn(x.key)).map((x) => x.label);
+  const off = shownInterests().filter((x) => !interestOn(x.key)).map((x) => x.label);
   const bits = [];
   if (!everywhere()) bits.push(areaLabel());
-  const on = INTERESTS.filter((x) => interestOn(x.key)).map((x) => x.label);
-  if (on.length && on.length < INTEREST_KEYS.length) bits.push(on.join(', '));
+  const on = shownInterests().filter((x) => interestOn(x.key)).map((x) => x.label);
+  if (on.length && on.length < shownInterests().length) bits.push(on.join(', '));
   else if (off.length) bits.push('everything except ' + off.join(', '));
   return bits.join(' · ');
 }
@@ -226,6 +232,7 @@ export function attachPrefsBackend(be) {
 
 export async function bootPrefs(be) {
   attachPrefsBackend(be);
+  try { if (be && be.sb && be.uid) { const r = await be.sb.rpc('trails_access'); trailsOk = !r.error && r.data === true; } else trailsOk = false; } catch { trailsOk = false; }
   const local = normalize(lsGet());
   currentPrefs = local;
   if (!remote.get) { notify(); return currentPrefs; }
@@ -319,7 +326,7 @@ export function prefsFormHtml(p = currentPrefs, { id = 'prefs-form', save = fals
   const a = p.area, road = a.everywhere;
   return '<form class="prefs-form" id="' + id + '" data-user-prefs>'
     + '<fieldset class="prefs-fs"><legend>What should we put first?</legend>'
-    + '<div class="prefs-togs">' + INTERESTS.map((x) => toggleRow(x, p.interests[x.key] !== false)).join('') + '</div></fieldset>'
+    + '<div class="prefs-togs">' + shownInterests().map((x) => toggleRow(x, p.interests[x.key] !== false)).join('') + '</div></fieldset>'
     + '<fieldset class="prefs-fs"><legend>Where shall we look?</legend>'
     + '<button type="button" class="prefs-tog prefs-road' + (road ? ' on' : '') + '" data-pref-road aria-pressed="' + (road ? 'true' : 'false') + '">'
     + '<span class="prefs-lever" aria-hidden="true"><i></i></span>'
